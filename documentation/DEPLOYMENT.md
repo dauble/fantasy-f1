@@ -79,6 +79,110 @@ flyctl open
 
 Your app will be available at: `https://your-app-name.fly.dev`
 
+## Continuous Deployment with GitHub Actions
+
+The repository includes a GitHub Actions workflow that automatically deploys to Fly.io when you push to the `main` branch.
+
+### Setup CI/CD
+
+#### 1. Get Your Fly.io API Token
+
+```bash
+flyctl auth token
+```
+
+This will output your personal Fly.io API token. Copy it.
+
+#### 2. Add Secret to GitHub
+
+1. Go to your GitHub repository
+2. Navigate to **Settings** → **Secrets and variables** → **Actions**
+3. Click **New repository secret**
+4. Name: `FLY_API_TOKEN`
+5. Value: Paste your token from step 1
+6. Click **Add secret**
+
+#### 3. Update fly.toml
+
+Make sure your `fly.toml` has the correct app name:
+
+```toml
+app = 'your-actual-fly-app-name'
+```
+
+#### 4. Push to Main Branch
+
+Once configured, every push to `main` will trigger automatic deployment:
+
+```bash
+git add .
+git commit -m "Your commit message"
+git push origin main
+```
+
+### How It Works
+
+The workflow file (`.github/workflows/deploy.yml`):
+
+```yaml
+name: Deploy to Fly.io
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Fly CLI
+        uses: superfly/flyctl-actions/setup-flyctl@master
+
+      - name: Deploy to Fly.io
+        run: flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+```
+
+**Key Features**:
+
+- Triggers on push to `main` branch
+- Uses `--remote-only` flag (builds on Fly.io servers, not GitHub runners)
+- Faster than local builds
+- Doesn't require Docker on GitHub runners
+
+### View Deployment Status
+
+Check deployment progress:
+
+1. Go to your GitHub repository
+2. Click the **Actions** tab
+3. Click on the latest workflow run
+4. Watch the deployment logs in real-time
+
+### Troubleshooting CI/CD
+
+**Deployment fails with authentication error**:
+
+- Verify `FLY_API_TOKEN` secret is correctly set
+- Token may have expired - generate a new one with `flyctl auth token`
+
+**Deployment fails with "app not found"**:
+
+- Ensure `fly.toml` app name matches your Fly.io app name
+- Run `flyctl apps list` to see your apps
+
+**Build fails**:
+
+- Check the Actions logs for specific error messages
+- Test the build locally first: `npm run build`
+
 ## Managing Your Deployment
 
 ### View Logs

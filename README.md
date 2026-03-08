@@ -225,6 +225,8 @@ Comprehensive technical documentation is available in the [`documentation/`](doc
 
 This application is deployed on [Fly.io](https://fly.io) with automatic SSL, CDN, and global distribution.
 
+### Manual Deployment
+
 **Quick Start**:
 
 1. Install Fly CLI: `brew install flyctl`
@@ -233,9 +235,21 @@ This application is deployed on [Fly.io](https://fly.io) with automatic SSL, CDN
 4. Deploy: `npm run deploy` (or `flyctl deploy`)
 5. Open: `flyctl open`
 
+### Automated Deployment (CI/CD)
+
+The repository includes **GitHub Actions** for automatic deployments:
+
+- **Trigger**: Push to `main` branch
+- **Action**: Automatically deploys to Fly.io
+- **Setup**: Add `FLY_API_TOKEN` secret to your GitHub repository settings
+
+Get your token: `flyctl auth token`
+
+Every push to `main` triggers a deployment automatically! ✨
+
 Your app will be live at `https://your-app-name.fly.dev` 🚀
 
-For complete deployment instructions, troubleshooting, and advanced configuration, see the **[Deployment Guide](documentation/DEPLOYMENT.md)**.
+For complete deployment instructions, CI/CD setup, troubleshooting, and advanced configuration, see the **[Deployment Guide](documentation/DEPLOYMENT.md)**.
 
 ## Acknowledgments
 

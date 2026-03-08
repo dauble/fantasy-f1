@@ -28,6 +28,7 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 - Fly.io account and CLI installation
 - App creation and configuration
 - Deployment process and commands
+- Continuous deployment with GitHub Actions
 - Monitoring, logging, and debugging
 - Scaling and resource management
 - Custom domain setup
@@ -35,6 +36,20 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 - Complete command reference
 
 **Target Audience**: DevOps engineers, developers deploying the app
+
+### [GITHUB_ACTIONS.md](GITHUB_ACTIONS.md)
+
+**GitHub Actions CI/CD setup guide** for automatic deployments:
+
+- Quick setup steps (5 minutes)
+- Getting and configuring Fly.io API token
+- Adding secrets to GitHub repository
+- How the workflow operates
+- Troubleshooting deployment issues
+- Optional configurations (branch deployments, PR previews)
+- Security best practices
+
+**Target Audience**: Developers setting up automated deployments
 
 ## Quick Links
 
@@ -125,7 +140,8 @@ Welcome modal on first visit encourages price updates. Optional skip, never show
 documentation/
 ├── README.md           # This file - documentation index
 ├── ARCHITECTURE.md     # Technical documentation
-└── DEPLOYMENT.md       # Deployment guide
+├── DEPLOYMENT.md       # Deployment guide
+└── GITHUB_ACTIONS.md   # CI/CD setup guide
 ```
 
 ## Contributing
