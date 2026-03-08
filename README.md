@@ -201,6 +201,7 @@ http://localhost:3000
 - `npm run build` - Build for production
 - `npm run preview` - Preview production build
 - `npm run lint` - Run ESLint
+- `npm run deploy` - Deploy to Fly.io (requires Fly CLI)
 
 ## Architecture & How It Works
 
@@ -516,6 +517,20 @@ localStorage (persist state)
 3. **Debouncing**: Auto-save uses React's batched updates
 4. **Memoization**: Price calculations only when prices change
 5. **Efficient Sorting**: Pre-computed sorts stored in state
+
+## Deployment
+
+This application can be easily deployed to Fly.io. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+
+### Quick Start
+
+1. Install Fly CLI: `brew install flyctl`
+2. Login: `flyctl auth login`
+3. Create app: `flyctl apps create your-app-name`
+4. Deploy: `flyctl deploy`
+5. Open: `flyctl open`
+
+Your app will be live at `https://your-app-name.fly.dev` 🚀
 
 ## Acknowledgments
 

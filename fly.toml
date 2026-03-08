@@ -1,0 +1,31 @@
+# fly.toml app configuration file
+# https://fly.io/docs/reference/configuration/
+
+app = 'fantasy-f1'
+primary_region = 'iad'  # Virginia - change to your preferred region
+
+[build]
+
+[env]
+  PORT = "8080"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 1
+  max_machines_running = 3
+
+[[vm]]
+  memory = '256mb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+# Health check configuration
+[[services.http_checks]]
+  interval = "30s"
+  timeout = "10s"
+  grace_period = "10s"
+  method = "GET"
+  path = "/"
