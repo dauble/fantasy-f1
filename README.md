@@ -203,334 +203,39 @@ http://localhost:3000
 - `npm run lint` - Run ESLint
 - `npm run deploy` - Deploy to Fly.io (requires Fly CLI)
 
-## Architecture & How It Works
-
-### Project Structure
-
-```
-fantasy-f1/
-├── src/
-│   ├── components/       # Reusable UI components
-│   │   └── ui/          # Card, Modal, LoadingSkeleton, CacheStatus, etc.
-│   ├── layouts/         # Layout wrapper with navigation
-│   ├── pages/           # Page components (TeamBuilder, Predictions, etc.)
-│   ├── services/        # API service layer
-│   │   └── openF1API.js # OpenF1 API client with caching
-│   ├── utils/           # Utility modules
-│   │   ├── cacheManager.js    # localStorage cache with TTL
-│   │   ├── pricing.js         # Price data and getters
-│   │   ├── priceStorage.js    # Custom price persistence
-│   │   ├── setupStorage.js    # First-time setup state
-│   │   ├── teamColors.js      # F1 team color schemes
-│   │   └── teamStorage.js     # Team persistence
-│   ├── App.jsx          # Root component with routing
-│   └── main.jsx         # React entry point
-├── public/              # Static assets
-└── index.html           # HTML template
-```
-
-### Core Systems
-
-#### 1. API & Caching Layer
-
-**File**: `src/services/openF1API.js`
-
-The OpenF1 API client wraps all API calls with intelligent caching:
-
-```javascript
-// All methods use the cached request pattern:
-async getDrivers() {
-  return this.cachedRequest('/drivers', { session_key: 'latest' });
-}
-```
-
-**How it works**:
-
-- Each API call checks `cacheManager` first
-- If valid cache exists (< 5 min old), returns cached data
-- If no cache or expired, makes API request
-- Stores response in localStorage with timestamp
-- Automatically cleans up old cache entries
-
-**Cache Keys**: `f1_cache_[endpoint]_[hash]`
-
-**Benefits**: Prevents 429 rate limit errors, improves performance
-
-#### 2. Team Persistence System
-
-**Files**:
-
-- `src/utils/teamStorage.js` - Storage operations
-- `src/pages/TeamBuilder.jsx` - Auto-save implementation
-- `src/pages/TeamHistory.jsx` - History management
-
-**How it works**:
-
-1. **Current Team** (`fantasy_f1_current_team`):
-   - Auto-saves on every selection change (drivers, turbo, constructors)
-   - Stored as JSON with: drivers[], constructors[], turboDriver, totalSpent, lastUpdated
-   - Loaded on app start via `teamStorage.getCurrentTeam()`
-
-2. **Team History** (`fantasy_f1_teams_history`):
-   - User explicitly saves teams with labels (e.g., "Monaco GP")
-   - Stores up to 20 historical teams (oldest deleted when limit reached)
-   - Each entry includes full team data + raceLabel + savedAt timestamp
-   - Can be loaded back to become current team
-
-3. **Import/Export**:
-   - Export: `JSON.stringify(teamData)` → downloadable .json file
-   - Import: File upload → `JSON.parse()` → validate → save
-
-#### 3. Custom Pricing System
-
-**Files**:
-
-- `src/utils/pricing.js` - Default prices + getter functions
-- `src/utils/priceStorage.js` - Custom price persistence
-- `src/pages/PriceManager.jsx` - Price editing interface
-
-**How it works**:
-
-1. **Default Prices**:
-   - Hardcoded in `pricing.js` as `DRIVER_PRICES` and `CONSTRUCTOR_PRICES`
-   - Example: `1: 32000000` (Verstappen = $32M)
-
-2. **Custom Prices** (`fantasy_f1_custom_prices`):
-   - User enters custom prices in Price Manager
-   - Stored separately: `{ drivers: {1: 32500000}, constructors: {...} }`
-   - `getDriverPrice(driverNumber)` checks custom first, falls back to default
-   - `getConstructorPrice(teamName)` does the same for constructors
-
-3. **Price History** (`fantasy_f1_price_history`):
-   - Snapshot saved every time prices are updated
-   - Stores last 10 snapshots with timestamps
-   - Shows price changes with arrows (↑/↓) and percentages
-
-4. **Global Effect**:
-   - All pages use `getDriverPrice()` and `getConstructorPrice()` functions
-   - Custom prices automatically apply everywhere (Team Builder, Predictions, etc.)
-   - Price Manager sorts drivers/constructors by value (highest first)
-
-#### 4. First-Time Setup Flow
-
-**Files**:
-
-- `src/components/ui/WelcomeModal.jsx` - Welcome modal component
-- `src/utils/setupStorage.js` - Setup completion tracking
-- `src/App.jsx` - Modal trigger logic
-
-**How it works**:
-
-1. On first visit, checks `setupStorage.isSetupComplete()` → false
-2. Shows WelcomeModal with options:
-   - "Update Prices Now" → redirects to `/prices?setup=true`
-   - "Skip for Now" → marks setup complete, closes modal
-3. After visiting Price Manager once, setup marked complete
-4. Modal never shows again unless localStorage cleared
-
-#### 5. Page-Level Operations
-
-**Team Builder** (`src/pages/TeamBuilder.jsx`):
-
-- Fetches drivers via `openF1API.getDrivers()` (cached)
-- Filters by unique driver number + sorts by price (DESC)
-- Budget constraint: drivers + constructors ≤ $100M
-- Auto-saves to `teamStorage` on every change
-- Shows "Team Complete!" banner with 5-second auto-dismiss
-- Turbo driver selection (1 driver scores 2x points)
-
-**Predictions** (`src/pages/Predictions.jsx`):
-
-- Fetches meetings via `openF1API.getMeetings()` (cached)
-- Filters to current year only
-- Sorts ASC (next race first)
-- Smart default selection: auto-selects next upcoming race
-- Shows all races (no 10-race limit)
-- Displays race location, date, and circuit info
-
-**Team History** (`src/pages/TeamHistory.jsx`):
-
-- Loads saved teams from `teamStorage.getTeamsHistory()`
-- Displays each with raceLabel, date, drivers, constructors
-- Actions: Load (restore as current), Export (download JSON), Delete
-- Sorted by savedAt timestamp (newest first)
-
-**Price Manager** (`src/pages/PriceManager.jsx`):
-
-- Tabbed interface: Drivers | Constructors
-- Shows current price (custom if set, else default)
-- Input fields to set custom prices (in millions)
-- Price change indicators with arrows and %
-- Import CSV: parses `driverNumber,price` or `teamName,price`
-- Export CSV: generates downloadable CSV
-- Reset: clears all custom prices, reverts to defaults
-- Sorted by value (highest first)
-
-**Live Pricing Guide** (`src/pages/LivePricingGuide.jsx`):
-
-- Educational page explaining why auto-scraping isn't feasible
-- Links to official Fantasy F1 site
-- Instructions for manual price entry
-
-**Rules** (`src/pages/Rules.jsx`):
-
-- Static content page
-- Full Fantasy F1 scoring system
-- Strategy tips and best practices
-- Links to official resources
-
-### Component Architecture
-
-#### Shared UI Components (`src/components/ui/`)
-
-**Card.jsx**: Reusable card container with variants (default, danger, warning, info)
-
-**LoadingSkeleton.jsx**: Loading states with shimmer animation
-
-- Card variant: Full-width skeleton cards
-- List variant: Smaller line skeletons
-
-**CacheStatus.jsx**: Bottom-right widget showing cache stats
-
-- Displays: cached items count, total size
-- Clear cache button
-- Click to view cache details
-
-**WelcomeModal.jsx**: First-time setup modal
-
-- Full-screen overlay
-- Setup vs Skip options
-- Only shows on first visit
-
-#### Layout System (`src/layouts/Layout.jsx`)
-
-- Fixed sidebar navigation (responsive: hidden on mobile)
-- Mobile hamburger menu
-- Active route highlighting
-- CacheStatus widget in footer
-- F1 red gradient theme (#E10600)
-
-### Data Flow
-
-```
-User Action (e.g., select driver)
-    ↓
-Page Component (e.g., TeamBuilder.jsx)
-    ↓
-API Service (openF1API.js)
-    ↓
-Cache Manager (cacheManager.js)
-    ↓
-localStorage (if cache miss)
-    ↓
-OpenF1 API (https://api.openf1.org/v1)
-    ↓
-Cache Manager (store response)
-    ↓
-Page Component (render data)
-    ↓
-Storage Utility (e.g., teamStorage.js)
-    ↓
-localStorage (persist state)
-```
-
-### localStorage Schema
-
-**Keys & Data Structures**:
-
-```javascript
-// Cache (5-minute TTL)
-"f1_cache_/drivers_hash123": {
-  data: [...],
-  timestamp: 1709876543210
-}
-
-// Current Team
-"fantasy_f1_current_team": {
-  drivers: [1, 44, 16, 4, 14],           // driver numbers
-  constructors: ["Red Bull Racing", "Ferrari"],
-  turboDriver: 1,
-  totalSpent: 98000000,
-  lastUpdated: "2026-03-08T12:34:56Z"
-}
-
-// Team History
-"fantasy_f1_teams_history": [
-  {
-    raceLabel: "Monaco GP",
-    drivers: [...],
-    constructors: [...],
-    turboDriver: 1,
-    totalSpent: 98000000,
-    savedAt: "2026-05-26T14:30:00Z"
-  },
-  // ... up to 20 teams
-]
-
-// Custom Prices
-"fantasy_f1_custom_prices": {
-  drivers: {
-    "1": 32500000,    // Verstappen custom price
-    "44": 28500000    // Hamilton custom price
-  },
-  constructors: {
-    "Red Bull Racing": 35000000,
-    "Ferrari": 30000000
-  },
-  lastUpdated: "2026-03-08T10:00:00Z"
-}
-
-// Price History
-"fantasy_f1_price_history": [
-  {
-    drivers: {...},
-    constructors: {...},
-    timestamp: "2026-03-08T10:00:00Z"
-  },
-  // ... up to 10 snapshots
-]
-
-// Setup State
-"fantasy_f1_setup_complete": true
-```
-
-### CSS & Styling
-
-- **Tailwind CSS 3**: Utility-first framework
-- **Custom F1 Theme**: Red (#E10600) as primary color
-- **Responsive Design**: Mobile-first approach
-  - Sidebar: Hidden on mobile, fixed on desktop
-  - Grids: 1 column → 2-3 columns on larger screens
-- **Team Colors**: Each F1 team has custom gradient (teamColors.js)
-
-### Error Handling
-
-- **API Errors**: Try-catch blocks with user-friendly error messages
-- **429 Rate Limits**: Prevented by caching system (5-min TTL)
-- **Invalid Data**: Validation on imports (team & price files)
-- **Missing Prices**: Falls back to default prices when custom not found
-
-### Performance Optimizations
-
-1. **Caching**: 5-minute localStorage cache prevents redundant API calls
-2. **Lazy Loading**: React Router code-splitting (automatic with Vite)
-3. **Debouncing**: Auto-save uses React's batched updates
-4. **Memoization**: Price calculations only when prices change
-5. **Efficient Sorting**: Pre-computed sorts stored in state
+## Documentation
+
+Comprehensive technical documentation is available in the [`documentation/`](documentation/) folder:
+
+- **[Architecture Guide](documentation/ARCHITECTURE.md)** - Complete technical documentation covering:
+  - Project structure and core systems
+  - API & caching layer implementation
+  - Team persistence and pricing systems
+  - Data flow and localStorage schema
+  - Component architecture and styling
+  - Performance optimizations and error handling
+
+- **[Deployment Guide](documentation/DEPLOYMENT.md)** - Step-by-step instructions for deploying to Fly.io:
+  - Prerequisites and initial setup
+  - Configuration and deployment process
+  - Monitoring, scaling, and troubleshooting
+  - Custom domain setup
 
 ## Deployment
 
-This application can be easily deployed to Fly.io. See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed instructions.
+This application is deployed on [Fly.io](https://fly.io) with automatic SSL, CDN, and global distribution.
 
-### Quick Start
+**Quick Start**:
 
 1. Install Fly CLI: `brew install flyctl`
 2. Login: `flyctl auth login`
 3. Create app: `flyctl apps create your-app-name`
-4. Deploy: `flyctl deploy`
+4. Deploy: `npm run deploy` (or `flyctl deploy`)
 5. Open: `flyctl open`
 
 Your app will be live at `https://your-app-name.fly.dev` 🚀
+
+For complete deployment instructions, troubleshooting, and advanced configuration, see the **[Deployment Guide](documentation/DEPLOYMENT.md)**.
 
 ## Acknowledgments
 

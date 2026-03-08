@@ -270,15 +270,6 @@ const TeamBuilder = () => {
                 </ul>
               </div>
               
-              <div className="bg-blue-50 border-l-4 border-blue-400 p-4">
-                <h4 className="font-semibold text-blue-800 mb-2">💡 Tips:</h4>
-                <ul className="list-disc list-inside text-sm text-blue-700 space-y-1">
-                  <li>Check the cache status widget (bottom-right) - cached data may still be available</li>
-                  <li>Open browser console (F12) to see detailed error messages</li>
-                  <li>If rate limited, the cache will serve previous data automatically</li>
-                </ul>
-              </div>
-              
               <p className="text-sm text-gray-600">
                 <strong>Error details:</strong> {error}
               </p>
