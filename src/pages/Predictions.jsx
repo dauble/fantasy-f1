@@ -1,719 +1,498 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import openF1API from '../services/openF1API';
-import { POINTS, TURBO_MULTIPLIER } from '../config/api';
-import { getDriverPrice, getConstructorPrice, formatPrice } from '../utils/pricing';
-import { getDriverColor } from '../utils/teamColors';
-import teamStorage from '../utils/teamStorage';
+/**
+ * Predictions.jsx
+ * AI-powered Fantasy F1 predictions page.
+ * Drop-in replacement for your existing src/pages/Predictions.jsx
+ *
+ * SETUP:
+ *  1. Add ANTHROPIC_API_KEY=sk-ant-... to your .env file
+ *     (this is read only by server.js / the Express proxy and is not exposed
+ *      to the client bundle via Vite).
+ *  2. Copy openf1DataService.js → src/services/openf1DataService.js
+ *  3. Copy aiPredictionService.js → src/services/aiPredictionService.js
+ *  4. Replace src/pages/Predictions.jsx with this file
+ */
 
-const Predictions = () => {
-  const [meetings, setMeetings] = useState([]);
-  const [selectedMeeting, setSelectedMeeting] = useState(null);
-  const [predictions, setPredictions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [currentTeam, setCurrentTeam] = useState(null);
-  const [optimalTeam, setOptimalTeam] = useState(null);
+import { useState, useCallback, useEffect } from "react";
+import { buildPredictionPayload } from "../services/openf1DataService";
+import { generatePredictions } from "../services/aiPredictionService";
+// No API key needed here — it lives server-side in the Express proxy.
 
-  useEffect(() => {
-    fetchMeetings();
-    loadCurrentTeam();
-  }, []);
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-  const loadCurrentTeam = () => {
-    const team = teamStorage.loadCurrentTeam();
-    setCurrentTeam(team);
-  };
-
-  const fetchMeetings = async () => {
-    try {
-      setLoading(true);
-      const currentYear = new Date().getFullYear();
-      const meetingsData = await openF1API.getMeetings(currentYear);
-      
-      // Sort by date in ascending order (earliest race first, latest race last)
-      const sortedMeetings = meetingsData.sort((a, b) => 
-        new Date(a.date_start) - new Date(b.date_start)
-      );
-      
-      setMeetings(sortedMeetings); // Show all races
-      
-      // Select the next upcoming race or the first race if none upcoming
-      const now = new Date();
-      const upcomingRace = sortedMeetings.find(m => new Date(m.date_start) >= now);
-      setSelectedMeeting(upcomingRace || sortedMeetings[0]);
-      
-      setLoading(false);
-    } catch (err) {
-      console.error('Error fetching meetings:', err);
-      setLoading(false);
-    }
-  };
-
-  const calculatePredictedPoints = (position, qualifyingPosition) => {
-    let points = 0;
-    
-    // Race position points
-    if (POINTS.position[position]) {
-      points += POINTS.position[position];
-    }
-    
-    // Qualifying position points
-    if (POINTS.qualifying[qualifyingPosition]) {
-      points += POINTS.qualifying[qualifyingPosition];
-    }
-    
-    // Position gain bonus (simplified)
-    const positionChange = qualifyingPosition - position;
-    if (positionChange > 0) {
-      points += positionChange * POINTS.positionGained;
-    } else if (positionChange < 0) {
-      points += Math.abs(positionChange) * POINTS.positionLost;
-    }
-    
-    // Classified bonus
-    if (position <= 20) {
-      points += POINTS.classified;
-    }
-    
-    // Random chance for fastest lap (top 5 drivers)
-    if (position <= 5 && Math.random() > 0.7) {
-      points += POINTS.fastestLap;
-    }
-    
-    return points;
-  };
-
-  const generatePredictions = () => {
-    // This is a simplified prediction system
-    // In a real app, you'd use historical data, ML models, etc.
-    const driverPredictions = [
-      { driver: 'Max Verstappen', number: 1, team: 'Red Bull Racing', predicted_position: 1, qualifying: 1 },
-      { driver: 'Charles Leclerc', number: 16, team: 'Ferrari', predicted_position: 2, qualifying: 2 },
-      { driver: 'Lando Norris', number: 4, team: 'McLaren', predicted_position: 3, qualifying: 3 },
-      { driver: 'Lewis Hamilton', number: 44, team: 'Mercedes', predicted_position: 4, qualifying: 5 },
-      { driver: 'George Russell', number: 63, team: 'Mercedes', predicted_position: 5, qualifying: 4 },
-      { driver: 'Carlos Sainz', number: 55, team: 'Ferrari', predicted_position: 6, qualifying: 6 },
-      { driver: 'Oscar Piastri', number: 81, team: 'McLaren', predicted_position: 7, qualifying: 8 },
-      { driver: 'Fernando Alonso', number: 14, team: 'Aston Martin', predicted_position: 8, qualifying: 7 },
-      { driver: 'Sergio Perez', number: 11, team: 'Red Bull Racing', predicted_position: 9, qualifying: 10 },
-      { driver: 'Pierre Gasly', number: 10, team: 'Alpine', predicted_position: 10, qualifying: 9 },
-      { driver: 'Lance Stroll', number: 18, team: 'Aston Martin', predicted_position: 11, qualifying: 11 },
-      { driver: 'Esteban Ocon', number: 31, team: 'Alpine', predicted_position: 12, qualifying: 13 },
-      { driver: 'Alexander Albon', number: 23, team: 'Williams', predicted_position: 13, qualifying: 12 },
-      { driver: 'Yuki Tsunoda', number: 22, team: 'RB', predicted_position: 14, qualifying: 14 },
-      { driver: 'Daniel Ricciardo', number: 3, team: 'RB', predicted_position: 15, qualifying: 16 },
-      { driver: 'Valtteri Bottas', number: 77, team: 'Kick Sauber', predicted_position: 16, qualifying: 15 },
-      { driver: 'Logan Sargeant', number: 2, team: 'Williams', predicted_position: 17, qualifying: 17 },
-      { driver: 'Zhou Guanyu', number: 24, team: 'Kick Sauber', predicted_position: 18, qualifying: 18 },
-    ];
-
-    const predictionsWithPoints = driverPredictions.map(pred => {
-      const points = calculatePredictedPoints(pred.predicted_position, pred.qualifying);
-      const price = getDriverPrice(pred.number);
-      const valueScore = (points / (price / 1000000)).toFixed(2); // Points per million
-      const isSelected = currentTeam?.drivers?.includes(pred.number);
-      
-      return {
-        ...pred,
-        points,
-        price,
-        valueScore: parseFloat(valueScore),
-        isSelected
-      };
-    });
-
-    // Sort by value score (best value at top)
-    const sortedByValue = [...predictionsWithPoints].sort((a, b) => b.valueScore - a.valueScore);
-
-    setPredictions(predictionsWithPoints);
-    calculateOptimalTeam(predictionsWithPoints);
-    return sortedByValue;
-  };
-
-  const calculateOptimalTeam = (driverPredictions) => {
-    const BUDGET = 100000000; // $100M
-    
-    // Sort drivers by predicted points (highest first)
-    const sortedDrivers = [...driverPredictions].sort((a, b) => b.points - a.points);
-    
-    // Get constructors with their estimated points
-    const constructors = [
-      { team: 'Red Bull Racing', avgPosition: 5, price: getConstructorPrice('Red Bull Racing') },
-      { team: 'Ferrari', avgPosition: 4, price: getConstructorPrice('Ferrari') },
-      { team: 'McLaren', avgPosition: 5, price: getConstructorPrice('McLaren') },
-      { team: 'Mercedes', avgPosition: 4.5, price: getConstructorPrice('Mercedes') },
-      { team: 'Aston Martin', avgPosition: 9.5, price: getConstructorPrice('Aston Martin') },
-      { team: 'Alpine', avgPosition: 11, price: getConstructorPrice('Alpine') },
-      { team: 'Williams', avgPosition: 15, price: getConstructorPrice('Williams') },
-      { team: 'RB', avgPosition: 14.5, price: getConstructorPrice('RB') },
-      { team: 'Kick Sauber', avgPosition: 17, price: getConstructorPrice('Kick Sauber') },
-    ].map(con => ({
-      ...con,
-      estimatedPoints: Math.round(50 / con.avgPosition)
-    }));
-    
-    // Sort constructors by estimated points (highest first)
-    const sortedConstructors = [...constructors].sort((a, b) => b.estimatedPoints - a.estimatedPoints);
-    
-    // Greedy approach: try to fit the best drivers and constructors within budget
-    let bestTeam = null;
-    let bestTotalPoints = 0;
-    
-    // Try different combinations, prioritizing high-scoring drivers
-    for (let startIdx = 0; startIdx < Math.min(10, sortedDrivers.length); startIdx++) {
-      let selectedDrivers = [];
-      let totalCost = 0;
-      let totalPoints = 0;
-      
-      // Try to select 5 drivers starting from startIdx
-      for (let i = startIdx; i < sortedDrivers.length && selectedDrivers.length < 5; i++) {
-        const driver = sortedDrivers[i];
-        if (totalCost + driver.price <= BUDGET * 0.7) { // Reserve some budget for constructors
-          selectedDrivers.push(driver);
-          totalCost += driver.price;
-          totalPoints += driver.points;
-        }
-      }
-      
-      // If we couldn't get 5 drivers, try cheaper options
-      if (selectedDrivers.length < 5) {
-        const sortedByPrice = [...sortedDrivers].sort((a, b) => a.price - b.price);
-        for (let i = 0; i < sortedByPrice.length && selectedDrivers.length < 5; i++) {
-          const driver = sortedByPrice[i];
-          if (!selectedDrivers.find(d => d.number === driver.number) && totalCost + driver.price <= BUDGET * 0.7) {
-            selectedDrivers.push(driver);
-            totalCost += driver.price;
-            totalPoints += driver.points;
-          }
-        }
-      }
-      
-      // Try to select 2 constructors
-      let selectedConstructors = [];
-      for (let i = 0; i < sortedConstructors.length && selectedConstructors.length < 2; i++) {
-        const constructor = sortedConstructors[i];
-        if (totalCost + constructor.price <= BUDGET) {
-          selectedConstructors.push(constructor);
-          totalCost += constructor.price;
-          totalPoints += constructor.estimatedPoints;
-        }
-      }
-      
-      // If we couldn't get 2 constructors, try cheaper options
-      if (selectedConstructors.length < 2) {
-        const sortedByPrice = [...sortedConstructors].sort((a, b) => a.price - b.price);
-        for (let i = 0; i < sortedByPrice.length && selectedConstructors.length < 2; i++) {
-          const constructor = sortedByPrice[i];
-          if (!selectedConstructors.find(c => c.team === constructor.team) && totalCost + constructor.price <= BUDGET) {
-            selectedConstructors.push(constructor);
-            totalCost += constructor.price;
-            totalPoints += constructor.estimatedPoints;
-          }
-        }
-      }
-      
-      // Check if this is a valid team and better than the current best
-      if (selectedDrivers.length === 5 && selectedConstructors.length === 2 && totalCost <= BUDGET) {
-        if (totalPoints > bestTotalPoints) {
-          bestTotalPoints = totalPoints;
-          bestTeam = {
-            drivers: selectedDrivers,
-            constructors: selectedConstructors,
-            totalCost,
-            totalPoints
-          };
-        }
-      }
-    }
-    
-    setOptimalTeam(bestTeam);
-  };
-
-  useEffect(() => {
-    if (selectedMeeting) {
-      generatePredictions();
-    }
-  }, [selectedMeeting]);
-
-  if (loading) {
-    return (
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-3xl font-bold mb-6">Points Predictions</h1>
-        <LoadingSkeleton variant="card" count={3} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">Points Predictions</h1>
-        <p className="text-gray-600">Predicted driver performances and fantasy points</p>
-      </div>
-
-      {/* Meeting Selector */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Select Race</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <select 
-            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red"
-            value={selectedMeeting?.meeting_key || ''}
-            onChange={(e) => {
-              const meeting = meetings.find(m => m.meeting_key === parseInt(e.target.value));
-              setSelectedMeeting(meeting);
-            }}
-          >
-            {meetings.map(meeting => (
-              <option key={meeting.meeting_key} value={meeting.meeting_key}>
-                {meeting.meeting_name} - {new Date(meeting.date_start).toLocaleDateString()}
-              </option>
-            ))}
-          </select>
-        </CardContent>
-      </Card>
-
-      {/* Optimal Team within Budget */}
-      {optimalTeam && (
-        <Card className="mb-6 border-2 border-f1-red">
-          <CardHeader className="bg-gradient-to-r from-f1-red to-red-600 text-white">
-            <CardTitle className="text-xl">🏆 Optimal Team within $100M Budget</CardTitle>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
-              <div className="flex flex-wrap justify-between items-center gap-4">
-                <div>
-                  <div className="text-sm text-gray-600">Total Predicted Points</div>
-                  <div className="text-3xl font-bold text-f1-red">{optimalTeam.totalPoints}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Total Cost</div>
-                  <div className="text-2xl font-bold">{formatPrice(optimalTeam.totalCost)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-gray-600">Remaining Budget</div>
-                  <div className="text-2xl font-bold text-green-600">
-                    {formatPrice(100000000 - optimalTeam.totalCost)}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Drivers */}
-            <div className="mb-6">
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <span className="text-2xl">🏎️</span>
-                Top 5 Drivers
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {optimalTeam.drivers.map((driver, index) => {
-                  const isInCurrentTeam = currentTeam?.drivers?.includes(driver.number);
-                  return (
-                    <div
-                      key={driver.number}
-                      className={`p-4 rounded-lg border-2 ${
-                        isInCurrentTeam
-                          ? 'bg-green-50 border-green-500'
-                          : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-10 h-10 rounded-full bg-f1-red text-white flex items-center justify-center font-bold">
-                            {driver.number}
-                          </div>
-                          <div>
-                            <div className="font-bold">{driver.driver}</div>
-                            <div className="text-xs text-gray-500">{driver.team}</div>
-                          </div>
-                        </div>
-                        {isInCurrentTeam && (
-                          <div className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
-                            ✓ In Team
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div>
-                          <div className="text-gray-500 text-xs">Position</div>
-                          <div className="font-bold text-f1-red">P{driver.predicted_position}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 text-xs">Points</div>
-                          <div className="font-bold">{driver.points}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 text-xs">Price</div>
-                          <div className="font-semibold text-xs">{formatPrice(driver.price)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Constructors */}
-            <div>
-              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
-                <span className="text-2xl">🏗️</span>
-                Top 2 Constructors
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {optimalTeam.constructors.map((constructor, index) => {
-                  const isInCurrentTeam = currentTeam?.constructors?.includes(constructor.team);
-                  return (
-                    <div
-                      key={constructor.team}
-                      className={`p-4 rounded-lg border-2 ${
-                        isInCurrentTeam
-                          ? 'bg-green-50 border-green-500'
-                          : 'bg-white border-gray-200'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="font-bold text-lg">{constructor.team}</div>
-                        {isInCurrentTeam && (
-                          <div className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
-                            ✓ In Team
-                          </div>
-                        )}
-                      </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <div className="text-gray-500 text-xs">Est. Points</div>
-                          <div className="font-bold">{constructor.estimatedPoints}</div>
-                        </div>
-                        <div>
-                          <div className="text-gray-500 text-xs">Price</div>
-                          <div className="font-semibold">{formatPrice(constructor.price)}</div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Match indicator */}
-            {currentTeam && (
-              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <span className="text-2xl">💡</span>
-                  <div className="flex-1">
-                    <h4 className="font-semibold text-blue-900 mb-1">Compare with Your Team</h4>
-                    <p className="text-sm text-blue-800">
-                      Selections marked with <span className="text-green-600 font-semibold">✓ In Team</span> match your current team. 
-                      Consider swapping other selections to optimize your predicted points within budget.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Value Analysis */}
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>💎 Best Value Picks - {selectedMeeting?.meeting_name}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <p className="text-sm text-gray-600 mb-4">
-            Top drivers ranked by value (predicted points per million dollars). Green = In your team.
-          </p>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {[...predictions]
-              .sort((a, b) => b.valueScore - a.valueScore)
-              .slice(0, 9)
-              .map((pred, index) => (
-                <div
-                  key={pred.number}
-                  className={`p-4 rounded-lg border-2 ${
-                    pred.isSelected
-                      ? 'bg-green-50 border-green-500'
-                      : 'bg-white border-gray-200 hover:border-f1-red'
-                  }`}
-                >
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-f1-red text-white flex items-center justify-center text-sm font-bold">
-                        #{index + 1}
-                      </div>
-                      <div>
-                        <div className="font-bold text-sm">{pred.driver}</div>
-                        <div className="text-xs text-gray-500">{pred.team}</div>
-                      </div>
-                    </div>
-                    {pred.isSelected && (
-                      <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                        ✓ Selected
-                      </div>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <div className="text-gray-500">Price</div>
-                      <div className="font-semibold">{formatPrice(pred.price)}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Pred. Pos</div>
-                      <div className="font-semibold">P{pred.predicted_position}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Points</div>
-                      <div className="font-semibold text-f1-red">{pred.points}</div>
-                    </div>
-                    <div>
-                      <div className="text-gray-500">Value</div>
-                      <div className="font-bold text-green-600">{pred.valueScore} pts/$M</div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-          </div>
-          
-          {/* Constructor Value Analysis */}
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <h4 className="font-semibold mb-3">🏗️ Constructor Value</h4>
-            <p className="text-sm text-gray-600 mb-4">
-              Based on combined predicted performance of team drivers.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {[
-                { team: 'Red Bull Racing', avgPosition: 5, price: getConstructorPrice('Red Bull Racing') },
-                { team: 'Ferrari', avgPosition: 4, price: getConstructorPrice('Ferrari') },
-                { team: 'McLaren', avgPosition: 5, price: getConstructorPrice('McLaren') },
-                { team: 'Mercedes', avgPosition: 4.5, price: getConstructorPrice('Mercedes') },
-                { team: 'Aston Martin', avgPosition: 9.5, price: getConstructorPrice('Aston Martin') },
-                { team: 'Alpine', avgPosition: 11, price: getConstructorPrice('Alpine') },
-              ]
-                .map(con => {
-                  const estimatedPoints = Math.round(50 / con.avgPosition);
-                  const valueScore = (estimatedPoints / (con.price / 1000000)).toFixed(2);
-                  const isSelected = currentTeam?.constructors?.includes(con.team);
-                  return { ...con, estimatedPoints, valueScore: parseFloat(valueScore), isSelected };
-                })
-                .sort((a, b) => b.valueScore - a.valueScore)
-                .map((con, index) => (
-                  <div
-                    key={con.team}
-                    className={`p-4 rounded-lg border-2 ${
-                      con.isSelected
-                        ? 'bg-green-50 border-green-500'
-                        : 'bg-white border-gray-200 hover:border-f1-red'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-f1-red text-white flex items-center justify-center text-sm font-bold">
-                          #{index + 1}
-                        </div>
-                        <div className="font-bold">{con.team}</div>
-                      </div>
-                      {con.isSelected && (
-                        <div className="bg-green-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
-                          ✓ Selected
-                        </div>
-                      )}
-                    </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
-                      <div>
-                        <div className="text-gray-500">Price</div>
-                        <div className="font-semibold">{formatPrice(con.price)}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Est. Points</div>
-                        <div className="font-semibold text-f1-red">~{con.estimatedPoints}</div>
-                      </div>
-                      <div>
-                        <div className="text-gray-500">Value</div>
-                        <div className="font-bold text-green-600">{con.valueScore} pts/$M</div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </div>
-
-          {/* Budget Optimization Tip */}
-          {currentTeam && (
-            <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-              <h4 className="font-semibold text-yellow-900 mb-2">💡 Budget Optimization</h4>
-              <p className="text-sm text-yellow-800">
-                Your current team: {formatPrice(currentTeam.totalSpent || 0)} / $100M
-                {currentTeam.totalSpent > 100000000 && (
-                  <span className="text-red-600 font-semibold ml-2">⚠️ Over budget!</span>
-                )}
-                {currentTeam.totalSpent <= 100000000 && (
-                  <span className="text-green-600 font-semibold ml-2">
-                    ✓ Remaining: {formatPrice(100000000 - (currentTeam.totalSpent || 0))}
-                  </span>
-                )}
-              </p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Predictions Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Predicted Results - {selectedMeeting?.meeting_name}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="overflow-x-auto">
-            <table className="min-w-full">
-              <thead>
-                <tr className="border-b-2 border-gray-200">
-                  <th className="px-4 py-3 text-left">Pos</th>
-                  <th className="px-4 py-3 text-left">Driver</th>
-                  <th className="px-4 py-3 text-center">Price</th>
-                  <th className="px-4 py-3 text-center">Qual</th>
-                  <th className="px-4 py-3 text-center">Race</th>
-                  <th className="px-4 py-3 text-center">Points</th>
-                  <th className="px-4 py-3 text-center">Value</th>
-                  <th className="px-4 py-3 text-center">w/ Turbo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {predictions.map((pred, index) => (
-                  <tr 
-                    key={pred.number}
-                    className={`border-b border-gray-100 hover:bg-gray-50 ${
-                      pred.isSelected ? 'bg-green-50' :
-                      index < 3 ? 'bg-yellow-50' : ''
-                    }`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                        index === 0 ? 'bg-yellow-400 text-yellow-900' :
-                        index === 1 ? 'bg-gray-300 text-gray-900' :
-                        index === 2 ? 'bg-orange-400 text-orange-900' :
-                        'bg-gray-100 text-gray-700'
-                      }`}>
-                        {pred.predicted_position}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div 
-                          className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold"
-                          style={{ backgroundColor: getDriverColor('') }}
-                        >
-                          {pred.number}
-                        </div>
-                        <div>
-                          <div className="font-semibold">{pred.driver}</div>
-                          {pred.isSelected && (
-                            <span className="text-xs text-green-600 font-semibold">✓ In Your Team</span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="text-sm">{formatPrice(pred.price)}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">P{pred.qualifying}</td>
-                    <td className="px-4 py-3 text-center">P{pred.predicted_position}</td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="font-bold text-f1-red">{pred.points}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="font-semibold text-green-600">{pred.valueScore}</span>
-                    </td>
-                    <td className="px-4 py-3 text-center">
-                      <span className="font-bold text-yellow-600">
-                        {pred.points * TURBO_MULTIPLIER}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Points Breakdown */}
-      <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Points System</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h4 className="font-semibold mb-3">Race Finishing Points</h4>
-              <div className="space-y-1 text-sm">
-                {Object.entries(POINTS.position).map(([pos, pts]) => (
-                  <div key={pos} className="flex justify-between">
-                    <span>P{pos}:</span>
-                    <span className="font-semibold">{pts} pts</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-3">Qualifying Points</h4>
-              <div className="space-y-1 text-sm">
-                {Object.entries(POINTS.qualifying).slice(0, 10).map(([pos, pts]) => (
-                  <div key={pos} className="flex justify-between">
-                    <span>P{pos}:</span>
-                    <span className="font-semibold">{pts} pts</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-3">Bonus Points</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Fastest Lap:</span>
-                  <span className="font-semibold">{POINTS.fastestLap} pts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Position Gained:</span>
-                  <span className="font-semibold">+{POINTS.positionGained} pts each</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Beat Teammate (Qual):</span>
-                  <span className="font-semibold">{POINTS.beaten_teammate_qualifying} pts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Beat Teammate (Race):</span>
-                  <span className="font-semibold">{POINTS.beaten_teammate_race} pts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Classified:</span>
-                  <span className="font-semibold">{POINTS.classified} pt</span>
-                </div>
-              </div>
-            </div>
-            <div>
-              <h4 className="font-semibold mb-3">Penalties</h4>
-              <div className="space-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span>Position Lost:</span>
-                  <span className="font-semibold text-red-600">{POINTS.positionLost} pts each</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Not Classified:</span>
-                  <span className="font-semibold text-red-600">{POINTS.notClassified} pts</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Disqualified:</span>
-                  <span className="font-semibold text-red-600">{POINTS.disqualified} pts</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+const CONFIDENCE_COLORS = {
+  high: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30",
+  medium: "text-amber-400 bg-amber-400/10 border-amber-400/30",
+  low: "text-red-400 bg-red-400/10 border-red-400/30",
 };
 
-export default Predictions;
+const CONFIDENCE_LABELS = { high: "High", medium: "Medium", low: "Low" };
+
+const PREDICTION_CACHE_KEY = 'fantasy_f1_ai_prediction';
+
+// ─── Sub-components ───────────────────────────────────────────────────────────
+
+function StatusBadge({ confidence }) {
+  return (
+    <span
+      className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${CONFIDENCE_COLORS[confidence] || CONFIDENCE_COLORS.low}`}
+    >
+      {CONFIDENCE_LABELS[confidence] || confidence} confidence
+    </span>
+  );
+}
+
+function TurboBadge() {
+  return (
+    <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-yellow-400/20 border border-yellow-400/40 text-yellow-300">
+      ⚡ TURBO
+    </span>
+  );
+}
+
+function DriverCard({ driver }) {
+  const teamColor = "#" + (driver.team_colour || "888888").replace("#", "");
+  return (
+    <div
+      className="relative bg-gray-800/60 border border-gray-700/60 rounded-xl p-4 flex flex-col gap-2 hover:border-gray-500 transition-colors"
+      style={{ borderLeftColor: teamColor, borderLeftWidth: "3px" }}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-bold text-white text-sm leading-tight">
+            {driver.full_name}
+          </p>
+          <p className="text-xs text-gray-400 mt-0.5">{driver.team_name}</p>
+        </div>
+        <div className="flex flex-col items-end gap-1 shrink-0">
+          {driver.is_turbo_pick && <TurboBadge />}
+          <StatusBadge confidence={driver.confidence} />
+        </div>
+      </div>
+
+      <div className="flex gap-4 text-xs text-gray-300 mt-1">
+        <span>
+          🏁 Predicted P{driver.predicted_finish}
+        </span>
+        <span>
+          🔢{" "}
+          <span className="text-white font-semibold">
+            {driver.predicted_points}
+          </span>{" "}
+          pts
+          {driver.is_turbo_pick && (
+            <span className="text-yellow-300 ml-1">
+              → {driver.predicted_points * 2} (2×)
+            </span>
+          )}
+        </span>
+      </div>
+
+      <p className="text-xs text-gray-400 leading-relaxed border-t border-gray-700/50 pt-2">
+        {driver.reasoning}
+      </p>
+    </div>
+  );
+}
+
+function ConstructorCard({ constructor: c }) {
+  return (
+    <div className="bg-gray-800/60 border border-gray-700/60 rounded-xl p-4 flex flex-col gap-2 hover:border-gray-500 transition-colors">
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <p className="font-bold text-white text-sm">{c.team_name}</p>
+          <p className="text-xs text-gray-400 mt-0.5">Constructor</p>
+        </div>
+        <StatusBadge confidence={c.confidence} />
+      </div>
+      <div className="text-xs text-gray-300">
+        🔢{" "}
+        <span className="text-white font-semibold">{c.predicted_points}</span>{" "}
+        pts predicted
+      </div>
+      <p className="text-xs text-gray-400 leading-relaxed border-t border-gray-700/50 pt-2">
+        {c.reasoning}
+      </p>
+    </div>
+  );
+}
+
+function RecentRaceRow({ race, index }) {
+  return (
+    <div className="flex items-center gap-3 py-2 border-b border-gray-700/40 last:border-0">
+      <span className="text-xs text-gray-500 w-4">{index + 1}</span>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm text-white font-medium truncate">{race.race_name}</p>
+        <p className="text-xs text-gray-500">{race.country}</p>
+      </div>
+      <p className="text-xs text-gray-400 truncate max-w-[180px]">
+        {race.podium.slice(0, 3).join(" · ")}
+      </p>
+    </div>
+  );
+}
+
+function LoadingState() {
+  return (
+    <div className="flex flex-col items-center justify-center py-24 gap-4">
+      <div className="w-12 h-12 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+      <p className="text-gray-400 text-sm">
+        Fetching race data &amp; generating predictions…
+      </p>
+      <p className="text-gray-600 text-xs">This takes 10–20 seconds</p>
+    </div>
+  );
+}
+
+function ErrorState({ error, onRetry }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
+      <div className="text-4xl">⚠️</div>
+      <p className="text-red-400 font-semibold">Prediction failed</p>
+      <p className="text-gray-400 text-sm max-w-md leading-relaxed">{error}</p>
+      {error?.includes("API key") && (
+        <div className="text-gray-500 text-xs max-w-lg bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-2">
+          <p className="font-semibold text-gray-400">Setup required:</p>
+          <ol className="text-left space-y-1 list-decimal list-inside">
+            <li>Create a <code className="bg-gray-700 px-1 rounded">.env</code> file in the project root</li>
+            <li>Add: <code className="bg-gray-700 px-1 rounded">ANTHROPIC_API_KEY=sk-ant-...</code></li>
+            <li>Restart the server: <code className="bg-gray-700 px-1 rounded">npm run server</code></li>
+          </ol>
+          <p className="text-gray-600 text-xs pt-2">
+            Note: The API key is used server-side only (not in the browser).
+          </p>
+        </div>
+      )}
+      {error?.includes("Network error") && (
+        <div className="text-gray-500 text-xs max-w-lg bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <p className="font-semibold text-gray-400 mb-2">Server not running:</p>
+          <p>Make sure the Express server is running on port 3000:</p>
+          <code className="block bg-gray-700 px-2 py-1 rounded mt-2">npm run server</code>
+        </div>
+      )}
+      <button
+        onClick={onRetry}
+        className="mt-2 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded-lg transition-colors"
+      >
+        Try again
+      </button>
+    </div>
+  );
+}
+
+function EmptyState({ onGenerate, loading }) {
+  return (
+    <div className="flex flex-col items-center justify-center py-20 gap-6 text-center">
+      <div className="text-6xl">🏎️</div>
+      <div>
+        <h2 className="text-xl font-bold text-white mb-2">AI Race Predictions</h2>
+        <p className="text-gray-400 text-sm max-w-md">
+          Pulls live data from OpenF1, analyses the last 5 races, and uses Claude
+          to recommend your best Fantasy F1 team for the upcoming Grand Prix.
+        </p>
+      </div>
+      <button
+        onClick={onGenerate}
+        disabled={loading}
+        className="px-6 py-3 bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-colors text-sm"
+      >
+        {loading ? "Generating…" : "Generate Predictions"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Main Page ─────────────────────────────────────────────────────────────────
+
+export default function Predictions() {
+  const [status, setStatus] = useState("idle"); // idle | loading | success | error
+  const [prediction, setPrediction] = useState(null);
+  const [rawData, setRawData] = useState(null);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [raceCount, setRaceCount] = useState(5);
+
+  // Load cached prediction on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(PREDICTION_CACHE_KEY);
+      if (cached) {
+        const { prediction: cachedPrediction, rawData: cachedRawData } = JSON.parse(cached);
+        setPrediction(cachedPrediction);
+        setRawData(cachedRawData);
+        setStatus("success");
+        console.log("Loaded cached prediction from", new Date(cachedPrediction.generated_at).toLocaleString());
+      }
+    } catch (error) {
+      console.error("Error loading cached prediction:", error);
+      localStorage.removeItem(PREDICTION_CACHE_KEY);
+    }
+  }, []);
+
+  const runPrediction = useCallback(async () => {
+    setStatus("loading");
+    setErrorMsg("");
+    try {
+      const payload = await buildPredictionPayload(raceCount);
+      setRawData(payload);
+      const result = await generatePredictions(payload);
+      if (result.error) throw new Error(result.error_message);
+      setPrediction(result);
+      setStatus("success");
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem(PREDICTION_CACHE_KEY, JSON.stringify({
+          prediction: result,
+          rawData: payload,
+        }));
+        console.log("Prediction saved to cache");
+      } catch (cacheError) {
+        console.warn("Failed to cache prediction:", cacheError);
+      }
+    } catch (e) {
+      setErrorMsg(e.message);
+      setStatus("error");
+    }
+  }, [raceCount]);
+
+  const reset = () => {
+    setStatus("idle");
+    setPrediction(null);
+    setRawData(null);
+    setErrorMsg("");
+    localStorage.removeItem(PREDICTION_CACHE_KEY);
+    console.log("Prediction cache cleared");
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-900 text-white">
+      {/* Header */}
+      <div className="bg-gray-800/50 border-b border-gray-700/50 px-4 py-4">
+        <div className="max-w-5xl mx-auto flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-lg font-bold text-white flex items-center gap-2">
+              🤖 AI Predictions
+              <span className="text-xs font-normal text-gray-400 bg-gray-700/50 px-2 py-0.5 rounded-full">
+                powered by Claude
+              </span>
+              {prediction && (() => {
+                const age = Date.now() - new Date(prediction.generated_at).getTime();
+                const hoursAgo = Math.floor(age / (1000 * 60 * 60));
+                if (hoursAgo >= 2) {
+                  return (
+                    <span className="text-xs font-normal text-amber-400 bg-amber-900/20 border border-amber-700/30 px-2 py-0.5 rounded-full">
+                      cached ({hoursAgo}h old)
+                    </span>
+                  );
+                }
+                return null;
+              })()}
+            </h1>
+            {rawData?.next_race && (
+              <p className="text-xs text-gray-400 mt-0.5">
+                Next: <span className="text-white">{rawData.next_race.name}</span>
+                {" · "}
+                {rawData.next_race.country}
+              </p>
+            )}
+          </div>
+
+          <div className="flex items-center gap-3">
+            {/* Race count selector */}
+            <div className="flex items-center gap-2 text-xs text-gray-400">
+              <span>Data window:</span>
+              <select
+                value={raceCount}
+                onChange={(e) => setRaceCount(Number(e.target.value))}
+                className="bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white text-xs focus:outline-none"
+                disabled={status === "loading"}
+              >
+                <option value={3}>Last 3 races</option>
+                <option value={5}>Last 5 races</option>
+                <option value={8}>Last 8 races</option>
+              </select>
+            </div>
+
+            {status === "success" && (
+              <>
+                <button
+                  onClick={runPrediction}
+                  disabled={status === "loading"}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs text-white rounded-lg transition-colors flex items-center gap-1.5"
+                  title="Generate fresh predictions with latest data"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Predictions
+                </button>
+                <button
+                  onClick={reset}
+                  className="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-xs text-gray-400 rounded-lg transition-colors"
+                  title="Clear predictions and start over"
+                >
+                  Clear
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="max-w-5xl mx-auto px-4 py-6">
+        {/* Cache info banner */}
+        <div className="mb-4 bg-blue-900/20 border border-blue-700/30 rounded-lg p-3 text-xs text-blue-300">
+          <p className="flex items-start gap-2">
+            <span className="text-blue-400">ℹ️</span>
+            <span>
+              Historical race data is cached for 1 hour to prevent rate limiting. 
+              If you see errors, the app will automatically use recent cached data instead.
+            </span>
+          </p>
+        </div>
+
+        {status === "idle" && (
+          <EmptyState onGenerate={runPrediction} loading={false} />
+        )}
+        {status === "loading" && <LoadingState />}
+        {status === "error" && (
+          <ErrorState error={errorMsg} onRetry={runPrediction} />
+        )}
+
+        {status === "success" && prediction && (
+          <div className="space-y-6">
+            {/* Analysis summary */}
+            <div className="bg-gray-800/50 border border-gray-700/50 rounded-xl p-4 space-y-2">
+              <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                AI Analysis
+              </h2>
+              <p className="text-sm text-gray-200 leading-relaxed">
+                {prediction.analysis_summary}
+              </p>
+              {prediction.next_race_outlook && (
+                <p className="text-xs text-gray-400 leading-relaxed border-t border-gray-700/50 pt-2">
+                  🏁 {prediction.next_race_outlook}
+                </p>
+              )}
+              {prediction.budget_analysis && (
+                <p className="text-xs text-blue-400 leading-relaxed border-t border-gray-700/50 pt-2">
+                  💰 {prediction.budget_analysis}
+                </p>
+              )}
+
+              {/* Value picks & risks */}
+              <div className="flex flex-wrap gap-4 pt-1">
+                {prediction.value_picks?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-emerald-400 font-semibold mb-1">
+                      💰 Value picks
+                    </p>
+                    <div className="flex gap-1 flex-wrap">
+                      {prediction.value_picks.map((v) => (
+                        <span
+                          key={v}
+                          className="text-xs bg-emerald-900/30 border border-emerald-700/30 text-emerald-300 px-2 py-0.5 rounded-full"
+                        >
+                          {v}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {prediction.risks?.length > 0 && (
+                  <div>
+                    <p className="text-xs text-red-400 font-semibold mb-1">
+                      ⚠️ Risks
+                    </p>
+                    <div className="flex gap-1 flex-wrap">
+                      {prediction.risks.map((r) => (
+                        <span
+                          key={r}
+                          className="text-xs bg-red-900/30 border border-red-700/30 text-red-300 px-2 py-0.5 rounded-full"
+                        >
+                          {r}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Drivers + Constructors grid */}
+            <div className="grid md:grid-cols-3 gap-4">
+              {/* Drivers */}
+              <div className="md:col-span-2 space-y-3">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Recommended Drivers (5)
+                </h2>
+                {prediction.recommended_drivers.map((d) => (
+                  <DriverCard key={d.abbreviation || d.full_name} driver={d} />
+                ))}
+              </div>
+
+              {/* Constructors */}
+              <div className="space-y-3">
+                <h2 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                  Constructors (2)
+                </h2>
+                {prediction.recommended_constructors.map((c) => (
+                  <ConstructorCard key={c.team_name} constructor={c} />
+                ))}
+
+                {/* Data source summary */}
+                {rawData?.recent_races?.length > 0 && (
+                  <div className="bg-gray-800/40 border border-gray-700/40 rounded-xl p-3 mt-2">
+                    <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                      Data used ({rawData.data_window})
+                    </h3>
+                    {rawData.recent_races.map((race, i) => (
+                      <RecentRaceRow key={race.race_name} race={race} index={i} />
+                    ))}
+                  </div>
+                )}
+
+                {/* Metadata */}
+                <div className="bg-gray-800/30 border border-gray-700/30 rounded-lg p-3 space-y-2">
+                  <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-2">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      Generated {new Date(prediction.generated_at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <StatusBadge confidence={prediction.data_confidence} />
+                    {(() => {
+                      const age = Date.now() - new Date(prediction.generated_at).getTime();
+                      const hoursAgo = Math.floor(age / (1000 * 60 * 60));
+                      if (hoursAgo > 0) {
+                        return (
+                          <span className="text-xs text-gray-500 bg-gray-800/50 px-2 py-0.5 rounded-full">
+                            {hoursAgo}h ago
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </div>
+                {prediction.data_note && (
+                  <p className="text-xs text-gray-500 text-center italic">
+                    {prediction.data_note}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

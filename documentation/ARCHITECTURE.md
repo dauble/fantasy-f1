@@ -6,9 +6,14 @@ Complete technical documentation for the Fantasy F1 application architecture, da
 
 ```
 fantasy-f1/
+├── server.js            # Express proxy server for AI predictions
 ├── documentation/       # Project documentation
-│   ├── ARCHITECTURE.md  # This file
-│   └── DEPLOYMENT.md    # Deployment guide
+│   ├── ARCHITECTURE.md           # This file
+│   ├── DEPLOYMENT.md             # Deployment guide
+│   ├── GITHUB_ACTIONS.md         # CI/CD setup guide
+│   ├── AI_PREDICTIONS_SETUP.md   # AI predictions setup
+│   ├── PROXY_SETUP.md            # Proxy configuration notes
+│   └── README.md                 # Documentation index
 ├── src/
 │   ├── components/      # Reusable UI components
 │   │   ├── team/        # Team-specific components
@@ -23,34 +28,37 @@ fantasy-f1/
 │   │   └── Layout.jsx
 │   ├── pages/           # Page components
 │   │   ├── TeamBuilder.jsx
-│   │   ├── Predictions.jsx
+│   │   ├── Predictions.jsx        # AI-powered predictions
 │   │   ├── TeamHistory.jsx
 │   │   ├── PriceManager.jsx
 │   │   ├── LivePricingGuide.jsx
 │   │   └── Rules.jsx
 │   ├── services/        # API service layer
-│   │   └── openF1API.js # OpenF1 API client with caching
+│   │   ├── openF1API.js           # OpenF1 API client with caching
+│   │   ├── openf1DataService.js   # Historical data aggregator for AI
+│   │   └── aiPredictionService.js # Anthropic API client (via proxy)
 │   ├── utils/           # Utility modules
-│   │   ├── cache.js           # Cache manager implementation
-│   │   ├── pricing.js         # Price data and getters
-│   │   ├── priceStorage.js    # Custom price persistence
-│   │   ├── priceScraper.js    # Educational scraping documentation
-│   │   ├── setupStorage.js    # First-time setup state
-│   │   ├── teamColors.js      # F1 team color schemes
-│   │   └── teamStorage.js     # Team persistence
+│   │   ├── cache.js               # Cache manager implementation
+│   │   ├── pricing.js             # Price data and getters
+│   │   ├── priceStorage.js        # Custom price persistence
+│   │   ├── priceScraper.js        # Educational scraping documentation
+│   │   ├── setupStorage.js        # First-time setup state
+│   │   ├── strategyAnalyzer.js    # Historical data analysis for Rules
+│   │   ├── teamColors.js          # F1 team color schemes
+│   │   └── teamStorage.js         # Team persistence
 │   ├── App.jsx          # Root component with routing
 │   ├── App.css          # App-level styles
 │   ├── index.css        # Global styles with Tailwind
 │   └── main.jsx         # React entry point
 ├── public/              # Static assets
 │   └── vite.svg
-├── Dockerfile           # Multi-stage Docker build
+├── Dockerfile           # Multi-stage Docker build (Node/Express)
 ├── fly.toml             # Fly.io deployment config
-├── nginx.conf           # nginx web server config
 ├── .dockerignore        # Docker build exclusions
+├── .env.example         # Environment variables template
 ├── index.html           # HTML template
 ├── package.json         # Dependencies and scripts
-├── vite.config.js       # Vite build configuration
+├── vite.config.js       # Vite build configuration with /api proxy
 ├── tailwind.config.js   # Tailwind CSS configuration
 ├── postcss.config.js    # PostCSS configuration
 └── eslint.config.js     # ESLint configuration
@@ -341,13 +349,124 @@ Ferrari,30.0
 
 #### Rules (`src/pages/Rules.jsx`)
 
-**Purpose**: Static reference page for Fantasy F1 rules
+**Purpose**: Static reference page for Fantasy F1 rules with data-driven strategy tips
 
 **Content**:
 
 - Complete Fantasy F1 scoring system
 - Budget and selection requirements
 - Points breakdown (race, qualifying, bonus, penalties)
+- Chip strategies (Turbo Driver)
+- **Data-Driven Strategy Tips**: Analyzes recent race data via `strategyAnalyzer`
+  - Best Value Picks: Mid-field drivers with high points-per-dollar
+  - Most Consistent Performers: Drivers with high top-10 finish rate
+  - Podium Contenders: Drivers frequently finishing top 5
+  - Best Recent Form: Strongest average positions
+- Links to official Fantasy F1 resources
+
+**Data Integration**:
+
+- Uses `strategyAnalyzer.generateStrategyTips()` to fetch recent race data
+- Fallback to generic tips if no data available
+- Loading skeleton during data fetch
+- Refresh button to update tips with latest race data
+
+### 6. AI Predictions System
+
+**Files**:
+
+- `server.js` - Express proxy server
+- `src/services/openf1DataService.js` - Historical data aggregation
+- `src/services/aiPredictionService.js` - Anthropic API client
+- `src/pages/Predictions.jsx` - AI-powered UI
+
+**Architecture**:
+
+```
+Frontend (Predictions.jsx)
+     ↓
+  buildPredictionPayload()
+     ↓
+openf1DataService.js
+     ↓
+  POST /api/predict
+     ↓
+Express Proxy (server.js)
+     ↓
+Anthropic API (Claude)
+     ↓
+  AI Predictions Response
+```
+
+**How it works**:
+
+1. **Data Collection** (`openf1DataService.js`):
+   - Fetches recent completed races via OpenF1 API
+   - Builds driver statistics (avg position, trends, lap times)
+   - Aggregates data across multiple races
+   - Handles missing data gracefully with error recovery
+
+2. **AI Analysis** (`aiPredictionService.js`):
+   - Sends aggregated data to `/api/predict` endpoint
+   - Includes system prompt with Fantasy F1 scoring rules
+   - Receives structured JSON prediction from Claude
+
+3. **Proxy Server** (`server.js`):
+   - Keeps `ANTHROPIC_API_KEY` secret (never exposed to client)
+   - Forwards predictions requests to Anthropic API
+   - Implements rate limiting (60 requests per IP per 15 minutes)
+   - Serves static Vite build in production
+
+4. **Display** (`Predictions.jsx`):
+   - Shows recommended 5 drivers + 2 constructors
+   - Displays confidence levels and reasoning
+   - Highlights turbo driver suggestion
+   - Shows value picks and risk assessments
+
+**Environment Setup**:
+
+- Development: Requires two processes (Vite + Express)
+- Production: Single Express server serves both app and API
+- API Key: Stored in `.env` locally, Fly secrets in production
+
+**Benefits**:
+
+- Intelligent team recommendations based on real data
+- Circuit-specific insights
+- Value analysis for budget optimization
+- Secure API key handling
+
+### 7. Express Proxy Server
+
+**File**: `server.js`
+
+**Purpose**: Secure server-side proxy for AI predictions
+
+**Features**:
+
+- **API Proxy**: Forwards `/api/predict` to Anthropic API
+- **Static Serving**: Serves Vite build in production
+- **Rate Limiting**: 60 requests per IP per 15 minutes
+- **Health Check**: `/health` endpoint for Fly.io monitoring
+- **SPA Routing**: Fallback to index.html for React Router
+
+**Development**:
+
+- Run with `npm run server` on port 3000
+- Vite dev server proxies `/api` requests to Express
+- Hot reload not needed (static proxy logic)
+
+**Production**:
+
+- Runs on port specified by Fly.io (default 3000)
+- Serves pre-built Vite bundle from `/dist`
+- No nginx needed - Express handles everything
+
+**Security**:
+
+- API key never exposed to client
+- Rate limiting prevents abuse
+- CORS handled automatically by single-origin deployment
 - Strategy tips and best practices
 - Chip strategies (Turbo Driver usage)
 - Links to official Fantasy F1 resources

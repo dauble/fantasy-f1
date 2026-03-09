@@ -56,6 +56,25 @@ Or let Fly.io generate a name:
 flyctl apps create
 ```
 
+### 4. Configure Secrets (Optional - For AI Predictions)
+
+If you want to use the AI-powered Predictions feature, you need to set your Anthropic API key:
+
+```bash
+flyctl secrets set ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+```
+
+**Getting an API Key**:
+
+1. Sign up at [console.anthropic.com](https://console.anthropic.com/)
+2. Navigate to API Keys section
+3. Create a new API key (starts with `sk-ant-`)
+4. Copy and use it in the command above
+
+⚠️ **Important**: Never commit API keys to your repository. Always use Fly secrets.
+
+**Note**: The app will work without this secret, but the AI Predictions page will show an error. All other features function normally.
+
 ## Deployment
 
 ### Deploy the Application
@@ -232,7 +251,7 @@ flyctl deploy
 
 ### Health Checks
 
-The nginx server includes a `/health` endpoint that Fly.io monitors:
+The Express server includes a `/health` endpoint that Fly.io monitors:
 
 - Interval: 30 seconds
 - Timeout: 10 seconds
@@ -310,8 +329,8 @@ flyctl logs
 # SSH into the container
 flyctl ssh console
 
-# Verify nginx is running
-flyctl ssh console -C "ps aux | grep nginx"
+# Verify Node/Express is running
+flyctl ssh console -C "ps aux | grep node"
 ```
 
 ### DNS/SSL Issues
