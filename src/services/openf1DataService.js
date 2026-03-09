@@ -7,7 +7,6 @@
  */
 
 import openF1API from './openF1API';
-import apiCache from '../utils/cache';
 
 const BASE_URL = "https://api.openf1.org/v1";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (historical data doesn't change)
