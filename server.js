@@ -140,7 +140,7 @@ createServer(app).listen(PORT, () => {
   console.log(`Fantasy F1 server running on port ${PORT}`);
   
   if (apiKey) {
-    console.log(`✓ ANTHROPIC_API_KEY loaded (${apiKey.substring(0, 12)}...)`);
+    console.log(`✓ ANTHROPIC_API_KEY loaded (value present in environment)`);
   } else {
     console.warn(`⚠️  ANTHROPIC_API_KEY not found - AI predictions will not work`);
     console.warn(`   Add ANTHROPIC_API_KEY to your .env file`);
