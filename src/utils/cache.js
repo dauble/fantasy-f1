@@ -1,7 +1,8 @@
 // API Cache utility to prevent rate limiting (429 errors)
 
 const CACHE_PREFIX = 'f1_cache_';
-const DEFAULT_TTL = 5 * 60 * 1000; // 5 minutes in milliseconds
+const DEFAULT_TTL = 60 * 60 * 1000; // 1 hour for historical data
+const MAX_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 hours for fallback
 
 class APICache {
   constructor(ttl = DEFAULT_TTL) {
@@ -18,7 +19,7 @@ class APICache {
   }
 
   // Get cached data if it exists and hasn't expired
-  get(endpoint, params = {}) {
+  get(endpoint, params = {}, ignoreExpiry = false) {
     try {
       const key = this.generateKey(endpoint, params);
       const cached = localStorage.getItem(key);
@@ -30,9 +31,18 @@ class APICache {
       const { data, timestamp } = JSON.parse(cached);
       const now = Date.now();
 
+      // If ignoring expiry (for 429 fallback), accept cache within max age
+      if (ignoreExpiry) {
+        if (now - timestamp < MAX_CACHE_AGE) {
+          console.log(`Cache HIT (expired but usable): ${endpoint}`, params);
+          return data;
+        }
+        return null;
+      }
+
       // Check if cache has expired
       if (now - timestamp > this.ttl) {
-        this.delete(endpoint, params);
+        // Don't delete - keep for fallback
         return null;
       }
 
@@ -183,7 +193,7 @@ class APICache {
   }
 }
 
-// Create singleton instance with 5 minute TTL
-const apiCache = new APICache(5 * 60 * 1000);
+// Create singleton instance with 1 hour TTL
+const apiCache = new APICache(60 * 60 * 1000);
 
 export default apiCache;

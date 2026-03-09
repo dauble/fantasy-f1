@@ -46,12 +46,15 @@ A modern React application for building and managing your Fantasy Formula 1 team
 - **Turbo Multiplier Preview**: Compare standard vs. turbocharged points
 - **Historical Analysis**: Predictions based on circuit characteristics
 
-### 📈 Statistics
+### 🤖 AI-Powered Predictions
 
-- **Current Driver Data**: Live data from OpenF1 API
-- **Team Breakdowns**: View all teams and their driver lineups
-- **Driver Profiles**: Detailed information with team colors
-- **Season Overview**: Quick stats on drivers, teams, and countries
+- **Claude AI Integration**: Intelligent team recommendations powered by Anthropic's Claude
+- **Historical Data Analysis**: Analyzes recent race results, lap times, and driver trends
+- **Smart Recommendations**: 5 drivers + 2 constructors optimized for predicted points
+- **Turbo Driver Suggestions**: AI identifies best turbo pick based on recent form
+- **Value Analysis**: Highlights drivers with best points-per-dollar ratio
+- **Confidence Ratings**: Each recommendation includes confidence level (high/medium/low)
+- **Circuit-Specific Insights**: Predictions consider track type and characteristics
 
 ### 📋 Rules & Scoring
 
@@ -148,17 +151,54 @@ Update driver and constructor prices weekly to match official Fantasy F1 values:
 npm install
 ```
 
-2. Start the development server:
+2. **(Optional)** For AI Predictions, create a `.env` file:
+
+```bash
+ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+```
+
+3. Start the development server:
 
 ```bash
 npm run dev
 ```
 
-3. Open your browser and navigate to:
+This starts both the Express server (port 3000) and Vite (port 5173) concurrently.
+
+4. Open your browser and navigate to:
 
 ```
-http://localhost:3000
+http://localhost:5173
 ```
+
+### For AI Predictions Feature
+
+The AI Predictions feature requires additional setup:
+
+1. **Get an Anthropic API key** at [console.anthropic.com](https://console.anthropic.com/)
+
+2. **Create a `.env` file** in the project root:
+
+   ```bash
+   ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+   ```
+
+3. **Start the development servers**:
+
+   ```bash
+   npm run dev
+   ```
+
+   This starts both the Express server (port 3000) and Vite dev server (port 5173) concurrently.
+
+4. Open `http://localhost:5173` and navigate to Predictions page
+
+**Note**: You can also run servers individually if needed:
+
+- Express only: `npm run server`
+- Vite only: `npm run dev:client`
+
+See [documentation/AI_PREDICTIONS_SETUP.md](documentation/AI_PREDICTIONS_SETUP.md) for complete setup instructions.
 
 ## Fantasy F1 Rules
 
@@ -197,11 +237,14 @@ http://localhost:3000
 
 ## Available Scripts
 
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+- `npm run dev` - Start both Express server (port 3000) and Vite dev server (port 5173) concurrently
+- `npm run dev:server` - Start Express proxy server only (port 3000)
+- `npm run dev:client` - Start Vite development server only (port 5173)
+- `npm run server` - Start Express proxy server for AI predictions (port 3000)
+- `npm run build` - Build production bundle
+- `npm run preview` - Preview production build locally
+- `npm run deploy` - Deploy to Fly.io (requires setup)
 - `npm run lint` - Run ESLint
-- `npm run deploy` - Deploy to Fly.io (requires Fly CLI)
 
 ## Documentation
 

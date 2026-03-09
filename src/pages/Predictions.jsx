@@ -10,11 +10,10 @@
  *  4. Replace src/pages/Predictions.jsx with this file
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { buildPredictionPayload } from "../services/openf1DataService";
 import { generatePredictions } from "../services/aiPredictionService";
-
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
+// No API key needed here — it lives server-side in the Express proxy.
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -25,6 +24,8 @@ const CONFIDENCE_COLORS = {
 };
 
 const CONFIDENCE_LABELS = { high: "High", medium: "Medium", low: "Low" };
+
+const PREDICTION_CACHE_KEY = 'fantasy_f1_ai_prediction';
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
@@ -145,12 +146,26 @@ function ErrorState({ error, onRetry }) {
     <div className="flex flex-col items-center justify-center py-16 gap-4 text-center">
       <div className="text-4xl">⚠️</div>
       <p className="text-red-400 font-semibold">Prediction failed</p>
-      <p className="text-gray-400 text-sm max-w-md">{error}</p>
+      <p className="text-gray-400 text-sm max-w-md leading-relaxed">{error}</p>
       {error?.includes("API key") && (
-        <p className="text-gray-500 text-xs max-w-sm">
-          Add <code className="bg-gray-800 px-1 rounded">VITE_ANTHROPIC_API_KEY=sk-ant-...</code>{" "}
-          to your <code className="bg-gray-800 px-1 rounded">.env</code> file and restart the dev server.
-        </p>
+        <div className="text-gray-500 text-xs max-w-lg bg-gray-800/50 border border-gray-700 rounded-lg p-4 space-y-2">
+          <p className="font-semibold text-gray-400">Setup required:</p>
+          <ol className="text-left space-y-1 list-decimal list-inside">
+            <li>Create a <code className="bg-gray-700 px-1 rounded">.env</code> file in the project root</li>
+            <li>Add: <code className="bg-gray-700 px-1 rounded">ANTHROPIC_API_KEY=sk-ant-...</code></li>
+            <li>Restart the server: <code className="bg-gray-700 px-1 rounded">npm run server</code></li>
+          </ol>
+          <p className="text-gray-600 text-xs pt-2">
+            Note: The API key is used server-side only (not in the browser).
+          </p>
+        </div>
+      )}
+      {error?.includes("Network error") && (
+        <div className="text-gray-500 text-xs max-w-lg bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <p className="font-semibold text-gray-400 mb-2">Server not running:</p>
+          <p>Make sure the Express server is running on port 3000:</p>
+          <code className="block bg-gray-700 px-2 py-1 rounded mt-2">npm run server</code>
+        </div>
       )}
       <button
         onClick={onRetry}
@@ -180,11 +195,6 @@ function EmptyState({ onGenerate, loading }) {
       >
         {loading ? "Generating…" : "Generate Predictions"}
       </button>
-      {!API_KEY && (
-        <p className="text-amber-400 text-xs max-w-xs">
-          ⚠️ VITE_ANTHROPIC_API_KEY not set — predictions will fail without it.
-        </p>
-      )}
     </div>
   );
 }
@@ -198,16 +208,44 @@ export default function Predictions() {
   const [errorMsg, setErrorMsg] = useState("");
   const [raceCount, setRaceCount] = useState(5);
 
+  // Load cached prediction on mount
+  useEffect(() => {
+    try {
+      const cached = localStorage.getItem(PREDICTION_CACHE_KEY);
+      if (cached) {
+        const { prediction: cachedPrediction, rawData: cachedRawData } = JSON.parse(cached);
+        setPrediction(cachedPrediction);
+        setRawData(cachedRawData);
+        setStatus("success");
+        console.log("Loaded cached prediction from", new Date(cachedPrediction.generated_at).toLocaleString());
+      }
+    } catch (error) {
+      console.error("Error loading cached prediction:", error);
+      localStorage.removeItem(PREDICTION_CACHE_KEY);
+    }
+  }, []);
+
   const runPrediction = useCallback(async () => {
     setStatus("loading");
     setErrorMsg("");
     try {
       const payload = await buildPredictionPayload(raceCount);
       setRawData(payload);
-      const result = await generatePredictions(payload, API_KEY);
+      const result = await generatePredictions(payload);
       if (result.error) throw new Error(result.error_message);
       setPrediction(result);
       setStatus("success");
+      
+      // Save to localStorage
+      try {
+        localStorage.setItem(PREDICTION_CACHE_KEY, JSON.stringify({
+          prediction: result,
+          rawData: payload,
+        }));
+        console.log("Prediction saved to cache");
+      } catch (cacheError) {
+        console.warn("Failed to cache prediction:", cacheError);
+      }
     } catch (e) {
       setErrorMsg(e.message);
       setStatus("error");
@@ -219,6 +257,8 @@ export default function Predictions() {
     setPrediction(null);
     setRawData(null);
     setErrorMsg("");
+    localStorage.removeItem(PREDICTION_CACHE_KEY);
+    console.log("Prediction cache cleared");
   };
 
   return (
@@ -232,6 +272,18 @@ export default function Predictions() {
               <span className="text-xs font-normal text-gray-400 bg-gray-700/50 px-2 py-0.5 rounded-full">
                 powered by Claude
               </span>
+              {prediction && (() => {
+                const age = Date.now() - new Date(prediction.generated_at).getTime();
+                const hoursAgo = Math.floor(age / (1000 * 60 * 60));
+                if (hoursAgo >= 2) {
+                  return (
+                    <span className="text-xs font-normal text-amber-400 bg-amber-900/20 border border-amber-700/30 px-2 py-0.5 rounded-full">
+                      cached ({hoursAgo}h old)
+                    </span>
+                  );
+                }
+                return null;
+              })()}
             </h1>
             {rawData?.next_race && (
               <p className="text-xs text-gray-400 mt-0.5">
@@ -259,21 +311,26 @@ export default function Predictions() {
             </div>
 
             {status === "success" && (
-              <button
-                onClick={runPrediction}
-                disabled={status === "loading"}
-                className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 text-xs text-white rounded-lg transition-colors"
-              >
-                Refresh
-              </button>
-            )}
-            {status === "success" && (
-              <button
-                onClick={reset}
-                className="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-xs text-gray-400 rounded-lg transition-colors"
-              >
-                Reset
-              </button>
+              <>
+                <button
+                  onClick={runPrediction}
+                  disabled={status === "loading"}
+                  className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs text-white rounded-lg transition-colors flex items-center gap-1.5"
+                  title="Generate fresh predictions with latest data"
+                >
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                  </svg>
+                  Refresh Predictions
+                </button>
+                <button
+                  onClick={reset}
+                  className="px-3 py-1.5 bg-gray-700/50 hover:bg-gray-700 text-xs text-gray-400 rounded-lg transition-colors"
+                  title="Clear predictions and start over"
+                >
+                  Clear
+                </button>
+              </>
             )}
           </div>
         </div>
@@ -281,6 +338,17 @@ export default function Predictions() {
 
       {/* Content */}
       <div className="max-w-5xl mx-auto px-4 py-6">
+        {/* Cache info banner */}
+        <div className="mb-4 bg-blue-900/20 border border-blue-700/30 rounded-lg p-3 text-xs text-blue-300">
+          <p className="flex items-start gap-2">
+            <span className="text-blue-400">ℹ️</span>
+            <span>
+              Historical race data is cached for 1 hour to prevent rate limiting. 
+              If you see errors, the app will automatically use recent cached data instead.
+            </span>
+          </p>
+        </div>
+
         {status === "idle" && (
           <EmptyState onGenerate={runPrediction} loading={false} />
         )}
@@ -302,6 +370,11 @@ export default function Predictions() {
               {prediction.next_race_outlook && (
                 <p className="text-xs text-gray-400 leading-relaxed border-t border-gray-700/50 pt-2">
                   🏁 {prediction.next_race_outlook}
+                </p>
+              )}
+              {prediction.budget_analysis && (
+                <p className="text-xs text-blue-400 leading-relaxed border-t border-gray-700/50 pt-2">
+                  💰 {prediction.budget_analysis}
                 </p>
               )}
 
@@ -378,12 +451,36 @@ export default function Predictions() {
                 )}
 
                 {/* Metadata */}
-                <p className="text-xs text-gray-600 text-center">
-                  Generated{" "}
-                  {new Date(prediction.generated_at).toLocaleTimeString()}
-                  {" · "}
-                  <StatusBadge confidence={prediction.data_confidence} />
-                </p>
+                <div className="bg-gray-800/30 border border-gray-700/30 rounded-lg p-3 space-y-2">
+                  <p className="text-xs text-gray-400 text-center flex items-center justify-center gap-2">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <span>
+                      Generated {new Date(prediction.generated_at).toLocaleString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </p>
+                  <div className="flex items-center justify-center gap-2">
+                    <StatusBadge confidence={prediction.data_confidence} />
+                    {(() => {
+                      const age = Date.now() - new Date(prediction.generated_at).getTime();
+                      const hoursAgo = Math.floor(age / (1000 * 60 * 60));
+                      if (hoursAgo > 0) {
+                        return (
+                          <span className="text-xs text-gray-500 bg-gray-800/50 px-2 py-0.5 rounded-full">
+                            {hoursAgo}h ago
+                          </span>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </div>
+                </div>
                 {prediction.data_note && (
                   <p className="text-xs text-gray-500 text-center italic">
                     {prediction.data_note}

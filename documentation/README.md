@@ -14,7 +14,9 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 - Data flow and localStorage schema
 - Styling, design system, and responsive patterns
 - Error handling and performance optimizations
-- Production deployment architecture (Docker, nginx, Fly.io)
+- AI predictions system (Express proxy, data aggregation)
+- Express proxy server architecture
+- Production deployment architecture (Docker, Node/Express, Fly.io)
 - Security considerations
 - Future enhancement opportunities
 
@@ -49,6 +51,35 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 - Optional configurations (branch deployments, PR previews)
 - Security best practices
 
+### [AI_PREDICTIONS_SETUP.md](AI_PREDICTIONS_SETUP.md)
+
+**AI-powered predictions feature setup** using Claude (Anthropic):
+
+- Overview of AI predictions architecture
+- Getting an Anthropic API key
+- Environment variable configuration (local & production)
+- Running the development environment (Express + Vite)
+- How the AI predictions work (data flow)
+- API costs and rate limiting
+- Troubleshooting common issues (404s, no data, API errors)
+- Production deployment with secrets
+- Security notes and best practices
+
+### [PROXY_SETUP.md](PROXY_SETUP.md)
+
+**Quick reference guide** for Express proxy server setup:
+
+- Overview of proxy architecture
+- File changes and purposes
+- Quick start commands
+- Environment variable setup
+- Deployment notes
+- Links to complete AI predictions documentation
+
+**Target Audience**: Developers needing quick proxy setup reference
+
+**Target Audience**: Developers setting up the AI predictions feature
+
 **Target Audience**: Developers setting up automated deployments
 
 ## Quick Links
@@ -71,17 +102,19 @@ Fantasy F1 is a modern React/Vite application for building and managing Fantasy 
 
 ## Tech Stack Summary
 
-| Component          | Technology                 |
-| ------------------ | -------------------------- |
-| Frontend Framework | React 19.2.0               |
-| Build Tool         | Vite 7.3.1                 |
-| Styling            | Tailwind CSS 3             |
-| Routing            | React Router DOM 7.13.1    |
-| HTTP Client        | Axios 1.13.6               |
-| Icons              | Heroicons 2.2.0            |
-| Data Source        | OpenF1 API                 |
-| Deployment         | Fly.io (Docker + nginx)    |
-| Storage            | localStorage (client-side) |
+| Component          | Technology                     |
+| ------------------ | ------------------------------ |
+| Frontend Framework | React 19.2.0                   |
+| Build Tool         | Vite 7.3.1                     |
+| Styling            | Tailwind CSS 3                 |
+| Routing            | React Router DOM 7.13.1        |
+| HTTP Client        | Axios 1.13.6                   |
+| Icons              | Heroicons 2.2.0                |
+| Data Source        | OpenF1 API                     |
+| AI Service         | Anthropic Claude (optional)    |
+| Proxy Server       | Express 5.2.1                  |
+| Deployment         | Fly.io (Docker + Node/Express) |
+| Storage            | localStorage (client-side)     |
 
 ## Development Workflow
 
