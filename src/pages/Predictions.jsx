@@ -4,7 +4,9 @@
  * Drop-in replacement for your existing src/pages/Predictions.jsx
  *
  * SETUP:
- *  1. Add VITE_ANTHROPIC_API_KEY=sk-ant-... to your .env file
+ *  1. Add ANTHROPIC_API_KEY=sk-ant-... to your .env file
+ *     (this is read only by server.js / the Express proxy and is not exposed
+ *      to the client bundle via Vite).
  *  2. Copy openf1DataService.js → src/services/openf1DataService.js
  *  3. Copy aiPredictionService.js → src/services/aiPredictionService.js
  *  4. Replace src/pages/Predictions.jsx with this file
