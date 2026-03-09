@@ -78,10 +78,6 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 
 **Target Audience**: Developers needing quick proxy setup reference
 
-**Target Audience**: Developers setting up the AI predictions feature
-
-**Target Audience**: Developers setting up automated deployments
-
 ## Quick Links
 
 - **[Main README](../README.md)** - Project overview, features, and getting started
