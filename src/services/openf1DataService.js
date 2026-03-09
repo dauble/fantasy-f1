@@ -80,17 +80,7 @@ async function fetchWithCache(url, retryCount = 0) {
     }
     
     if (!res.ok) {
-      // Return empty array instead of throwing for "No results found"
-      if (res.status === 200) {
-        const data = await res.json();
-        if (data?.detail === "No results found.") {
-          return [];
-        }
-        setCache(url, data);
-        return data;
-      }
-      
-      // For other errors, try expired cache
+      // For errors, try expired cache
       const expiredCache = getCached(url, true);
       if (expiredCache) {
         console.warn(`API error ${res.status}, using expired cache for: ${url}`);
