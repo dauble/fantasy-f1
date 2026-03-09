@@ -30,6 +30,13 @@ const RATE_WINDOW_MS = 15 * 60 * 1000;
 function rateLimiter(req, res, next) {
   const ip = req.ip || req.socket.remoteAddress;
   const now = Date.now();
+
+  // Prune stale entries so the requestCounts map does not grow without bound.
+  for (const [key, value] of requestCounts) {
+    if (now - value.windowStart > RATE_WINDOW_MS) {
+      requestCounts.delete(key);
+    }
+  }
   const entry = requestCounts.get(ip) || { count: 0, windowStart: now };
 
   if (now - entry.windowStart > RATE_WINDOW_MS) {
