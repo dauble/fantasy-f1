@@ -25,9 +25,9 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY server.js ./
 
-# Fly.io sets PORT automatically; default to 3000
-ENV PORT=3000
-EXPOSE 3000
+# Fly.io sets PORT automatically; default to 8080
+ENV PORT=8080
+EXPOSE 8080
 
 # ANTHROPIC_API_KEY must be set as a Fly.io secret (fly secrets set ANTHROPIC_API_KEY=...)
 # It is intentionally NOT baked into the image.
