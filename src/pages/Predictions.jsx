@@ -13,6 +13,7 @@ const Predictions = () => {
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [currentTeam, setCurrentTeam] = useState(null);
+  const [optimalTeam, setOptimalTeam] = useState(null);
 
   useEffect(() => {
     fetchMeetings();
@@ -126,7 +127,107 @@ const Predictions = () => {
     const sortedByValue = [...predictionsWithPoints].sort((a, b) => b.valueScore - a.valueScore);
 
     setPredictions(predictionsWithPoints);
+    calculateOptimalTeam(predictionsWithPoints);
     return sortedByValue;
+  };
+
+  const calculateOptimalTeam = (driverPredictions) => {
+    const BUDGET = 100000000; // $100M
+    
+    // Sort drivers by predicted points (highest first)
+    const sortedDrivers = [...driverPredictions].sort((a, b) => b.points - a.points);
+    
+    // Get constructors with their estimated points
+    const constructors = [
+      { team: 'Red Bull Racing', avgPosition: 5, price: getConstructorPrice('Red Bull Racing') },
+      { team: 'Ferrari', avgPosition: 4, price: getConstructorPrice('Ferrari') },
+      { team: 'McLaren', avgPosition: 5, price: getConstructorPrice('McLaren') },
+      { team: 'Mercedes', avgPosition: 4.5, price: getConstructorPrice('Mercedes') },
+      { team: 'Aston Martin', avgPosition: 9.5, price: getConstructorPrice('Aston Martin') },
+      { team: 'Alpine', avgPosition: 11, price: getConstructorPrice('Alpine') },
+      { team: 'Williams', avgPosition: 15, price: getConstructorPrice('Williams') },
+      { team: 'RB', avgPosition: 14.5, price: getConstructorPrice('RB') },
+      { team: 'Kick Sauber', avgPosition: 17, price: getConstructorPrice('Kick Sauber') },
+    ].map(con => ({
+      ...con,
+      estimatedPoints: Math.round(50 / con.avgPosition)
+    }));
+    
+    // Sort constructors by estimated points (highest first)
+    const sortedConstructors = [...constructors].sort((a, b) => b.estimatedPoints - a.estimatedPoints);
+    
+    // Greedy approach: try to fit the best drivers and constructors within budget
+    let bestTeam = null;
+    let bestTotalPoints = 0;
+    
+    // Try different combinations, prioritizing high-scoring drivers
+    for (let startIdx = 0; startIdx < Math.min(10, sortedDrivers.length); startIdx++) {
+      let selectedDrivers = [];
+      let totalCost = 0;
+      let totalPoints = 0;
+      
+      // Try to select 5 drivers starting from startIdx
+      for (let i = startIdx; i < sortedDrivers.length && selectedDrivers.length < 5; i++) {
+        const driver = sortedDrivers[i];
+        if (totalCost + driver.price <= BUDGET * 0.7) { // Reserve some budget for constructors
+          selectedDrivers.push(driver);
+          totalCost += driver.price;
+          totalPoints += driver.points;
+        }
+      }
+      
+      // If we couldn't get 5 drivers, try cheaper options
+      if (selectedDrivers.length < 5) {
+        const sortedByPrice = [...sortedDrivers].sort((a, b) => a.price - b.price);
+        for (let i = 0; i < sortedByPrice.length && selectedDrivers.length < 5; i++) {
+          const driver = sortedByPrice[i];
+          if (!selectedDrivers.find(d => d.number === driver.number) && totalCost + driver.price <= BUDGET * 0.7) {
+            selectedDrivers.push(driver);
+            totalCost += driver.price;
+            totalPoints += driver.points;
+          }
+        }
+      }
+      
+      // Try to select 2 constructors
+      let selectedConstructors = [];
+      for (let i = 0; i < sortedConstructors.length && selectedConstructors.length < 2; i++) {
+        const constructor = sortedConstructors[i];
+        if (totalCost + constructor.price <= BUDGET) {
+          selectedConstructors.push(constructor);
+          totalCost += constructor.price;
+          totalPoints += constructor.estimatedPoints;
+        }
+      }
+      
+      // If we couldn't get 2 constructors, try cheaper options
+      if (selectedConstructors.length < 2) {
+        const sortedByPrice = [...sortedConstructors].sort((a, b) => a.price - b.price);
+        for (let i = 0; i < sortedByPrice.length && selectedConstructors.length < 2; i++) {
+          const constructor = sortedByPrice[i];
+          if (!selectedConstructors.find(c => c.team === constructor.team) && totalCost + constructor.price <= BUDGET) {
+            selectedConstructors.push(constructor);
+            totalCost += constructor.price;
+            totalPoints += constructor.estimatedPoints;
+          }
+        }
+      }
+      
+      // Check if this is a valid team and better than the current best
+      if (selectedDrivers.length === 5 && selectedConstructors.length === 2 && totalCost <= BUDGET) {
+        if (totalPoints > bestTotalPoints) {
+          bestTotalPoints = totalPoints;
+          bestTeam = {
+            drivers: selectedDrivers,
+            constructors: selectedConstructors,
+            totalCost,
+            totalPoints
+          };
+        }
+      }
+    }
+    
+    setOptimalTeam(bestTeam);
   };
 
   useEffect(() => {
@@ -173,6 +274,147 @@ const Predictions = () => {
           </select>
         </CardContent>
       </Card>
+
+      {/* Optimal Team within Budget */}
+      {optimalTeam && (
+        <Card className="mb-6 border-2 border-f1-red">
+          <CardHeader className="bg-gradient-to-r from-f1-red to-red-600 text-white">
+            <CardTitle className="text-xl">🏆 Optimal Team within $100M Budget</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="mb-6 p-4 bg-gradient-to-r from-gray-50 to-gray-100 rounded-lg">
+              <div className="flex flex-wrap justify-between items-center gap-4">
+                <div>
+                  <div className="text-sm text-gray-600">Total Predicted Points</div>
+                  <div className="text-3xl font-bold text-f1-red">{optimalTeam.totalPoints}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Total Cost</div>
+                  <div className="text-2xl font-bold">{formatPrice(optimalTeam.totalCost)}</div>
+                </div>
+                <div>
+                  <div className="text-sm text-gray-600">Remaining Budget</div>
+                  <div className="text-2xl font-bold text-green-600">
+                    {formatPrice(100000000 - optimalTeam.totalCost)}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Drivers */}
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span className="text-2xl">🏎️</span>
+                Top 5 Drivers
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {optimalTeam.drivers.map((driver, index) => {
+                  const isInCurrentTeam = currentTeam?.drivers?.includes(driver.number);
+                  return (
+                    <div
+                      key={driver.number}
+                      className={`p-4 rounded-lg border-2 ${
+                        isInCurrentTeam
+                          ? 'bg-green-50 border-green-500'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-10 h-10 rounded-full bg-f1-red text-white flex items-center justify-center font-bold">
+                            {driver.number}
+                          </div>
+                          <div>
+                            <div className="font-bold">{driver.driver}</div>
+                            <div className="text-xs text-gray-500">{driver.team}</div>
+                          </div>
+                        </div>
+                        {isInCurrentTeam && (
+                          <div className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                            ✓ In Team
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-sm">
+                        <div>
+                          <div className="text-gray-500 text-xs">Position</div>
+                          <div className="font-bold text-f1-red">P{driver.predicted_position}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 text-xs">Points</div>
+                          <div className="font-bold">{driver.points}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 text-xs">Price</div>
+                          <div className="font-semibold text-xs">{formatPrice(driver.price)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Constructors */}
+            <div>
+              <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
+                <span className="text-2xl">🏗️</span>
+                Top 2 Constructors
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {optimalTeam.constructors.map((constructor, index) => {
+                  const isInCurrentTeam = currentTeam?.constructors?.includes(constructor.team);
+                  return (
+                    <div
+                      key={constructor.team}
+                      className={`p-4 rounded-lg border-2 ${
+                        isInCurrentTeam
+                          ? 'bg-green-50 border-green-500'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="font-bold text-lg">{constructor.team}</div>
+                        {isInCurrentTeam && (
+                          <div className="bg-green-500 text-white text-xs px-3 py-1 rounded-full font-semibold">
+                            ✓ In Team
+                          </div>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div>
+                          <div className="text-gray-500 text-xs">Est. Points</div>
+                          <div className="font-bold">{constructor.estimatedPoints}</div>
+                        </div>
+                        <div>
+                          <div className="text-gray-500 text-xs">Price</div>
+                          <div className="font-semibold">{formatPrice(constructor.price)}</div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Match indicator */}
+            {currentTeam && (
+              <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-start gap-3">
+                  <span className="text-2xl">💡</span>
+                  <div className="flex-1">
+                    <h4 className="font-semibold text-blue-900 mb-1">Compare with Your Team</h4>
+                    <p className="text-sm text-blue-800">
+                      Selections marked with <span className="text-green-600 font-semibold">✓ In Team</span> match your current team. 
+                      Consider swapping other selections to optimize your predicted points within budget.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Value Analysis */}
       <Card className="mb-6">

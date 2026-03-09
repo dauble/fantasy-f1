@@ -1,9 +1,31 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
+import LoadingSkeleton from '../components/ui/LoadingSkeleton';
 import { FANTASY_BUDGET, MAX_DRIVERS, MAX_CONSTRUCTORS, POINTS, TURBO_MULTIPLIER } from '../config/api';
 import { formatPrice } from '../utils/pricing';
+import strategyAnalyzer, { getDriverNameByNumber } from '../utils/strategyAnalyzer';
 
 const Rules = () => {
+  const [strategyTips, setStrategyTips] = useState([]);
+  const [loadingTips, setLoadingTips] = useState(true);
+
+  useEffect(() => {
+    fetchStrategyTips();
+  }, []);
+
+  const fetchStrategyTips = async () => {
+    setLoadingTips(true);
+    try {
+      const tips = await strategyAnalyzer.generateStrategyTips();
+      setStrategyTips(tips);
+    } catch (error) {
+      console.error('Error fetching strategy tips:', error);
+      setStrategyTips(strategyAnalyzer.getDefaultTips());
+    } finally {
+      setLoadingTips(false);
+    }
+  };
+
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
@@ -158,42 +180,136 @@ const Rules = () => {
       {/* Strategy Tips */}
       <Card>
         <CardHeader>
-          <CardTitle>💡 Strategy Tips</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>💡 Data-Driven Strategy Tips</span>
+            {!loadingTips && (
+              <button
+                onClick={fetchStrategyTips}
+                className="text-sm text-f1-red hover:text-red-700 font-normal"
+                title="Refresh strategy tips"
+              >
+                🔄 Refresh
+              </button>
+            )}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2">1. Balance Your Budget</h4>
-              <p className="text-sm text-gray-700">
-                Don't spend all your budget on star drivers. Mid-field drivers can offer great value 
-                with overtaking opportunities and consistent points.
-              </p>
+          {loadingTips ? (
+            <div className="space-y-3">
+              <LoadingSkeleton variant="card" count={4} />
             </div>
-            
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2">2. Circuit Matters</h4>
-              <p className="text-sm text-gray-700">
-                Some drivers excel on specific circuit types. Monaco specialists, high-speed experts, 
-                and wet weather masters can provide an edge.
-              </p>
-            </div>
-            
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2">3. Turbo Timing</h4>
-              <p className="text-sm text-gray-700">
-                Use your Turbo Driver on weekends where they're most likely to excel. Consider pole position 
-                chances, recent form, and circuit suitability.
-              </p>
-            </div>
-            
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-semibold mb-2">4. Constructor Value</h4>
-              <p className="text-sm text-gray-700">
-                Constructors score points from both drivers. A strong mid-field team can outscore 
-                expensive top teams if both drivers finish well.
-              </p>
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="mb-4 p-3 bg-blue-50 border-l-4 border-blue-400 rounded">
+                <p className="text-sm text-blue-900">
+                  <strong>📊 Based on Historical Data:</strong> These insights are generated from analyzing 
+                  recent race performances, consistency patterns, and value metrics from this season's completed races.
+                </p>
+              </div>
+              
+              <div className="space-y-4">
+                {strategyTips.map((tip, index) => (
+                  <div key={index} className="p-4 bg-gradient-to-r from-gray-50 to-white rounded-lg border border-gray-200 hover:border-f1-red transition-colors">
+                    <div className="flex items-start gap-3 mb-3">
+                      <span className="text-2xl">{tip.icon}</span>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-lg mb-2">{tip.title}</h4>
+                        <p className="text-sm text-gray-700 mb-3">{tip.description}</p>
+                        
+                        {tip.drivers && tip.drivers.length > 0 && (
+                          <div className="space-y-2 mt-3">
+                            {tip.drivers.map((driver, driverIndex) => (
+                              <div 
+                                key={driverIndex}
+                                className="flex items-center justify-between p-3 bg-white rounded border border-gray-200 hover:border-f1-red transition-colors"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-full bg-f1-red text-white flex items-center justify-center font-bold text-sm">
+                                    #{driver.number}
+                                  </div>
+                                  <div>
+                                    <div className="font-semibold">
+                                      {getDriverNameByNumber(driver.number)}
+                                    </div>
+                                    <div className="text-xs text-gray-600 space-x-3">
+                                      {driver.avgPosition && (
+                                        <span>Avg: P{driver.avgPosition}</span>
+                                      )}
+                                      {driver.consistency && (
+                                        <span className="text-green-600">
+                                          {driver.consistency}% consistency
+                                        </span>
+                                      )}
+                                      {driver.topTenRate && (
+                                        <span className="text-blue-600">
+                                          Top 10: {driver.topTenRate}
+                                        </span>
+                                      )}
+                                      {driver.topFiveRate && (
+                                        <span className="text-yellow-600">
+                                          Top 5: {driver.topFiveRate}
+                                        </span>
+                                      )}
+                                      {driver.bestFinish && (
+                                        <span className="text-purple-600">
+                                          Best: P{driver.bestFinish}
+                                        </span>
+                                      )}
+                                      {driver.races && (
+                                        <span className="text-gray-500">
+                                          ({driver.races} races)
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {strategyTips.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <p className="mb-2">📊 No race data available yet this season.</p>
+                  <p className="text-sm">Strategy tips will appear after the first few races are completed.</p>
+                </div>
+              )}
+              
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <h4 className="font-semibold text-yellow-900 mb-2 flex items-center gap-2">
+                  <span>💡</span>
+                  <span>General Tips</span>
+                </h4>
+                <ul className="space-y-2 text-sm text-yellow-800">
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600">•</span>
+                    <span><strong>Circuit Types:</strong> Some drivers excel on street circuits (Monaco, Singapore) 
+                    while others perform better on high-speed tracks (Monza, Spa).</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600">•</span>
+                    <span><strong>Turbo Strategy:</strong> Save your Turbo Driver for races where they have 
+                    strong historical performance at that specific circuit.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600">•</span>
+                    <span><strong>Weather Wildcards:</strong> Wet races can shuffle the order dramatically. 
+                    Some drivers (like Verstappen, Hamilton, Norris) excel in changing conditions.</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-yellow-600">•</span>
+                    <span><strong>Constructor Strategy:</strong> Mid-field teams can offer great value if both 
+                    drivers consistently score points. Don't overlook teams like Aston Martin or Alpine.</span>
+                  </li>
+                </ul>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
