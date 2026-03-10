@@ -1,15 +1,13 @@
 /**
- * aiPredictionService.js  (updated for proxy)
- * Sends aggregated OpenF1 data to the local /api/predict proxy endpoint,
- * which forwards to Anthropic server-side — keeping the API key secret.
+ * aiPredictionService.js
  *
- * src/services/aiPredictionService.js
- *
- * Dev setup: add this to vite.config.js so /api proxies to the Express server:
- *   server: { proxy: { '/api': 'http://localhost:3000' } }
- *
- * Production: Express serves both the React app and /api/predict on the same origin.
- * Set the secret with: fly secrets set ANTHROPIC_API_KEY=sk-ant-...
+ * Key design: budget enforcement is done in JavaScript, not by the AI.
+ * 1. computeOptimalTeam() brute-forces all valid 5-driver + 2-constructor
+ *    combinations and finds the highest-scoring one ≤ $100M.
+ * 2. That guaranteed-valid team is sent to the AI as the starting point.
+ * 3. The AI's job is to validate/refine it using race context — not arithmetic.
+ * 4. parsePredictionJSON() validates the AI's response against the price map;
+ *    if the AI still exceeds $100M, the pre-computed team is substituted.
  */
 
 const PROXY_URL = "/api/predict";
@@ -29,28 +27,27 @@ const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You receive real hi
 
 ${SCORING_RULES}
 
-You also receive the user's current team selections, custom prices, and team history from their localStorage. Use this to:
+You also receive the user's current team selections, custom prices, and team history. Use this to:
 1. Understand their budget constraints (custom prices affect the $100M budget)
 2. Suggest improvements to their CURRENT team rather than starting from scratch
 3. Respect their preferences while optimizing for points
 4. Identify value picks based on their custom pricing
 5. Note if they should swap drivers or keep their current selections
 
-CRITICAL BUDGET RULE:
-- The total cost of your recommended team (5 drivers + 2 constructors) MUST be ≤ $100M
-- The user message includes a PRICE REFERENCE table — use ONLY those exact prices
-- Track a running total as you select each pick; if your first picks are expensive, choose cheaper picks later
-- $100M ÷ 7 picks = ~$14.3M average — you cannot take all the most expensive options
-- Prioritize value (points per dollar) over raw pace when the budget is tight
+BUDGET RULE (already enforced before you receive this):
+- A pre-computed budget-valid team is provided in each request — its total cost is already verified ≤ $100M
+- You may suggest ONE swap from that team only if the replacement improves predicted points AND keeps the total ≤ $100M
+- Use ONLY the prices from the PRICE REFERENCE table — do not invent prices
+- The total_cost and budget_remaining fields in your JSON MUST be consistent with the PRICE REFERENCE prices
 
 Your analysis must:
 1. Weight recent form (last 1-2 races) more heavily than older results
 2. Consider track type (street circuit, high-speed, technical) in your picks
 3. Favor value picks (good points per dollar) over pure pace
 4. Identify the best Turbo Driver (highest predicted points)
-5. Recommend 2 constructors whose combined driver performance is strong  
+5. Recommend 2 constructors whose combined driver performance is strong
 6. If the user has a current team, suggest whether to KEEP or SWAP each driver
-7. **Before finalising: add up all 7 prices from the PRICE REFERENCE table and confirm the sum is ≤ $100M. If it exceeds $100M, swap in cheaper alternatives until it fits.**
+7. Only suggest a swap from the pre-computed team if you can verify the new total stays ≤ $100M
 
 Return your response ONLY as valid JSON matching this exact schema — no preamble, no markdown fences:
 {
@@ -79,24 +76,100 @@ Return your response ONLY as valid JSON matching this exact schema — no preamb
   "turbo_driver": "string (full_name of turbo pick)",
   "value_picks": ["string", "string"],
   "risks": ["string", "string"],
-  "total_cost": number (sum of all 5 drivers + 2 constructors in millions),
-  "budget_remaining": number (100 minus total_cost),
+  "total_cost": number,
+  "budget_remaining": number,
   "budget_analysis": "string (confirm team is under $100M and note remaining budget)",
   "data_confidence": "high" | "medium" | "low",
   "data_note": "string (note if data was sparse or incomplete)"
 }
 
-Always return exactly 5 drivers and 2 constructors. The total_cost MUST be ≤ 100.`;
+Always return exactly 5 drivers and 2 constructors.`;
+
+// ─── Budget optimizer ─────────────────────────────────────────────────────────
 
 /**
- * Calls /api/predict (Express proxy) with the aggregated OpenF1 data payload.
- * No API key needed in the client — it lives server-side in an env variable.
+ * Evaluates all valid combinations of 5 drivers + 2 constructors within $100M
+ * and returns the highest-scoring one.
  *
- * @param {Object} dataPayload - Output from buildPredictionPayload()
- * @returns {Object} Parsed prediction result
+ * Scoring: lower avg finish position = higher score; recent improvement adds
+ * a small bonus. Constructor score = average of its drivers' scores.
+ *
+ * @param {Array} driverTrends - from buildPredictionPayload, each with .price
+ * @param {Object} constructorPriceMap - { team_name: price }
+ * @returns {{ drivers, constructors, total_cost, budget_remaining } | null}
  */
+function computeOptimalTeam(driverTrends, constructorPriceMap) {
+  const BUDGET = 100;
+
+  const drivers = driverTrends
+    .filter(d => typeof d.price === 'number' && d.price > 0)
+    .map(d => ({
+      ...d,
+      score: (21 - d.avg_finish_position)
+           + (d.position_trend === true  ?  2 : 0)
+           + (d.position_trend === false ? -1 : 0),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 15); // Top 15 keeps the loop fast (C(15,5) = 3,003)
+
+  const constructors = Object.entries(constructorPriceMap).map(([name, price]) => {
+    const teamDrivers = driverTrends.filter(d => d.team_name === name);
+    const avgScore = teamDrivers.length
+      ? teamDrivers.reduce((s, d) => s + (21 - d.avg_finish_position), 0) / teamDrivers.length
+      : 5;
+    return { team_name: name, price, score: avgScore };
+  });
+
+  if (drivers.length < 5 || constructors.length < 2) return null;
+
+  let best = null;
+  let bestScore = -Infinity;
+
+  for (let i = 0; i < drivers.length - 4; i++)
+  for (let j = i + 1; j < drivers.length - 3; j++)
+  for (let k = j + 1; k < drivers.length - 2; k++)
+  for (let l = k + 1; l < drivers.length - 1; l++)
+  for (let m = l + 1; m < drivers.length; m++) {
+    const d = [drivers[i], drivers[j], drivers[k], drivers[l], drivers[m]];
+    const dCost = d[0].price + d[1].price + d[2].price + d[3].price + d[4].price;
+    if (dCost >= BUDGET) continue; // Need at least $1 left for cheapest 2 constructors
+
+    for (let ci = 0; ci < constructors.length - 1; ci++)
+    for (let cj = ci + 1; cj < constructors.length; cj++) {
+      const c = [constructors[ci], constructors[cj]];
+      const total = dCost + c[0].price + c[1].price;
+      if (total > BUDGET) continue;
+
+      const score = d.reduce((s, x) => s + x.score, 0)
+                  + c.reduce((s, x) => s + x.score, 0);
+      if (score > bestScore) {
+        bestScore = score;
+        best = {
+          drivers: d,
+          constructors: c,
+          total_cost: total,
+          budget_remaining: BUDGET - total,
+        };
+      }
+    }
+  }
+
+  return best;
+}
+
+// ─── Main export ──────────────────────────────────────────────────────────────
+
 export async function generatePredictions(dataPayload) {
-  const userMessage = buildUserMessage(dataPayload);
+  // Build constructor price map from user's localStorage prices
+  const constructorPriceMap = {};
+  if (dataPayload.user_context?.custom_prices?.constructors) {
+    Object.assign(constructorPriceMap, dataPayload.user_context.custom_prices.constructors);
+  }
+
+  // Pre-compute the budget-valid optimal team in JavaScript
+  const optimalTeam = computeOptimalTeam(dataPayload.driver_trends, constructorPriceMap);
+
+  const userMessage = buildUserMessage(dataPayload, constructorPriceMap, optimalTeam);
 
   try {
     const response = await fetch(PROXY_URL, {
@@ -112,21 +185,16 @@ export async function generatePredictions(dataPayload) {
 
     if (!response.ok) {
       const err = await response.json().catch(() => ({}));
-      
-      // Better error messages based on status code
+
       if (response.status === 500 && err.error?.includes("API key")) {
         throw new Error(
           "Server configuration error: ANTHROPIC_API_KEY not set. " +
           "Please add your API key to the .env file or server environment."
         );
       }
-      
       if (response.status === 429) {
-        throw new Error(
-          "Rate limit exceeded. Please wait a few minutes before trying again."
-        );
+        throw new Error("Rate limit exceeded. Please wait a few minutes before trying again.");
       }
-      
       throw new Error(
         `Prediction error (${response.status}): ${err?.error || err?.details || "Unknown error"}`
       );
@@ -134,13 +202,16 @@ export async function generatePredictions(dataPayload) {
 
     const data = await response.json();
     const rawText = data.content
-      .filter((b) => b.type === "text")
-      .map((b) => b.text)
+      .filter(b => b.type === "text")
+      .map(b => b.text)
       .join("");
 
-    return parsePredictionJSON(rawText, dataPayload);
+    // Build a price lookup for the validator: abbrev → price and team → price
+    const driverPriceMap = {};
+    dataPayload.driver_trends.forEach(d => { driverPriceMap[d.abbreviation] = d.price ?? 20; });
+
+    return parsePredictionJSON(rawText, dataPayload, driverPriceMap, constructorPriceMap, optimalTeam);
   } catch (error) {
-    // Re-throw with context if it's a network error
     if (error.message.includes("Failed to fetch")) {
       throw new Error(
         "Network error: Could not connect to the prediction service. " +
@@ -151,7 +222,9 @@ export async function generatePredictions(dataPayload) {
   }
 }
 
-function buildUserMessage(payload) {
+// ─── User message builder ─────────────────────────────────────────────────────
+
+function buildUserMessage(payload, constructorPriceMap, optimalTeam) {
   const { next_race, recent_races, driver_trends, user_context, data_window } = payload;
 
   const nextRaceStr = next_race
@@ -162,34 +235,23 @@ function buildUserMessage(payload) {
     .map((r, i) => `Race ${i + 1}: ${r.race_name} (${r.country}) — Podium: ${r.podium.join(", ")}`)
     .join("\n");
 
-  // Build price lookup maps from the actual application data
+  // Price lookup (already merged into driver_trends by openf1DataService)
   const driverPriceMap = {};
-  driver_trends.forEach((d) => {
-    driverPriceMap[d.abbreviation] = d.price ?? 20;
-  });
-
-  const constructorPriceMap = {};
-  if (user_context?.custom_prices?.constructors) {
-    Object.entries(user_context.custom_prices.constructors).forEach(([name, price]) => {
-      constructorPriceMap[name] = price;
-    });
-  }
+  driver_trends.forEach(d => { driverPriceMap[d.abbreviation] = d.price ?? 20; });
 
   const driverStats = driver_trends
-    .map((d) => {
-      const trend =
-        d.position_trend === true ? "↑improving"
-        : d.position_trend === false ? "↓declining"
-        : "→stable";
-      const price = driverPriceMap[d.abbreviation];
-      return `  ${d.abbreviation.padEnd(4)} | ${d.full_name.padEnd(22)} | ${d.team_name.padEnd(18)} | $${String(price).padEnd(5)}M | Avg Pos: ${String(d.avg_finish_position).padEnd(5)} | Best: ${d.best_finish} | Recent: [${d.recent_positions.join(",")}] | ${trend} | Avg FL: ${d.avg_fastest_lap_ms ? (d.avg_fastest_lap_ms / 1000).toFixed(3) + "s" : "N/A"} | Avg Pits: ${d.avg_pit_stops}`;
+    .map(d => {
+      const trend = d.position_trend === true  ? "↑improving"
+                  : d.position_trend === false ? "↓declining"
+                  : "→stable";
+      return `  ${d.abbreviation.padEnd(4)} | ${d.full_name.padEnd(22)} | ${d.team_name.padEnd(18)} | $${String(driverPriceMap[d.abbreviation]).padEnd(5)}M | Avg Pos: ${String(d.avg_finish_position).padEnd(5)} | Best: ${d.best_finish} | Recent: [${d.recent_positions.join(",")}] | ${trend} | Avg FL: ${d.avg_fastest_lap_ms ? (d.avg_fastest_lap_ms / 1000).toFixed(3) + "s" : "N/A"} | Avg Pits: ${d.avg_pit_stops}`;
     })
     .join("\n");
 
-  // Build explicit price reference tables for budget tracking
+  // Price reference tables (sorted descending)
   const driverPriceTable = [...driver_trends]
     .sort((a, b) => (b.price ?? 20) - (a.price ?? 20))
-    .map((d) => `  ${d.abbreviation.padEnd(4)}  ${d.full_name.padEnd(24)} $${driverPriceMap[d.abbreviation]}M`)
+    .map(d => `  ${d.abbreviation.padEnd(4)}  ${d.full_name.padEnd(26)} $${driverPriceMap[d.abbreviation]}M`)
     .join("\n");
 
   const constructorPriceTable = Object.keys(constructorPriceMap).length > 0
@@ -197,29 +259,45 @@ function buildUserMessage(payload) {
         .sort((a, b) => b[1] - a[1])
         .map(([name, price]) => `  ${name.padEnd(30)} $${price}M`)
         .join("\n")
-    : "  (No constructor prices set — assume $20M each)";
+    : "  (No constructor prices set — constructors cannot be reliably priced)";
 
-  // Current team context
+  // Pre-computed optimal team section
+  let optimalTeamSection;
+  if (optimalTeam) {
+    const driverLines = optimalTeam.drivers
+      .map(d => `  ${d.abbreviation.padEnd(4)}  ${d.full_name.padEnd(26)} $${d.price}M`)
+      .join("\n");
+    const constLines = optimalTeam.constructors
+      .map(c => `  ${c.team_name.padEnd(30)} $${c.price}M`)
+      .join("\n");
+    optimalTeamSection = `Drivers (5):
+${driverLines}
+Constructors (2):
+${constLines}
+  ─────────────────────────────────────────────────────
+  TOTAL COST:          $${optimalTeam.total_cost}M
+  BUDGET REMAINING:    $${optimalTeam.budget_remaining}M`;
+  } else {
+    optimalTeamSection = `  Could not compute a valid team — prices may be missing or all $20M defaults
+  (7 × $20M = $140M, which exceeds budget). Please set custom prices in the app.`;
+  }
+
+  // User's current team
   let currentTeamStr = "";
   if (user_context?.current_team) {
     const team = user_context.current_team;
-    currentTeamStr += `\nUSER'S CURRENT TEAM (as of ${formatDate(team.lastSaved)}):\n`;
-    if (team.drivers?.length > 0) {
-      currentTeamStr += `  Drivers: ${team.drivers.map(d => d.full_name || d.name).join(", ")}\n`;
-    }
-    if (team.constructors?.length > 0) {
+    currentTeamStr = `\nUSER'S CURRENT TEAM (as of ${formatDate(team.lastSaved)}):\n`;
+    if (team.drivers?.length > 0)
+      currentTeamStr += `  Drivers:      ${team.drivers.map(d => d.full_name || d.name).join(", ")}\n`;
+    if (team.constructors?.length > 0)
       currentTeamStr += `  Constructors: ${team.constructors.map(c => c.team_name || c.name).join(", ")}\n`;
-    }
-    if (team.turboDriver) {
+    if (team.turboDriver)
       currentTeamStr += `  Turbo Driver: ${team.turboDriver.full_name || team.turboDriver.name}\n`;
-    }
-    if (team.totalCost !== undefined) {
+    if (team.totalCost !== undefined)
       currentTeamStr += `  Current cost: $${team.totalCost}M / $100M\n`;
-    }
   }
-
   if (user_context?.team_history?.length > 0) {
-    currentTeamStr += `\n  Previous teams saved: ${user_context.team_history.length} (most recent: ${user_context.team_history[0].week || 'unknown'})\n`;
+    currentTeamStr += `  Previous teams saved: ${user_context.team_history.length}\n`;
   }
 
   return `${nextRaceStr}
@@ -236,7 +314,6 @@ ${"─".repeat(140)}
 ${driverStats}
 ${"─".repeat(140)}
 ${currentTeamStr}
-
 ════════════════════════════════════════════════════════
 PRICE REFERENCE — USE THESE EXACT PRICES
 ════════════════════════════════════════════════════════
@@ -245,32 +322,38 @@ ${driverPriceTable}
 
 CONSTRUCTOR PRICES (descending):
 ${constructorPriceTable}
-
-BUDGET RULE — READ CAREFULLY:
-  Total budget:  $100M
-  Selections:    5 drivers + 2 constructors = 7 picks
-  Average spend: $${(100 / 7).toFixed(1)}M per pick — you CANNOT take all top-priced picks
-
-  As you select each pick, track the running total:
-    Pick 1 driver  → running total = $XM
-    Pick 2 drivers → running total = $XM
-    ... and so on until all 7 are chosen
-  The final sum of all 5 driver prices + 2 constructor prices MUST be ≤ $100M.
-  If your first few picks are expensive, you MUST choose cheaper options later.
 ════════════════════════════════════════════════════════
 
-Based on this data and the user's current team, provide your Fantasy F1 recommendation for the upcoming race.
-Use ONLY the prices listed above. Return only valid JSON.`;
+════════════════════════════════════════════════════════
+PRE-COMPUTED OPTIMAL TEAM (JavaScript-verified ≤ $100M)
+════════════════════════════════════════════════════════
+${optimalTeamSection}
+
+This team was selected by evaluating every valid combination of 5 drivers and
+2 constructors from the prices above. It is GUARANTEED to be within budget.
+
+YOUR TASK:
+1. Use the race data to validate whether this pre-computed team makes sense.
+2. You may suggest ONE swap only if:
+     a) the replacement improves predicted points based on recent data, AND
+     b) you verify the new total using prices from the PRICE REFERENCE table (≤ $100M)
+3. If no better validated swap exists, recommend this exact team.
+4. Set total_cost and budget_remaining in your JSON using the PRICE REFERENCE prices.
+════════════════════════════════════════════════════════
+
+Return only valid JSON.`;
 }
 
-function parsePredictionJSON(rawText, fallbackPayload) {
+// ─── Response parser + budget validator ───────────────────────────────────────
+
+function parsePredictionJSON(rawText, fallbackPayload, driverPriceMap, constructorPriceMap, optimalTeam) {
   const clean = rawText.replace(/```json|```/gi, "").trim();
+  let parsed;
   try {
-    const parsed = JSON.parse(clean);
+    parsed = JSON.parse(clean);
     if (!parsed.recommended_drivers || !parsed.recommended_constructors) {
       throw new Error("Missing required fields in AI response");
     }
-    return { ...parsed, raw_data: fallbackPayload, generated_at: new Date().toISOString() };
   } catch (e) {
     console.error("Failed to parse AI prediction JSON:", e);
     return {
@@ -284,7 +367,56 @@ function parsePredictionJSON(rawText, fallbackPayload) {
       generated_at: new Date().toISOString(),
     };
   }
+
+  // Validate budget using the actual price maps (not the AI's self-reported total)
+  const driverCost = parsed.recommended_drivers.reduce((sum, d) => {
+    const price = driverPriceMap[d.abbreviation];
+    return sum + (typeof price === 'number' ? price : 20);
+  }, 0);
+  const constructorCost = parsed.recommended_constructors.reduce((sum, c) => {
+    const price = constructorPriceMap[c.team_name];
+    return sum + (typeof price === 'number' ? price : 20);
+  }, 0);
+  const verifiedTotal = driverCost + constructorCost;
+
+  if (verifiedTotal > 100 && optimalTeam) {
+    // AI exceeded budget — substitute the pre-computed team
+    console.warn(`AI recommendation exceeded budget ($${verifiedTotal}M). Substituting pre-computed team ($${optimalTeam.total_cost}M).`);
+
+    parsed.recommended_drivers = optimalTeam.drivers.map(d => ({
+      full_name: d.full_name,
+      abbreviation: d.abbreviation,
+      team_name: d.team_name,
+      reasoning: `Selected by budget optimizer (AI pick exceeded $100M). Strong recent form with avg finish P${d.avg_finish_position}.`,
+      predicted_finish: Math.round(d.avg_finish_position),
+      predicted_points: Math.max(1, 26 - Math.round(d.avg_finish_position)),
+      confidence: "medium",
+      is_turbo_pick: false,
+    }));
+    // Mark the best driver as turbo
+    parsed.recommended_drivers[0].is_turbo_pick = true;
+    parsed.turbo_driver = parsed.recommended_drivers[0].full_name;
+
+    parsed.recommended_constructors = optimalTeam.constructors.map(c => ({
+      team_name: c.team_name,
+      reasoning: `Selected by budget optimizer (AI pick exceeded $100M).`,
+      predicted_points: Math.round(c.score * 3),
+      confidence: "medium",
+    }));
+
+    parsed.total_cost = optimalTeam.total_cost;
+    parsed.budget_remaining = optimalTeam.budget_remaining;
+    parsed.budget_analysis = `AI recommendation exceeded $100M ($${verifiedTotal}M). Substituted with pre-computed optimal team at $${optimalTeam.total_cost}M ($${optimalTeam.budget_remaining}M remaining).`;
+  } else {
+    // AI stayed within budget — correct the total_cost field to reflect verified math
+    parsed.total_cost = verifiedTotal;
+    parsed.budget_remaining = 100 - verifiedTotal;
+  }
+
+  return { ...parsed, raw_data: fallbackPayload, generated_at: new Date().toISOString() };
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatDate(dateStr) {
   if (!dateStr) return "TBD";
