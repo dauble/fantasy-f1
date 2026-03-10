@@ -70,21 +70,18 @@ function DriverCard({ driver }) {
       </div>
 
       <div className="flex gap-4 text-xs text-gray-300 mt-1">
-        <span>
-          🏁 Predicted P{driver.predicted_finish}
-        </span>
+        <span>🏁 Predicted P{driver.predicted_finish}</span>
         <span>
           🔢{" "}
-          <span className="text-white font-semibold">
-            {driver.predicted_points}
-          </span>{" "}
+          <span className="text-white font-semibold">{driver.predicted_points}</span>{" "}
           pts
           {driver.is_turbo_pick && (
-            <span className="text-yellow-300 ml-1">
-              → {driver.predicted_points * 2} (2×)
-            </span>
+            <span className="text-yellow-300 ml-1">→ {driver.predicted_points * 2} (2×)</span>
           )}
         </span>
+        {driver.price !== undefined && (
+          <span className="ml-auto text-gray-500">${driver.price}M</span>
+        )}
       </div>
 
       <p className="text-xs text-gray-400 leading-relaxed border-t border-gray-700/50 pt-2">
@@ -104,10 +101,15 @@ function ConstructorCard({ constructor: c }) {
         </div>
         <StatusBadge confidence={c.confidence} />
       </div>
-      <div className="text-xs text-gray-300">
-        🔢{" "}
-        <span className="text-white font-semibold">{c.predicted_points}</span>{" "}
-        pts predicted
+      <div className="flex items-center justify-between text-xs text-gray-300">
+        <span>
+          🔢{" "}
+          <span className="text-white font-semibold">{c.predicted_points}</span>{" "}
+          pts predicted
+        </span>
+        {c.price !== undefined && (
+          <span className="text-gray-500">${c.price}M</span>
+        )}
       </div>
       <p className="text-xs text-gray-400 leading-relaxed border-t border-gray-700/50 pt-2">
         {c.reasoning}

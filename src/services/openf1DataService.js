@@ -11,6 +11,9 @@ import openF1API from './openF1API';
 const BASE_URL = "https://api.openf1.org/v1";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (historical data doesn't change)
 const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours (for fallback on rate limit)
+const SESSION_STATS_CACHE_PREFIX = 'openf1_session_stats_'; // Full processed-session cache
+const INTER_CALL_DELAY_MS = 1200;   // Between API calls within a session
+const INTER_SESSION_DELAY_MS = 3000; // Between sessions
 
 // ─── Rate limiting helpers ────────────────────────────────────────────────────
 
@@ -54,58 +57,53 @@ function setCache(key, data) {
 async function fetchWithCache(url, retryCount = 0) {
   const cached = getCached(url);
   if (cached) {
-    console.log(`Using cached data for: ${url}`);
+    console.log(`Cache hit: ${url}`);
     return cached;
   }
 
   try {
     const res = await fetch(url);
-    
-    // Handle rate limiting (429) - use expired cache if available
+
     if (res.status === 429) {
-      console.warn(`Rate limited by OpenF1 API (429). Checking for expired cache...`);
-      const expiredCache = getCached(url, true); // Ignore expiry
-      if (expiredCache) {
-        console.log(`Using expired cache data (better than no data)`);
-        return expiredCache;
-      }
-      
-      // If no cache available and we haven't retried too much, wait and retry
-      if (retryCount < 2) {
-        const delay = (retryCount + 1) * 2000; // 2s, 4s
-        console.log(`No cache available. Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchWithCache(url, retryCount + 1);
-      }
-      
-      // Give up and return empty
-      console.error(`Rate limited and no cache available for: ${url}`);
-      return [];
-    }
-    
-    if (!res.ok) {
-      // For errors, try expired cache
+      // Prefer expired cache over any retry attempt
       const expiredCache = getCached(url, true);
       if (expiredCache) {
-        console.warn(`API error ${res.status}, using expired cache for: ${url}`);
+        console.warn(`429 — using stale cache for: ${url}`);
         return expiredCache;
       }
-      
-      throw new Error(`OpenF1 API error: ${res.status} ${url}`);
-    }
-    
-    const data = await res.json();
-    // Handle "No results found" response
-    if (data?.detail === "No results found.") {
+
+      if (retryCount < 3) {
+        // Honour Retry-After if present, otherwise exponential backoff
+        const retryAfterHeader = res.headers.get('Retry-After');
+        const waitMs = retryAfterHeader
+          ? parseInt(retryAfterHeader, 10) * 1000
+          : Math.min(2000 * Math.pow(2, retryCount), 30000); // 2s, 4s, 8s, cap 30s
+        console.warn(`429 — retrying in ${waitMs}ms (attempt ${retryCount + 1}/3): ${url}`);
+        await delay(waitMs);
+        return fetchWithCache(url, retryCount + 1);
+      }
+
+      console.error(`429 — giving up after 3 retries: ${url}`);
       return [];
     }
+
+    if (!res.ok) {
+      const expiredCache = getCached(url, true);
+      if (expiredCache) {
+        console.warn(`API error ${res.status} — using stale cache for: ${url}`);
+        return expiredCache;
+      }
+      throw new Error(`OpenF1 API error: ${res.status} ${url}`);
+    }
+
+    const data = await res.json();
+    if (data?.detail === "No results found.") return [];
     setCache(url, data);
     return data;
   } catch (error) {
-    // On network error, try expired cache
     const expiredCache = getCached(url, true);
     if (expiredCache) {
-      console.warn(`Network error, using expired cache for: ${url}`);
+      console.warn(`Network error — using stale cache for: ${url}`);
       return expiredCache;
     }
     throw error;
@@ -324,14 +322,30 @@ function gatherUserContext() {
  * Returns per-driver summaries ready to feed to the AI.
  */
 export async function buildSessionStats(session) {
+  // Full session stats cache — avoids re-running all 4 API calls for a processed session
+  const statsCacheKey = `${SESSION_STATS_CACHE_PREFIX}${session.session_key}`;
+  const cachedStats = getCached(statsCacheKey);
+  if (cachedStats) {
+    console.log(`Session stats cache hit: ${session.session_key}`);
+    return cachedStats;
+  }
+
   try {
-    const drivers = await getDriversForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
-    await delay(300);
-    const positions = await getPositionsForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
-    await delay(300);
-    const laps = await getLapsForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
-    await delay(300);
-    const pitStops = await getPitStopsForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
+    const drivers   = await getDriversForSession(session.session_key)
+                        .then(v => ({ status: 'fulfilled', value: v }))
+                        .catch(e => ({ status: 'rejected', reason: e }));
+    await delay(INTER_CALL_DELAY_MS);
+    const positions = await getPositionsForSession(session.session_key)
+                        .then(v => ({ status: 'fulfilled', value: v }))
+                        .catch(e => ({ status: 'rejected', reason: e }));
+    await delay(INTER_CALL_DELAY_MS);
+    const laps      = await getLapsForSession(session.session_key)
+                        .then(v => ({ status: 'fulfilled', value: v }))
+                        .catch(e => ({ status: 'rejected', reason: e }));
+    await delay(INTER_CALL_DELAY_MS);
+    const pitStops  = await getPitStopsForSession(session.session_key)
+                        .then(v => ({ status: 'fulfilled', value: v }))
+                        .catch(e => ({ status: 'rejected', reason: e }));
 
     // Extract successful results, default to empty array for failures
     const driversData = drivers.status === 'fulfilled' ? drivers.value : [];
@@ -387,7 +401,7 @@ export async function buildSessionStats(session) {
       };
     });
 
-    return {
+    const result = {
       session_key: session.session_key,
       race_name: session.session_name || session.circuit_short_name,
       circuit: session.circuit_short_name,
@@ -395,6 +409,8 @@ export async function buildSessionStats(session) {
       date: session.date_start,
       results,
     };
+    setCache(statsCacheKey, result);
+    return result;
   } catch (error) {
     console.error(`Error building session stats for ${session.session_key}:`, error);
     return null;
@@ -428,7 +444,7 @@ export async function buildPredictionPayload(recentRaceCount = 5) {
     const recentRaceStatsResults = [];
     for (const s of recentSessions) {
       recentRaceStatsResults.push(await buildSessionStats(s));
-      if (recentSessions.indexOf(s) < recentSessions.length - 1) await delay(500);
+      if (recentSessions.indexOf(s) < recentSessions.length - 1) await delay(INTER_SESSION_DELAY_MS);
     }
     
     // Filter out null results (failed session stats)
