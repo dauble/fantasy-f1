@@ -15,6 +15,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
+  const [isRecoveryMode, setIsRecoveryMode] = useState(false);
 
   // Initialize Supabase from runtime config
   useEffect(() => {
@@ -22,7 +23,6 @@ export function AuthProvider({ children }) {
       .then((r) => r.json())
       .then(({ supabaseUrl, supabaseAnonKey }) => {
         if (!supabaseUrl || !supabaseAnonKey) {
-          // Supabase not configured — app works without it
           setAuthLoading(false);
           return;
         }
@@ -30,21 +30,21 @@ export function AuthProvider({ children }) {
         const client = createClient(supabaseUrl, supabaseAnonKey);
         setSupabase(client);
 
-        // Restore existing session
         client.auth.getSession().then(({ data: { session } }) => {
           setUser(session?.user ?? null);
           setAuthLoading(false);
         });
 
-        // Listen for sign-in / sign-out
-        const { data: { subscription } } = client.auth.onAuthStateChange((_event, session) => {
+        const { data: { subscription } } = client.auth.onAuthStateChange((event, session) => {
           setUser(session?.user ?? null);
+          if (event === 'PASSWORD_RECOVERY') {
+            setIsRecoveryMode(true);
+          }
         });
 
         return () => subscription.unsubscribe();
       })
       .catch(() => {
-        // Server unreachable — still let the app work offline
         setAuthLoading(false);
       });
   }, []);
@@ -112,12 +112,33 @@ export function AuthProvider({ children }) {
     return () => clearInterval(interval);
   }, [supabase, user, pullFromCloud, syncToCloud]);
 
-  const signIn = useCallback(() => {
-    if (!supabase) return;
-    supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+  const signIn = useCallback(async (email, password) => {
+    if (!supabase) return { error: { message: 'Auth not available' } };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
+  }, [supabase]);
+
+  const signUp = useCallback(async (email, password) => {
+    if (!supabase) return { error: { message: 'Auth not available' } };
+    const { data, error } = await supabase.auth.signUp({ email, password });
+    // needsEmailConfirmation is true when Supabase hasn't auto-confirmed the user
+    const needsEmailConfirmation = !error && !data.session;
+    return { error, needsEmailConfirmation };
+  }, [supabase]);
+
+  const resetPassword = useCallback(async (email) => {
+    if (!supabase) return { error: { message: 'Auth not available' } };
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback`,
     });
+    return { error };
+  }, [supabase]);
+
+  const updatePassword = useCallback(async (password) => {
+    if (!supabase) return { error: { message: 'Auth not available' } };
+    const { error } = await supabase.auth.updateUser({ password });
+    if (!error) setIsRecoveryMode(false);
+    return { error };
   }, [supabase]);
 
   const signOut = useCallback(async () => {
@@ -128,7 +149,11 @@ export function AuthProvider({ children }) {
   }, [supabase]);
 
   return (
-    <AuthContext.Provider value={{ user, authLoading, syncStatus, signIn, signOut, syncToCloud, supabaseReady: !!supabase }}>
+    <AuthContext.Provider value={{
+      user, authLoading, syncStatus, isRecoveryMode,
+      signIn, signUp, signOut, resetPassword, updatePassword,
+      syncToCloud, supabaseReady: !!supabase,
+    }}>
       {children}
     </AuthContext.Provider>
   );

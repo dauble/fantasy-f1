@@ -9,6 +9,7 @@ import PriceManager from './pages/PriceManager';
 import LivePricingGuide from './pages/LivePricingGuide';
 import WelcomeModal from './components/ui/WelcomeModal';
 import AuthCallback from './pages/AuthCallback';
+import Auth from './pages/Auth';
 import { AuthProvider } from './context/AuthContext';
 import setupStorage from './utils/setupStorage';
 
@@ -39,6 +40,7 @@ function App() {
           <Route path="/prices" element={<Layout><PriceManager /></Layout>} />
           <Route path="/live-pricing" element={<Layout><LivePricingGuide /></Layout>} />
           <Route path="/rules" element={<Layout><Rules /></Layout>} />
+          <Route path="/login" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
       </Router>
