@@ -38,10 +38,10 @@ You also receive the user's current team selections, custom prices, and team his
 
 CRITICAL BUDGET RULE:
 - The total cost of your recommended team (5 drivers + 2 constructors) MUST be ≤ $100M
-- Each driver and constructor has a price shown in the data
-- You MUST calculate the total cost and ensure it stays under budget
-- If no custom prices exist, assume $20M per driver/constructor (7 × $20M = $140M would exceed budget)
-- Prioritize value picks to maximize points within the budget constraint
+- The user message includes a PRICE REFERENCE table — use ONLY those exact prices
+- Track a running total as you select each pick; if your first picks are expensive, choose cheaper picks later
+- $100M ÷ 7 picks = ~$14.3M average — you cannot take all the most expensive options
+- Prioritize value (points per dollar) over raw pace when the budget is tight
 
 Your analysis must:
 1. Weight recent form (last 1-2 races) more heavily than older results
@@ -50,7 +50,7 @@ Your analysis must:
 4. Identify the best Turbo Driver (highest predicted points)
 5. Recommend 2 constructors whose combined driver performance is strong  
 6. If the user has a current team, suggest whether to KEEP or SWAP each driver
-7. **VERIFY the total cost is ≤ $100M before returning your recommendation**
+7. **Before finalising: add up all 7 prices from the PRICE REFERENCE table and confirm the sum is ≤ $100M. If it exceeds $100M, swap in cheaper alternatives until it fits.**
 
 Return your response ONLY as valid JSON matching this exact schema — no preamble, no markdown fences:
 {
@@ -162,62 +162,64 @@ function buildUserMessage(payload) {
     .map((r, i) => `Race ${i + 1}: ${r.race_name} (${r.country}) — Podium: ${r.podium.join(", ")}`)
     .join("\n");
 
+  // Build price lookup maps from the actual application data
+  const driverPriceMap = {};
+  driver_trends.forEach((d) => {
+    driverPriceMap[d.abbreviation] = d.price ?? 20;
+  });
+
+  const constructorPriceMap = {};
+  if (user_context?.custom_prices?.constructors) {
+    Object.entries(user_context.custom_prices.constructors).forEach(([name, price]) => {
+      constructorPriceMap[name] = price;
+    });
+  }
+
   const driverStats = driver_trends
     .map((d) => {
       const trend =
         d.position_trend === true ? "↑improving"
         : d.position_trend === false ? "↓declining"
         : "→stable";
-      const price = d.price ? `$${d.price}M` : "$20M";
-      return `  ${d.abbreviation.padEnd(4)} | ${d.full_name.padEnd(22)} | ${d.team_name.padEnd(18)} | Price: ${price.padEnd(6)} | Avg Pos: ${String(d.avg_finish_position).padEnd(5)} | Best: ${d.best_finish} | Recent: [${d.recent_positions.join(",")}] | ${trend} | Avg FL: ${d.avg_fastest_lap_ms ? (d.avg_fastest_lap_ms / 1000).toFixed(3) + "s" : "N/A"} | Avg Pits: ${d.avg_pit_stops}`;
+      const price = driverPriceMap[d.abbreviation];
+      return `  ${d.abbreviation.padEnd(4)} | ${d.full_name.padEnd(22)} | ${d.team_name.padEnd(18)} | $${String(price).padEnd(5)}M | Avg Pos: ${String(d.avg_finish_position).padEnd(5)} | Best: ${d.best_finish} | Recent: [${d.recent_positions.join(",")}] | ${trend} | Avg FL: ${d.avg_fastest_lap_ms ? (d.avg_fastest_lap_ms / 1000).toFixed(3) + "s" : "N/A"} | Avg Pits: ${d.avg_pit_stops}`;
     })
     .join("\n");
 
-  // Build user context section
-  let userContextStr = "\n\nUSER'S CURRENT CONTEXT:\n";
-  
+  // Build explicit price reference tables for budget tracking
+  const driverPriceTable = [...driver_trends]
+    .sort((a, b) => (b.price ?? 20) - (a.price ?? 20))
+    .map((d) => `  ${d.abbreviation.padEnd(4)}  ${d.full_name.padEnd(24)} $${driverPriceMap[d.abbreviation]}M`)
+    .join("\n");
+
+  const constructorPriceTable = Object.keys(constructorPriceMap).length > 0
+    ? Object.entries(constructorPriceMap)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, price]) => `  ${name.padEnd(30)} $${price}M`)
+        .join("\n")
+    : "  (No constructor prices set — assume $20M each)";
+
+  // Current team context
+  let currentTeamStr = "";
   if (user_context?.current_team) {
     const team = user_context.current_team;
-    userContextStr += `\nCurrent Team (as of ${formatDate(team.lastSaved)}):\n`;
-    if (team.drivers && team.drivers.length > 0) {
-      userContextStr += `  Drivers: ${team.drivers.map(d => d.full_name || d.name).join(", ")}\n`;
+    currentTeamStr += `\nUSER'S CURRENT TEAM (as of ${formatDate(team.lastSaved)}):\n`;
+    if (team.drivers?.length > 0) {
+      currentTeamStr += `  Drivers: ${team.drivers.map(d => d.full_name || d.name).join(", ")}\n`;
     }
-    if (team.constructors && team.constructors.length > 0) {
-      userContextStr += `  Constructors: ${team.constructors.map(c => c.team_name || c.name).join(", ")}\n`;
+    if (team.constructors?.length > 0) {
+      currentTeamStr += `  Constructors: ${team.constructors.map(c => c.team_name || c.name).join(", ")}\n`;
     }
     if (team.turboDriver) {
-      userContextStr += `  Turbo Driver: ${team.turboDriver.full_name || team.turboDriver.name}\n`;
+      currentTeamStr += `  Turbo Driver: ${team.turboDriver.full_name || team.turboDriver.name}\n`;
     }
     if (team.totalCost !== undefined) {
-      userContextStr += `  Total Cost: $${team.totalCost}M / $100M\n`;
+      currentTeamStr += `  Current cost: $${team.totalCost}M / $100M\n`;
     }
-  } else {
-    userContextStr += "  No current team saved (new user or fresh start)\n";
   }
 
-  if (user_context?.custom_prices) {
-    const prices = user_context.custom_prices;
-    userContextStr += `\nCustom Prices (last updated ${formatDate(prices.lastUpdated)}):\n`;
-    userContextStr += "  Note: Prices are shown in the driver table above.\n";
-    
-    // Show constructor prices explicitly since they're not in driver trends
-    if (prices.constructors && Object.keys(prices.constructors).length > 0) {
-      userContextStr += `\nCONSTRUCTOR PRICES:\n`;
-      Object.entries(prices.constructors)
-        .sort((a, b) => a[1] - b[1]) // Sort by price
-        .forEach(([name, price]) => {
-          userContextStr += `  ${name.padEnd(25)} = $${price}M\n`;
-        });
-    }
-  } else {
-    userContextStr += "  Using default prices ($20M per driver/constructor)\n";
-    userContextStr += "  WARNING: With default pricing, you cannot afford all top drivers!\n";
-  }
-
-  if (user_context?.team_history && user_context.team_history.length > 0) {
-    userContextStr += `\nTeam History:\n`;
-    userContextStr += `  User has saved ${user_context.team_history.length} previous teams\n`;
-    userContextStr += `  Most recent: ${user_context.team_history[0].week || 'Week unknown'}\n`;
+  if (user_context?.team_history?.length > 0) {
+    currentTeamStr += `\n  Previous teams saved: ${user_context.team_history.length} (most recent: ${user_context.team_history[0].week || 'unknown'})\n`;
   }
 
   return `${nextRaceStr}
@@ -228,17 +230,37 @@ RECENT RACE RESULTS:
 ${recentRacesStr}
 
 DRIVER PERFORMANCE TRENDS (sorted by avg finish position):
-${"─".repeat(130)}
-  ABB  | Driver Name           | Team               | Price  | Avg Pos | Best | Recent Positions  | Trend      | Avg FL    | Avg Pits
-${"─".repeat(130)}
+${"─".repeat(140)}
+  ABB  | Driver Name           | Team               | Price   | Avg Pos | Best | Recent Positions  | Trend      | Avg FL    | Avg Pits
+${"─".repeat(140)}
 ${driverStats}
-${"─".repeat(130)}
-${userContextStr}
+${"─".repeat(140)}
+${currentTeamStr}
 
-REMINDER: Your recommended team (5 drivers + 2 constructors) MUST cost ≤ $100M total.
-Calculate the sum carefully and include total_cost and budget_remaining in your response.
+════════════════════════════════════════════════════════
+PRICE REFERENCE — USE THESE EXACT PRICES
+════════════════════════════════════════════════════════
+DRIVER PRICES (descending):
+${driverPriceTable}
 
-Based on this data AND the user's current team/budget, provide your Fantasy F1 team recommendation for the upcoming race. Return only valid JSON.`;
+CONSTRUCTOR PRICES (descending):
+${constructorPriceTable}
+
+BUDGET RULE — READ CAREFULLY:
+  Total budget:  $100M
+  Selections:    5 drivers + 2 constructors = 7 picks
+  Average spend: $${(100 / 7).toFixed(1)}M per pick — you CANNOT take all top-priced picks
+
+  As you select each pick, track the running total:
+    Pick 1 driver  → running total = $XM
+    Pick 2 drivers → running total = $XM
+    ... and so on until all 7 are chosen
+  The final sum of all 5 driver prices + 2 constructor prices MUST be ≤ $100M.
+  If your first few picks are expensive, you MUST choose cheaper options later.
+════════════════════════════════════════════════════════
+
+Based on this data and the user's current team, provide your Fantasy F1 recommendation for the upcoming race.
+Use ONLY the prices listed above. Return only valid JSON.`;
 }
 
 function parsePredictionJSON(rawText, fallbackPayload) {
