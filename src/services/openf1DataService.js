@@ -12,6 +12,10 @@ const BASE_URL = "https://api.openf1.org/v1";
 const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour (historical data doesn't change)
 const MAX_CACHE_AGE_MS = 24 * 60 * 60 * 1000; // 24 hours (for fallback on rate limit)
 
+// ─── Rate limiting helpers ────────────────────────────────────────────────────
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 // ─── Cache helpers (reuses your existing pattern) ───────────────────────────
 
 function getCached(key, ignoreExpiry = false) {
@@ -321,12 +325,13 @@ function gatherUserContext() {
  */
 export async function buildSessionStats(session) {
   try {
-    const [drivers, positions, laps, pitStops] = await Promise.allSettled([
-      getDriversForSession(session.session_key),
-      getPositionsForSession(session.session_key),
-      getLapsForSession(session.session_key),
-      getPitStopsForSession(session.session_key),
-    ]);
+    const drivers = await getDriversForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
+    await delay(300);
+    const positions = await getPositionsForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
+    await delay(300);
+    const laps = await getLapsForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
+    await delay(300);
+    const pitStops = await getPitStopsForSession(session.session_key).then(v => ({ status: 'fulfilled', value: v })).catch(e => ({ status: 'rejected', reason: e }));
 
     // Extract successful results, default to empty array for failures
     const driversData = drivers.status === 'fulfilled' ? drivers.value : [];
@@ -419,9 +424,12 @@ export async function buildPredictionPayload(recentRaceCount = 5) {
       );
     }
 
-    // Build stats for each recent race in parallel
-    const recentRaceStatsPromises = recentSessions.map((s) => buildSessionStats(s));
-    const recentRaceStatsResults = await Promise.all(recentRaceStatsPromises);
+    // Build stats for each recent race sequentially to avoid rate limiting
+    const recentRaceStatsResults = [];
+    for (const s of recentSessions) {
+      recentRaceStatsResults.push(await buildSessionStats(s));
+      if (recentSessions.indexOf(s) < recentSessions.length - 1) await delay(500);
+    }
     
     // Filter out null results (failed session stats)
     const recentRaceStats = recentRaceStatsResults.filter(stat => stat !== null);
