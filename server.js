@@ -116,6 +116,15 @@ app.post("/api/predict", rateLimiter, async (req, res) => {
 
 app.get("/health", (_req, res) => res.json({ status: "ok" }));
 
+// ─── Public runtime config (safe to expose — anon key is not a secret) ───────
+
+app.get("/api/config", (_req, res) => {
+  res.json({
+    supabaseUrl: process.env.SUPABASE_URL || null,
+    supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
+  });
+});
+
 // ─── Serve Vite build ─────────────────────────────────────────────────────────
 
 const DIST = join(__dirname, "dist");

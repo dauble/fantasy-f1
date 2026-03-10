@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import CacheStatus from '../components/ui/CacheStatus';
+import AuthButton from '../components/ui/AuthButton';
 
 const Layout = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -63,11 +64,12 @@ const Layout = ({ children }) => {
         </nav>
 
         {/* Footer Info */}
-        <div className="p-4 mt-auto border-t border-white border-opacity-20">
+        <div className="p-4 mt-auto border-t border-white border-opacity-20 space-y-4">
           <div className="text-sm text-white text-opacity-75 space-y-2">
             <p>Budget: $100M</p>
             <p>5 Drivers + 2 Constructors</p>
           </div>
+          <AuthButton />
         </div>
       </aside>
 

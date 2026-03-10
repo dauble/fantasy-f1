@@ -8,6 +8,8 @@ import TeamHistory from './pages/TeamHistory';
 import PriceManager from './pages/PriceManager';
 import LivePricingGuide from './pages/LivePricingGuide';
 import WelcomeModal from './components/ui/WelcomeModal';
+import AuthCallback from './pages/AuthCallback';
+import { AuthProvider } from './context/AuthContext';
 import setupStorage from './utils/setupStorage';
 
 function App() {
@@ -27,17 +29,20 @@ function App() {
   };
 
   return (
-    <Router>
-      {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
-      <Routes>
-        <Route path="/" element={<Layout><TeamBuilder /></Layout>} />
-        <Route path="/predictions" element={<Layout><Predictions /></Layout>} />
-        <Route path="/history" element={<Layout><TeamHistory /></Layout>} />
-        <Route path="/prices" element={<Layout><PriceManager /></Layout>} />
-        <Route path="/live-pricing" element={<Layout><LivePricingGuide /></Layout>} />
-        <Route path="/rules" element={<Layout><Rules /></Layout>} />
-      </Routes>
-    </Router>
+    <AuthProvider>
+      <Router>
+        {showWelcome && <WelcomeModal onClose={handleCloseWelcome} />}
+        <Routes>
+          <Route path="/" element={<Layout><TeamBuilder /></Layout>} />
+          <Route path="/predictions" element={<Layout><Predictions /></Layout>} />
+          <Route path="/history" element={<Layout><TeamHistory /></Layout>} />
+          <Route path="/prices" element={<Layout><PriceManager /></Layout>} />
+          <Route path="/live-pricing" element={<Layout><LivePricingGuide /></Layout>} />
+          <Route path="/rules" element={<Layout><Rules /></Layout>} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+        </Routes>
+      </Router>
+    </AuthProvider>
   );
 }
 
