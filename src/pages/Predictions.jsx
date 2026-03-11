@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { buildPredictionPayload } from "../services/openf1DataService";
+import { buildPredictionPayload, clearPredictionCaches } from "../services/openf1DataService";
 import { generatePredictions } from "../services/aiPredictionService";
 // No API key needed here — it lives server-side in the Express proxy.
 
@@ -138,9 +138,9 @@ function LoadingState() {
     <div className="flex flex-col items-center justify-center py-24 gap-4">
       <div className="w-12 h-12 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
       <p className="text-gray-400 text-sm">
-        Fetching race data &amp; generating predictions…
+        Fetching race data &amp; ranking the full grid…
       </p>
-      <p className="text-gray-600 text-xs">This takes 10–20 seconds</p>
+      <p className="text-gray-600 text-xs">Analysing all drivers &amp; constructors — this takes 15–25 seconds</p>
     </div>
   );
 }
@@ -188,8 +188,8 @@ function EmptyState({ onGenerate, loading }) {
       <div>
         <h2 className="text-xl font-bold text-white mb-2">AI Race Predictions</h2>
         <p className="text-gray-400 text-sm max-w-md">
-          Pulls live data from OpenF1, analyses the last 5 races, and uses Claude
-          to recommend your best Fantasy F1 team for the upcoming Grand Prix.
+          Pulls live data from OpenF1, ranks <span className="text-white font-medium">every driver &amp; constructor</span> on the full grid using Claude,
+          then finds the best 5&nbsp;drivers + 2&nbsp;constructors within the $100M budget.
         </p>
       </div>
       <button
@@ -229,11 +229,11 @@ export default function Predictions() {
     }
   }, []);
 
-  const runPrediction = useCallback(async () => {
+  const runPrediction = useCallback(async (bypassDataCache = false) => {
     setStatus("loading");
     setErrorMsg("");
     try {
-      const payload = await buildPredictionPayload(raceCount);
+      const payload = await buildPredictionPayload(raceCount, bypassDataCache);
       setRawData(payload);
       const result = await generatePredictions(payload);
       if (result.error) throw new Error(result.error_message);
@@ -262,7 +262,8 @@ export default function Predictions() {
     setRawData(null);
     setErrorMsg("");
     localStorage.removeItem(PREDICTION_CACHE_KEY);
-    console.log("Prediction cache cleared");
+    clearPredictionCaches(raceCount);
+    console.log("All prediction caches cleared");
   };
 
   return (
@@ -317,10 +318,10 @@ export default function Predictions() {
             {status === "success" && (
               <>
                 <button
-                  onClick={runPrediction}
+                  onClick={() => runPrediction(true)}
                   disabled={status === "loading"}
                   className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-xs text-white rounded-lg transition-colors flex items-center gap-1.5"
-                  title="Generate fresh predictions with latest data"
+                  title="Fetch fresh data from OpenF1 and regenerate predictions (uses API calls)"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -347,11 +348,25 @@ export default function Predictions() {
           <p className="flex items-start gap-2">
             <span className="text-blue-400">ℹ️</span>
             <span>
-              Historical race data is cached for 1 hour to prevent rate limiting. 
-              If you see errors, the app will automatically use recent cached data instead.
+              Race data is cached locally in layers (raw API: 24 h · session stats: 7 days · payload: 4 h).
+              Most visits require <span className="text-white font-medium">zero API calls</span>.
+              Use <span className="text-white font-medium">Refresh Predictions</span> to force a fresh fetch from OpenF1.
             </span>
           </p>
         </div>
+
+        {/* Stale data warning — shown when OpenF1 was unreachable and cached data was used */}
+        {status === "success" && rawData?._stale && (
+          <div className="mb-4 bg-amber-900/20 border border-amber-700/30 rounded-lg p-3 text-xs text-amber-300">
+            <p className="flex items-start gap-2">
+              <span>⚠️</span>
+              <span>
+                OpenF1 could not be reached ({rawData._stale_reason?.replace(/^Failed.*?:\s*/, '') || 'network error'}).
+                Predictions are based on <span className="text-amber-200 font-medium">previously cached race data</span> — results are still valid since historical data never changes.
+              </span>
+            </p>
+          </div>
+        )}
 
         {status === "idle" && (
           <EmptyState onGenerate={runPrediction} loading={false} />
@@ -449,7 +464,7 @@ export default function Predictions() {
                       Data used ({rawData.data_window})
                     </h3>
                     {rawData.recent_races.map((race, i) => (
-                      <RecentRaceRow key={race.race_name} race={race} index={i} />
+                      <RecentRaceRow key={race.session_key ?? race.race_name ?? i} race={race} index={i} />
                     ))}
                   </div>
                 )}

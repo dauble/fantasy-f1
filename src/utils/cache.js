@@ -1,8 +1,8 @@
 // API Cache utility to prevent rate limiting (429 errors)
 
 const CACHE_PREFIX = 'f1_cache_';
-const DEFAULT_TTL = 60 * 60 * 1000; // 1 hour for historical data
-const MAX_CACHE_AGE = 24 * 60 * 60 * 1000; // 24 hours for fallback
+const DEFAULT_TTL = 24 * 60 * 60 * 1000; // 24 hours — meetings/sessions are immutable historical data
+const MAX_CACHE_AGE = 7 * 24 * 60 * 60 * 1000; // 7 days absolute stale fallback
 
 class APICache {
   constructor(ttl = DEFAULT_TTL) {
