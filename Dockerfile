@@ -24,6 +24,7 @@ RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
 COPY server.js ./
+COPY newsService.js ./
 
 # Fly.io sets PORT automatically; default to 8080
 ENV PORT=8080
