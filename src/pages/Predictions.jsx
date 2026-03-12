@@ -133,14 +133,38 @@ function RecentRaceRow({ race, index }) {
   );
 }
 
-function LoadingState() {
+function LoadingState({ step, history }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 gap-4">
-      <div className="w-12 h-12 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
-      <p className="text-gray-400 text-sm">
-        Fetching race data &amp; ranking the full grid…
-      </p>
-      <p className="text-gray-600 text-xs">Analysing all drivers &amp; constructors — this takes 15–25 seconds</p>
+    <div className="flex flex-col items-center justify-center py-20 gap-6">
+      {/* Spinner */}
+      <div className="w-14 h-14 border-4 border-red-500/30 border-t-red-500 rounded-full animate-spin" />
+
+      {/* Current step */}
+      <div className="text-center space-y-1">
+        <p className="text-white text-sm font-medium">
+          {step || "Starting up…"}
+        </p>
+        <p className="text-gray-500 text-xs">
+          Analysing the full grid — this takes 15–25 seconds
+        </p>
+      </div>
+
+      {/* Step history log */}
+      {history.length > 0 && (
+        <div className="w-full max-w-sm bg-gray-800/50 border border-gray-700/50 rounded-xl p-3 space-y-1.5">
+          {history.map((msg, i) => (
+            <div
+              key={i}
+              className={`flex items-start gap-2 text-xs transition-opacity ${
+                i === history.length - 1 ? "text-gray-300" : "text-gray-500 opacity-60"
+              }`}
+            >
+              <span className="text-emerald-500 shrink-0 mt-0.5">✓</span>
+              <span>{msg}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -211,6 +235,8 @@ export default function Predictions() {
   const [rawData, setRawData] = useState(null);
   const [errorMsg, setErrorMsg] = useState("");
   const [raceCount, setRaceCount] = useState(5);
+  const [loadingStep, setLoadingStep] = useState("");
+  const [loadingHistory, setLoadingHistory] = useState([]);
 
   // Load cached prediction on mount
   useEffect(() => {
@@ -232,11 +258,22 @@ export default function Predictions() {
   const runPrediction = useCallback(async (bypassDataCache = false) => {
     setStatus("loading");
     setErrorMsg("");
+    setLoadingStep("");
+    setLoadingHistory([]);
+
+    const onProgress = (msg) => {
+      setLoadingStep(msg);
+      setLoadingHistory(prev => [...prev, msg]);
+    };
+
     try {
+      onProgress("🏎️ Loading race data from OpenF1…");
       const payload = await buildPredictionPayload(raceCount, bypassDataCache);
       setRawData(payload);
-      const result = await generatePredictions(payload);
+      onProgress(`📊 Loaded ${payload.driver_trends?.length ?? 0} drivers across ${payload.recent_races?.length ?? 0} recent races`);
+      const result = await generatePredictions(payload, onProgress);
       if (result.error) throw new Error(result.error_message);
+      onProgress("✅ Predictions ready!");
       setPrediction(result);
       setStatus("success");
       
@@ -371,7 +408,7 @@ export default function Predictions() {
         {status === "idle" && (
           <EmptyState onGenerate={runPrediction} loading={false} />
         )}
-        {status === "loading" && <LoadingState />}
+        {status === "loading" && <LoadingState step={loadingStep} history={loadingHistory} />}
         {status === "error" && (
           <ErrorState error={errorMsg} onRetry={runPrediction} />
         )}

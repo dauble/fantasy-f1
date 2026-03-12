@@ -13,6 +13,7 @@ import express from "express";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { fetchF1News, clearNewsCache } from "./newsService.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -123,6 +124,31 @@ app.get("/api/config", (_req, res) => {
     supabaseUrl: process.env.SUPABASE_URL || null,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
   });
+});
+
+// ─── F1 News aggregation endpoint ────────────────────────────────────────────
+
+app.get("/api/news", rateLimiter, async (_req, res) => {
+  try {
+    const newsData = await fetchF1News();
+    return res.json(newsData);
+  } catch (err) {
+    console.error("News fetch error:", err.message);
+    return res.status(502).json({
+      error: "Failed to fetch F1 news.",
+      details: err.message,
+      articles: [],
+      sources_attempted: [],
+      sources_succeeded: [],
+      sources_failed: [{ name: "all", error: err.message }],
+      fetched_at: new Date().toISOString(),
+    });
+  }
+});
+
+app.delete("/api/news/cache", (_req, res) => {
+  clearNewsCache();
+  res.json({ ok: true, message: "News cache cleared" });
 });
 
 // ─── Serve Vite build ─────────────────────────────────────────────────────────

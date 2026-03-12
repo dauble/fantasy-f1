@@ -4,8 +4,9 @@
  * Design:
  *
  *   Claude AI    → receives the FULL grid of ALL drivers and ALL constructors
- *                  with recent performance data and prices, and ranks every
- *                  one of them by predicted race outcome for the next Grand Prix.
+ *                  with recent performance data, fantasy prices, AND real-time
+ *                  news articles from PlanetF1, Motorsport.com, and Reddit.
+ *                  It ranks every driver and constructor for the next Grand Prix.
  *
  *   JavaScript   → takes the AI's full rankings and finds the best possible
  *                  5 drivers + 2 constructors within the $100M budget cap,
@@ -14,6 +15,8 @@
  * The AI drives the prediction. JS enforces the budget.
  * The final team is always JavaScript-verified ≤ $100M.
  */
+
+import { fetchF1News, buildNewsContext } from "./newsService.js";
 
 const PROXY_URL = "/api/predict";
 const MODEL = "claude-sonnet-4-20250514";
@@ -27,7 +30,7 @@ Penalties: Position Lost=-2 each, Not Classified=-5, Disqualified=-20
 Turbo Driver: one driver scores 2× points
 `.trim();
 
-const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data and fantasy prices.
+const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from PlanetF1, Motorsport.com, and Reddit.
 
 Your task is to predict the race outcome for EVERY driver and EVERY constructor in the list for the upcoming Grand Prix. Do NOT pre-select a team; rank the entire field.
 
@@ -191,7 +194,7 @@ function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiC
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function generatePredictions(dataPayload) {
+export async function generatePredictions(dataPayload, onProgress) {
   const constructorPriceMap = {};
   if (dataPayload.user_context?.custom_prices?.constructors) {
     Object.assign(constructorPriceMap, dataPayload.user_context.custom_prices.constructors);
@@ -226,7 +229,27 @@ export async function generatePredictions(dataPayload) {
     );
   }
 
-  const userMessage = buildUserMessage(dataPayload, constructorPriceMap, allConstructors);
+  // Fetch real-time news context (non-blocking — a failure won't abort predictions)
+  let newsContext = "";
+  try {
+    onProgress?.("📰 Fetching latest F1 news & community updates…");
+    const newsData = await fetchF1News();
+    newsContext = buildNewsContext(newsData);
+    if (newsContext) {
+      const count = newsData.articles?.length ?? 0;
+      const sources = newsData.sources_succeeded?.join(", ") || "news sources";
+      onProgress?.(`📰 Loaded ${count} articles from ${sources}`);
+      console.log(`[predictions] News context included: ${count} articles`);
+    } else {
+      onProgress?.("📰 No recent news found — continuing with race data only");
+    }
+  } catch (newsErr) {
+    console.warn("[predictions] News fetch failed (continuing without):", newsErr.message);
+    onProgress?.("📰 News unavailable — continuing with race data only");
+  }
+
+  onProgress?.("🤖 Asking Claude AI to rank all drivers & constructors…");
+  const userMessage = buildUserMessage(dataPayload, constructorPriceMap, allConstructors, newsContext);
 
   try {
     const response = await fetch(PROXY_URL, {
@@ -262,6 +285,7 @@ export async function generatePredictions(dataPayload) {
       .map(b => b.text)
       .join("");
 
+    onProgress?.("💰 Optimizing team selection within $100M budget…");
     return parsePredictionJSON(rawText, dataPayload, allConstructors);
   } catch (error) {
     if (error.message.includes("Failed to fetch")) {
@@ -276,7 +300,7 @@ export async function generatePredictions(dataPayload) {
 
 // ─── User message builder ─────────────────────────────────────────────────────
 
-function buildUserMessage(payload, constructorPriceMap, allConstructors) {
+function buildUserMessage(payload, constructorPriceMap, allConstructors, newsContext = "") {
   const { next_race, recent_races, driver_trends, user_context, data_window } = payload;
 
   // Build the upcoming race string from whatever data we have
@@ -342,14 +366,14 @@ ALL CONSTRUCTORS — predict combined fantasy points for each:
   Team                          Price   Drivers
 ${"─".repeat(72)}
 ${constructorStats}
-
+${newsContext ? `\n${newsContext}\n` : ""}
 TASK: Rank ALL ${driver_trends.length} drivers and ALL ${allConstructors.length} constructors for the upcoming race.
 - Every driver must have a unique predicted_finish from 1 to ${driver_trends.length}
 - Use Fantasy F1 scoring rules to estimate predicted_points for each driver and constructor
 - The budget for a fantasy team is $100M for 5 drivers + 2 constructors
 - Your rankings will be used to find the best possible team within that budget
 - Mark exactly one driver as is_turbo_candidate (best single-driver turbo pick regardless of price)
-Return only valid JSON.`;
+${newsContext ? "- Factor in the recent news and community discussions above when assessing driver and team form\n" : ""}Return only valid JSON.`;
 }
 
 // ─── Response parser + budget optimizer integration ───────────────────────────
