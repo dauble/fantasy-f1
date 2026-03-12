@@ -194,7 +194,7 @@ function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiC
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export async function generatePredictions(dataPayload) {
+export async function generatePredictions(dataPayload, onProgress) {
   const constructorPriceMap = {};
   if (dataPayload.user_context?.custom_prices?.constructors) {
     Object.assign(constructorPriceMap, dataPayload.user_context.custom_prices.constructors);
@@ -232,15 +232,23 @@ export async function generatePredictions(dataPayload) {
   // Fetch real-time news context (non-blocking — a failure won't abort predictions)
   let newsContext = "";
   try {
+    onProgress?.("📰 Fetching latest F1 news & community updates…");
     const newsData = await fetchF1News();
     newsContext = buildNewsContext(newsData);
     if (newsContext) {
-      console.log(`[predictions] News context included: ${newsData.articles?.length ?? 0} articles`);
+      const count = newsData.articles?.length ?? 0;
+      const sources = newsData.sources_succeeded?.join(", ") || "news sources";
+      onProgress?.(`📰 Loaded ${count} articles from ${sources}`);
+      console.log(`[predictions] News context included: ${count} articles`);
+    } else {
+      onProgress?.("📰 No recent news found — continuing with race data only");
     }
   } catch (newsErr) {
     console.warn("[predictions] News fetch failed (continuing without):", newsErr.message);
+    onProgress?.("📰 News unavailable — continuing with race data only");
   }
 
+  onProgress?.("🤖 Asking Claude AI to rank all drivers & constructors…");
   const userMessage = buildUserMessage(dataPayload, constructorPriceMap, allConstructors, newsContext);
 
   try {
@@ -277,6 +285,7 @@ export async function generatePredictions(dataPayload) {
       .map(b => b.text)
       .join("");
 
+    onProgress?.("💰 Optimizing team selection within $100M budget…");
     return parsePredictionJSON(rawText, dataPayload, allConstructors);
   } catch (error) {
     if (error.message.includes("Failed to fetch")) {
