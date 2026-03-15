@@ -21,13 +21,17 @@ import { fetchF1News, buildNewsContext } from "./newsService.js";
 const PROXY_URL = "/api/predict";
 const MODEL = "claude-sonnet-4-20250514";
 
+// Points penalty applied per driver or constructor change in the official game
+const TRANSFER_PENALTY_PTS = 30;
+
 const SCORING_RULES = `
 FANTASY F1 SCORING:
 Race finishing: 1st=25, 2nd=18, 3rd=15, 4th=12, 5th=10, 6th=8, 7th=6, 8th=4, 9th=2, 10th=1
 Qualifying: P1=10, P2=9, P3=8, P4=7, P5=6, P6=5, P7=4, P8=3, P9=2, P10=1
 Bonuses: Fastest Lap=+5, Position Gained=+2 each, Beat Teammate (Qual)=+2, Beat Teammate (Race)=+3, Classified Finish=+1
 Penalties: Position Lost=-2 each, Not Classified=-5, Disqualified=-20
-Turbo Driver: one driver scores 2× points
+Turbo Driver: one driver scores 2x points
+Transfer penalty: each driver or constructor swap costs -30 fantasy points (a new pick must score 30+ more pts than the one it replaces to be net-positive)
 `.trim();
 
 const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from Formula1.com, PlanetF1, and Reddit.
@@ -36,9 +40,7 @@ Your task is to predict the race outcome for EVERY driver and EVERY constructor 
 
 ${SCORING_RULES}
 
-REQUIREMENTS:
-- Assign a unique predicted_finish (1 through N, no ties) to EVERY driver in "driver_predictions"
-- Calculate predicted_points for each driver using the Fantasy F1 scoring rules above (account for qualifying, race finish, bonuses)
+TRANSFER CONTEXT: The user may already have an existing fantasy team. Each change to that team costs -30 pts. Your rankings will be used by an algorithm that automatically accounts for this penalty, so you should rank purely by expected race performance. However, when writing your analysis_summary, acknowledge if the user’s current picks look worth keeping or swapping given the transfer cost.
 - Provide predicted_points for each constructor (combined fantasy points from both their drivers: race finish + qualifying + bonuses for each)
 - Provide clear reasoning for each driver and constructor based on recent form, circuit characteristics, teammate battles, and likely qualifying pace
 - Mark exactly one driver as is_turbo_candidate (the single driver expected to score the most fantasy points — the best turbo pick regardless of price)
@@ -66,7 +68,17 @@ Return ONLY valid JSON with no preamble or markdown fences:
     }
   ],
   "data_confidence": "high" | "medium" | "low",
-  "data_note": "string (brief note on data quality or any important caveats)"
+  "data_note": "string (brief note on data quality or any important caveats)",
+  "team_verdict": "keep" | "partial" | "transfer" (include only when a current team is provided; "keep" = no changes needed, "partial" = 1-2 worthwhile swaps, "transfer" = multiple beneficial changes available),
+  "current_team_assessment": [
+    {
+      "type": "driver" | "constructor",
+      "identifier": "string (driver abbreviation or exact team_name as given)",
+      "verdict": "keep" | "transfer",
+      "reason": "1 sentence: form, circuit fit, and whether the 30-pt transfer cost is justified",
+      "suggested_alternative": "string or null (abbreviation or team_name of best replacement; null if keeping)"
+    }
+  ]
 }`;
 
 // ─── Constructor list builder ─────────────────────────────────────────────────
@@ -119,19 +131,34 @@ function driverScore(d) {
  * Evaluates every valid combination of 5 drivers + 2 constructors within $100M
  * and returns the highest-scoring one.
  *
+ * When a currentTeam is supplied, each driver/constructor NOT already in that
+ * team incurs a TRANSFER_PENALTY_PTS deduction from the effective score.
+ * This means a marginal improvement that requires a transfer may not be worth
+ * taking, and the algorithm will prefer keeping existing picks when the gain
+ * doesn’t exceed the penalty cost.
+ *
  * When AI prediction maps are supplied, uses AI-predicted fantasy points as scores.
  * Falls back to the heuristic driverScore() if no AI data is available.
  *
- * Runtime: O(C(n,5) × C(m,2)) — with 20 drivers this is ~697k iterations (< 10ms).
+ * Runtime: O(C(n,5) x C(m,2)) — with 20 drivers this is ~697k iterations (< 10ms).
  *
- * @param {Array}  driverTrends       — each entry has .price, .abbreviation, etc.
+ * @param {Array}  driverTrends       — each entry has .price, .abbreviation, .driver_number, etc.
  * @param {Array}  allConstructors    — [{team_name, price, drivers}]
  * @param {Object} aiDriverMap        — { abbreviation: { predicted_points, predicted_finish, … } }
  * @param {Object} aiConstructorMap   — { team_name: { predicted_points, … } }
- * @returns {{ drivers, constructors, total_cost, budget_remaining } | null}
+ * @param {Object|null} currentTeam   — { drivers: [driverNumbers], constructors: [teamNames] } or null
+ * @returns {{ drivers, constructors, total_cost, budget_remaining, transfers } | null}
  */
-function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiConstructorMap = {}) {
+function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiConstructorMap = {}, currentTeam = null) {
   const BUDGET = 100;
+
+  // Build lookup sets from the current saved team for transfer-penalty calculation
+  const currentDriverNums = currentTeam?.drivers
+    ? new Set(currentTeam.drivers.map(n => Number(n)))
+    : null;
+  const currentConstructorNames = currentTeam?.constructors
+    ? new Set(currentTeam.constructors.map(n => String(n).toLowerCase().trim()))
+    : null;
 
   const drivers = driverTrends
     .filter(d => typeof d.price === 'number' && d.price > 0)
@@ -180,11 +207,26 @@ function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiC
       const total = dCost + c[0].price + c[1].price;
       if (total > BUDGET) continue;
 
+      // Subtract transfer penalty for each pick NOT already in the current team
+      let transferPenalty = 0;
+      if (currentDriverNums) {
+        for (const driver of d) {
+          if (!currentDriverNums.has(driver.driver_number)) transferPenalty += TRANSFER_PENALTY_PTS;
+        }
+      }
+      if (currentConstructorNames) {
+        for (const cons of c) {
+          if (!currentConstructorNames.has(cons.team_name.toLowerCase().trim())) transferPenalty += TRANSFER_PENALTY_PTS;
+        }
+      }
+
       const score = d.reduce((s, x) => s + x._score, 0)
                   + c.reduce((s, x) => s + x._score, 0);
-      if (score > bestScore) {
-        bestScore = score;
-        best = { drivers: d, constructors: c, total_cost: total, budget_remaining: BUDGET - total };
+      const effectiveScore = score - transferPenalty;
+      if (effectiveScore > bestScore) {
+        bestScore = effectiveScore;
+        const transfers = transferPenalty / TRANSFER_PENALTY_PTS;
+        best = { drivers: d, constructors: c, total_cost: total, budget_remaining: BUDGET - total, transfers };
       }
     }
   }
@@ -301,7 +343,7 @@ export async function generatePredictions(dataPayload, onProgress) {
 // ─── User message builder ─────────────────────────────────────────────────────
 
 function buildUserMessage(payload, constructorPriceMap, allConstructors, newsContext = "") {
-  const { next_race, recent_races, driver_trends, user_context, data_window } = payload;
+  const { next_race, recent_races, driver_trends, user_context, data_window, practice_data } = payload;
 
   // Build the upcoming race string from whatever data we have
   let nextRaceStr;
@@ -346,14 +388,46 @@ function buildUserMessage(payload, constructorPriceMap, allConstructors, newsCon
   let currentTeamNote = "";
   if (user_context?.current_team) {
     const t = user_context.current_team;
-    const dNames = t.drivers?.map(d => d.full_name || d.name).join(", ") || "none";
-    const cNames = t.constructors?.map(c => c.team_name || c.name).join(", ") || "none";
-    currentTeamNote = `\nUSER'S CURRENT FANTASY TEAM: ${dNames} | ${cNames}${t.totalCost !== undefined ? ` ($${t.totalCost}M)` : ""}\n`;
+    // Resolve driver numbers to names/abbreviations using driver_trends
+    const numToName = {};
+    const numToAbbrev = {};
+    for (const d of driver_trends) {
+      if (d.driver_number != null) {
+        numToName[Number(d.driver_number)] = d.full_name || d.abbreviation || `#${d.driver_number}`;
+        numToAbbrev[Number(d.driver_number)] = d.abbreviation;
+      }
+    }
+    const resolveDriver = (d) => {
+      if (typeof d === 'number' || (typeof d === 'string' && !isNaN(d))) {
+        const num = Number(d);
+        const name = numToName[num];
+        const abbrev = numToAbbrev[num];
+        return name ? `${name}${abbrev ? ` (${abbrev})` : ''}` : `Driver #${d}`;
+      }
+      return d?.full_name || d?.name || String(d);
+    };
+    const dNames = Array.isArray(t.drivers) ? t.drivers.map(resolveDriver).join(", ") : "none";
+    const cNames = Array.isArray(t.constructors)
+      ? t.constructors.map(c => typeof c === 'string' ? c : (c?.team_name || c?.name || String(c))).join(", ")
+      : "none";
+    const budget = t.totalSpent != null ? ` ($${(t.totalSpent / 1_000_000).toFixed(1)}M spent)` : (t.totalCost != null ? ` ($${t.totalCost}M)` : "");
+    currentTeamNote = `\nUSER'S CURRENT FANTASY TEAM:\nDrivers: ${dNames}\nConstructors: ${cNames}${budget}\n\nTRANSFER RULE: Each driver or constructor swap costs -${TRANSFER_PENALTY_PTS} pts. Only recommend a transfer if the replacement is expected to score ${TRANSFER_PENALTY_PTS}+ more fantasy points than who they replace.\n\nTEAM ASSESSMENT TASK: Evaluate EVERY one of the user's current picks. For each, decide KEEP (solid for this circuit, not worth the penalty) or TRANSFER (clear upgrade that justifies the -${TRANSFER_PENALTY_PTS} pt cost). Use practice session pace and news to inform these calls. Populate "team_verdict" ("keep" / "partial" / "transfer") and "current_team_assessment" in your JSON response.\n`;
+  }
+
+  let practiceContext = "";
+  if (practice_data?.length) {
+    const sections = practice_data.map(session => {
+      const rows = session.results
+        .slice(0, 10)
+        .map(r => `  P${String(r.position).padEnd(2)} ${(r.abbreviation || '?').padEnd(4)} ${(r.full_name || '').padEnd(24)} ${r.team_name || ''}`)
+        .join("\n");
+      return `${session.name}:\n${rows}`;
+    }).join("\n");
+    practiceContext = `\nCURRENT WEEKEND PRACTICE RESULTS (top 10 per session):\n${sections}\n`;
   }
 
   return `${nextRaceStr}
-DATA WINDOW: ${data_window}
-${currentTeamNote}
+DATA WINDOW: ${data_window}${currentTeamNote}${practiceContext}
 RECENT RACE RESULTS:
 ${recentRacesStr}
 
@@ -373,7 +447,7 @@ TASK: Rank ALL ${driver_trends.length} drivers and ALL ${allConstructors.length}
 - The budget for a fantasy team is $100M for 5 drivers + 2 constructors
 - Your rankings will be used to find the best possible team within that budget
 - Mark exactly one driver as is_turbo_candidate (best single-driver turbo pick regardless of price)
-${newsContext ? "- Factor in the recent news and community discussions above when assessing driver and team form\n" : ""}Return only valid JSON.`;
+${newsContext ? "- Factor in the recent news and community discussions above when assessing driver and team form\n" : ""}${practice_data?.length ? "- Weight practice session pace and classifications heavily for circuit-specific form\n" : ""}${user_context?.current_team ? "- Populate team_verdict and current_team_assessment for EVERY one of the user's current picks\n" : ""}Return only valid JSON.`;
 }
 
 // ─── Response parser + budget optimizer integration ───────────────────────────
@@ -397,12 +471,15 @@ function parsePredictionJSON(rawText, fallbackPayload, allConstructors) {
   const aiConstructorMap = {};
   (parsed.constructor_predictions || []).forEach(p => { aiConstructorMap[p.team_name] = p; });
 
+  const currentTeam = fallbackPayload.user_context?.current_team || null;
+
   // Run the budget optimizer using AI-predicted fantasy points as scores
   const optimalTeam = computeOptimalTeam(
     fallbackPayload.driver_trends,
     allConstructors,
     aiDriverMap,
-    aiConstructorMap
+    aiConstructorMap,
+    currentTeam
   );
 
   if (!optimalTeam) {
@@ -496,21 +573,29 @@ function parsePredictionJSON(rawText, fallbackPayload, allConstructors) {
     risks,
     total_cost: optimalTeam.total_cost,
     budget_remaining: optimalTeam.budget_remaining,
-    budget_analysis: `Optimal team: $${optimalTeam.total_cost.toFixed(2)}M / $100M ($${optimalTeam.budget_remaining.toFixed(2)}M remaining) — selected from ${totalDrivers} drivers & ${totalConstructors} constructors.`,
+    budget_analysis: `Optimal team: $${optimalTeam.total_cost.toFixed(2)}M / $100M ($${optimalTeam.budget_remaining.toFixed(2)}M remaining) — selected from ${totalDrivers} drivers & ${totalConstructors} constructors${optimalTeam.transfers > 0 ? ` — ${optimalTeam.transfers} transfer${optimalTeam.transfers !== 1 ? 's' : ''} from current team (-${optimalTeam.transfers * TRANSFER_PENALTY_PTS} pts penalty)` : ' — no transfers needed'}.`,
+    transfers: optimalTeam.transfers ?? null,
     data_confidence: parsed.data_confidence || "medium",
-    data_note: parsed.data_note || "",
+    data_note: parsed.data_note || null,
+    team_verdict: parsed.team_verdict || null,
+    current_team_assessment: parsed.current_team_assessment || null,
     raw_data: fallbackPayload,
     generated_at: new Date().toISOString(),
   };
 }
 
-function buildFallbackResult(fallbackPayload, allConstructors, errorNote) {
+// ─── Fallback result ─────────────────────────────────────────────────────────
+
+function buildFallbackResult(fallbackPayload, allConstructors, errorNote = '') {
+  const currentTeam = fallbackPayload.user_context?.current_team || null;
+
   // Run the optimizer with only heuristic scores (no AI data)
   const optimalTeam = computeOptimalTeam(
     fallbackPayload.driver_trends,
     allConstructors,
     {},  // no AI driver map
-    {}   // no AI constructor map
+    {},  // no AI constructor map
+    currentTeam
   );
 
   if (!optimalTeam) {
@@ -575,7 +660,7 @@ function buildFallbackResult(fallbackPayload, allConstructors, errorNote) {
 
 function formatDate(dateStr) {
   if (!dateStr) return "TBD";
-  return new Date(dateStr).toLocaleDateString("en-GB", {
+  return new Date(dateStr).toLocaleDateString("en-US", {
     day: "numeric", month: "short", year: "numeric",
   });
 }
