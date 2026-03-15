@@ -177,6 +177,39 @@ const Rules = () => {
         </CardContent>
       </Card>
 
+      {/* Transfer Penalties */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>🔄 Transfers &amp; Penalties</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded">
+              <h4 className="font-semibold text-red-900 dark:text-red-100 mb-2">Transfer Penalty (-30 pts)</h4>
+              <p className="text-red-800 dark:text-red-200">
+                Each driver or constructor you change in your team incurs a <strong>-30 point penalty</strong>.
+                This is deducted from your total score for that race weekend.
+              </p>
+            </div>
+            <div>
+              <h4 className="font-semibold mb-2">Key Rules</h4>
+              <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-200">
+                <li>Each driver swap = <strong>-30 pts</strong></li>
+                <li>Each constructor swap = <strong>-30 pts</strong></li>
+                <li>A new pick must score <strong>30+ more points</strong> than the one they replace to be net-positive</li>
+                <li>Use the <strong>Wildcard</strong> chip to make unlimited transfers without penalty</li>
+              </ul>
+            </div>
+            <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded">
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>💡 AI Predictions account for this:</strong> The AI team recommendation already factors in
+                your current team and transfer costs. Picks are chosen for their <em>net</em> value after penalties.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Strategy Tips */}
       <Card>
         <CardHeader>
