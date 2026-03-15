@@ -41,10 +41,10 @@ const TeamHistory = () => {
   if (history.length === 0) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <h1 className="text-3xl font-bold mb-6">Team History</h1>
+        <h1 className="text-3xl font-bold mb-6 dark:text-white">Team History</h1>
         <Card>
           <CardContent className="text-center py-12">
-            <p className="text-gray-600 text-lg mb-4">No saved teams yet</p>
+            <p className="text-gray-600 dark:text-gray-400 text-lg mb-4">No saved teams yet</p>
             <p className="text-gray-500 text-sm">
               Use the "Save to History" button in Team Builder to save your teams for each race week.
             </p>
@@ -57,14 +57,14 @@ const TeamHistory = () => {
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">Team History</h1>
-        <p className="text-gray-600">View and manage your saved teams from previous race weeks</p>
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 dark:text-white">Team History</h1>
+        <p className="text-gray-600 dark:text-gray-400">View and manage your saved teams from previous race weeks</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {history.map((team) => (
           <Card key={team.id} className="hover:shadow-lg transition-shadow">
-            <CardHeader className="bg-gradient-to-r from-f1-red to-f1-red-dark text-white">
+            <CardHeader className="bg-gradient-to-r from-f1-red to-f1-red-dark text-white rounded py-1 px-2">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-white">{team.week}</CardTitle>
                 <span className="text-sm opacity-90">
@@ -82,7 +82,7 @@ const TeamHistory = () => {
                   {team.selectedDrivers?.map((driver) => (
                     <div 
                       key={driver.driver_number}
-                      className="flex items-center justify-between text-sm py-1 px-2 bg-gray-50 rounded"
+                      className="flex items-center justify-between text-sm py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded"
                     >
                       <span className="flex items-center gap-2">
                         <span className="font-bold text-gray-600">#{driver.driver_number}</span>
@@ -106,7 +106,7 @@ const TeamHistory = () => {
                   {team.selectedConstructors?.map((constructor) => (
                     <div 
                       key={constructor.team_name}
-                      className="text-sm py-1 px-2 bg-gray-50 rounded"
+                      className="text-sm py-1 px-2 bg-gray-50 dark:bg-gray-700 rounded"
                     >
                       {constructor.team_name}
                     </div>

@@ -9,9 +9,9 @@ export function Card({
   onClick = null
 }) {
   const variants = {
-    default: 'bg-white border-gray-200',
+    default: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-gray-100',
     dark: 'bg-gray-800 border-gray-700 text-white',
-    primary: 'bg-blue-50 border-blue-200',
+    primary: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
     f1: 'bg-gradient-to-br from-red-600 to-red-700 border-red-800 text-white',
   };
 
@@ -64,7 +64,7 @@ export function CardContent({ children, className = '' }) {
 
 export function CardFooter({ children, className = '' }) {
   return (
-    <div className={`mt-4 pt-4 border-t border-gray-200 ${className}`}>
+    <div className={`mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 ${className}`}>
       {children}
     </div>
   );

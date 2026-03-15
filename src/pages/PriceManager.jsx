@@ -174,8 +174,8 @@ const PriceManager = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <h1 className="text-3xl font-bold mb-6">Price Manager</h1>
-        <p className="text-gray-600">Loading...</p>
+        <h1 className="text-3xl font-bold mb-6 dark:text-white">Price Manager</h1>
+        <p className="text-gray-600 dark:text-gray-400">Loading...</p>
       </div>
     );
   }
@@ -198,10 +198,10 @@ const PriceManager = () => {
       )}
 
       <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">
+        <h1 className="text-3xl md:text-4xl font-bold mb-2 dark:text-white">
           {isSetupMode ? 'Step 1: Set Your Prices' : 'Manage Driver & Constructor Prices'}
         </h1>
-        <p className="text-gray-600">
+        <p className="text-gray-600 dark:text-gray-300">
           {isSetupMode 
             ? 'Visit fantasy.formula1.com to get the latest prices, then enter them below'
             : 'Update prices each week to match the official Fantasy F1 site'
@@ -259,10 +259,10 @@ const PriceManager = () => {
       {/* Save Status */}
       {saveStatus && (
         <div className={`mb-6 p-4 rounded-lg ${
-          saveStatus === 'saved' ? 'bg-green-100 text-green-800' :
-          saveStatus === 'reset' ? 'bg-orange-100 text-orange-800' :
-          saveStatus === 'error' ? 'bg-red-100 text-red-800' :
-          'bg-blue-100 text-blue-800'
+          saveStatus === 'saved' ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-100' :
+          saveStatus === 'reset' ? 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-100' :
+          saveStatus === 'error' ? 'bg-red-100 dark:bg-red-900/40 text-red-800 dark:text-red-100' :
+          'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-100'
         }`}>
           {saveStatus === 'saved' && (isSetupMode 
             ? '✅ Prices saved successfully! Redirecting to Team Builder...'
@@ -274,11 +274,11 @@ const PriceManager = () => {
       )}
 
       {/* Info Card */}
-      <Card className="mb-6 bg-blue-50 border-blue-200">
+      <Card className="mb-6 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-700">
         <CardContent className="py-4">
           <div className="flex items-start gap-3">
             <span className="text-2xl">💡</span>
-            <div className="text-sm text-blue-900">
+            <div className="text-sm text-blue-900 dark:text-blue-100">
               <p className="font-semibold mb-1">{isSetupMode ? 'Getting Started:' : 'How to use:'}</p>
               <ul className="list-disc list-inside space-y-1">
                 {isSetupMode ? (
@@ -292,7 +292,7 @@ const PriceManager = () => {
                 ) : (
                   <>
                     <li>Enter prices in millions (e.g., "32.5" for $32.5M)</li>
-                    <li>Values highlighted in <span className="text-green-600 font-semibold">green</span> have custom prices set</li>
+                    <li>Values highlighted in <span className="text-green-600 dark:text-green-300 font-semibold">green</span> have custom prices set</li>
                     <li>Click "Save Changes" to apply your prices across the app</li>
                     <li>Export/import CSV files to share prices or backup your data</li>
                   </>
@@ -305,13 +305,13 @@ const PriceManager = () => {
 
       {/* Automatic Scraping Info */}
       {!isSetupMode && (
-        <Card className="mb-6 bg-purple-50 border-purple-200">
-          <CardContent className="py-4">
-            <div className="flex items-start gap-3">
-              <span className="text-2xl">🤖</span>
-              <div className="flex-1">
-                <h3 className="font-semibold text-purple-900 mb-2">Want Automatic Price Fetching?</h3>
-                <p className="text-sm text-purple-800 mb-3">
+      <Card className="mb-6 bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-700">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">🤖</span>
+            <div className="flex-1">
+              <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">Want Automatic Price Fetching?</h3>
+              <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
                   Learn about options for automatically scraping prices from the official Fantasy F1 site, including backend setup, browser extensions, and community sources.
                 </p>
                 <button
@@ -327,13 +327,13 @@ const PriceManager = () => {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-gray-200">
+      <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
         <button
           onClick={() => setActiveTab('drivers')}
           className={`px-6 py-3 font-semibold transition-colors border-b-2 ${
             activeTab === 'drivers'
               ? 'border-f1-red text-f1-red'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
+              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
           🏎️ Drivers ({drivers.length})
@@ -343,7 +343,7 @@ const PriceManager = () => {
           className={`px-6 py-3 font-semibold transition-colors border-b-2 ${
             activeTab === 'constructors'
               ? 'border-f1-red text-f1-red'
-              : 'border-transparent text-gray-600 hover:text-gray-900'
+              : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
           }`}
         >
           🏁 Constructors ({constructors.length})
@@ -364,19 +364,19 @@ const PriceManager = () => {
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-2xl font-bold text-gray-600">#{driver.driver_number}</span>
+                        <span className="text-2xl font-bold text-gray-600 dark:text-gray-300">#{driver.driver_number}</span>
                         {isCustom && <span className="text-xs bg-green-500 text-white px-2 py-1 rounded">CUSTOM</span>}
                       </div>
                       <h3 className="font-bold text-lg">
                         {driver.full_name || `${driver.first_name} ${driver.last_name}`}
                       </h3>
-                      <p className="text-sm text-gray-600">{driver.team_name}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">{driver.team_name}</p>
                     </div>
                     {priceChange && (
                       <div className={`text-right text-sm ${
-                        priceChange.direction === 'up' ? 'text-green-600' :
-                        priceChange.direction === 'down' ? 'text-red-600' :
-                        'text-gray-600'
+                        priceChange.direction === 'up' ? 'text-green-600 dark:text-green-300' :
+                        priceChange.direction === 'down' ? 'text-red-600 dark:text-red-300' :
+                        'text-gray-600 dark:text-gray-300'
                       }`}>
                         <div className="font-bold">
                           {priceChange.direction === 'up' && '↑'}
@@ -389,7 +389,7 @@ const PriceManager = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">$</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">$</span>
                     <input
                       type="number"
                       step="0.1"
@@ -397,12 +397,12 @@ const PriceManager = () => {
                       max="50"
                       value={(currentPrice / 1000000).toFixed(1)}
                       onChange={(e) => handleDriverPriceChange(driver.driver_number, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red focus:border-transparent"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
-                    <span className="text-sm font-medium text-gray-700">M</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">M</span>
                   </div>
                   
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-300 mt-2">
                     Default: {formatPrice(DRIVER_PRICES[driver.driver_number] || 8000000)}
                   </p>
                 </CardContent>
@@ -432,9 +432,9 @@ const PriceManager = () => {
                     </div>
                     {priceChange && (
                       <div className={`text-right text-sm ${
-                        priceChange.direction === 'up' ? 'text-green-600' :
-                        priceChange.direction === 'down' ? 'text-red-600' :
-                        'text-gray-600'
+                        priceChange.direction === 'up' ? 'text-green-600 dark:text-green-300' :
+                        priceChange.direction === 'down' ? 'text-red-600 dark:text-red-300' :
+                        'text-gray-600 dark:text-gray-300'
                       }`}>
                         <div className="font-bold">
                           {priceChange.direction === 'up' && '↑'}
@@ -447,7 +447,7 @@ const PriceManager = () => {
                   </div>
                   
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-gray-700">$</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">$</span>
                     <input
                       type="number"
                       step="0.1"
@@ -455,12 +455,12 @@ const PriceManager = () => {
                       max="50"
                       value={(currentPrice / 1000000).toFixed(1)}
                       onChange={(e) => handleConstructorPriceChange(teamName, e.target.value)}
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red focus:border-transparent"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red focus:border-transparent bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
                     />
-                    <span className="text-sm font-medium text-gray-700">M</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">M</span>
                   </div>
                   
-                  <p className="text-xs text-gray-500 mt-2">
+                  <p className="text-xs text-gray-500 dark:text-gray-300 mt-2">
                     Default: {formatPrice(CONSTRUCTOR_PRICES[teamName] || 10000000)}
                   </p>
                 </CardContent>

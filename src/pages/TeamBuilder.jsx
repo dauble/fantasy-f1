@@ -239,7 +239,7 @@ const TeamBuilder = () => {
   if (loading) {
     return (
       <div className="container mx-auto px-4 py-6">
-        <h1 className="text-3xl font-bold mb-6">Team Builder</h1>
+        <h1 className="text-3xl font-bold mb-6 dark:text-white">Team Builder</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           <LoadingSkeleton variant="card" count={6} />
         </div>
@@ -292,15 +292,15 @@ const TeamBuilder = () => {
       <div className="mb-6">
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Build Your Fantasy F1 Team</h1>
-            <p className="text-gray-600">Select 5 drivers and 2 constructors within your $100M budget</p>
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 dark:text-white">Build Your Fantasy F1 Team</h1>
+            <p className="text-gray-600 dark:text-gray-400">Select 5 drivers and 2 constructors within your $100M budget</p>
           </div>
           
           {/* Save Status */}
           {lastSaved && (
             <div className="flex items-center gap-2 text-sm">
               {saveStatus === 'saving' && (
-                <span className="text-gray-600">💾 Saving...</span>
+                <span className="text-gray-600 dark:text-gray-400">💾 Saving...</span>
               )}
               {saveStatus === 'saved' && (
                 <span className="text-green-600">✅ Auto-saved</span>
@@ -393,8 +393,8 @@ const TeamBuilder = () => {
                       key={driver.driver_number}
                       className={`px-3 py-2 rounded-lg border-2 flex items-center gap-2 ${
                         turboDriver?.driver_number === driver.driver_number 
-                          ? 'border-yellow-400 bg-yellow-50' 
-                          : 'border-gray-200 bg-gray-50'
+                          ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30' 
+                          : 'border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700'
                       }`}
                     >
                       <span className="font-bold">#{driver.driver_number}</span>
@@ -404,7 +404,7 @@ const TeamBuilder = () => {
                       )}
                       <button
                         onClick={() => handleTurboSelect(driver)}
-                        className="text-xs bg-gray-200 hover:bg-yellow-400 px-2 py-1 rounded ml-2"
+                        className="text-xs bg-gray-200 hover:bg-yellow-400 dark:bg-gray-700 dark:hover:bg-yellow-600 dark:text-white px-2 py-1 rounded ml-2"
                         title="Set as Turbo Driver (2x points)"
                       >
                         ⚡
@@ -421,7 +421,7 @@ const TeamBuilder = () => {
                   {selectedConstructors.map(constructor => (
                     <div 
                       key={constructor.team_name}
-                      className="px-3 py-2 rounded-lg bg-gray-50 border-2 border-gray-200"
+                      className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 dark:text-gray-100"
                     >
                       {constructor.team_name}
                     </div>

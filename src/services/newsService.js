@@ -5,8 +5,9 @@
  * Caches results in localStorage to avoid redundant network requests.
  *
  * The server aggregates articles from:
+ *   - Formula1.com   (https://www.formula1.com/en/latest/all.news.html.rss)
  *   - PlanetF1       (https://www.planetf1.com/feed/)
- *   - Motorsport.com (https://www.motorsport.com/rss/f1/news/)
+ *   - Motorsport.com (supplementary — lower volume)
  *   - Reddit         (https://www.reddit.com/r/formula1/)
  */
 

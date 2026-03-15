@@ -5,7 +5,7 @@
  *
  *   Claude AI    → receives the FULL grid of ALL drivers and ALL constructors
  *                  with recent performance data, fantasy prices, AND real-time
- *                  news articles from PlanetF1, Motorsport.com, and Reddit.
+ *                  news articles from Formula1.com, PlanetF1, and Reddit.
  *                  It ranks every driver and constructor for the next Grand Prix.
  *
  *   JavaScript   → takes the AI's full rankings and finds the best possible
@@ -30,7 +30,7 @@ Penalties: Position Lost=-2 each, Not Classified=-5, Disqualified=-20
 Turbo Driver: one driver scores 2× points
 `.trim();
 
-const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from PlanetF1, Motorsport.com, and Reddit.
+const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from Formula1.com, PlanetF1, and Reddit.
 
 Your task is to predict the race outcome for EVERY driver and EVERY constructor in the list for the upcoming Grand Prix. Do NOT pre-select a team; rank the entire field.
 

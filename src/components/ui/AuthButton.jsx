@@ -17,7 +17,7 @@ const SYNC_COLORS = {
 };
 
 export default function AuthButton() {
-  const { user, authLoading, syncStatus, signOut, syncToCloud, supabaseReady } = useAuth();
+  const { user, authLoading, syncStatus, signOut, syncBidirectional, supabaseReady } = useAuth();
 
   if (!supabaseReady) return null;
 
@@ -57,11 +57,12 @@ export default function AuthButton() {
 
       <div className="flex gap-2">
         <button
-          onClick={syncToCloud}
+          onClick={syncBidirectional}
           disabled={syncStatus === 'syncing'}
+          title="Pull latest data from cloud, then push local changes up"
           className="flex-1 px-3 py-2 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-all text-white text-xs font-medium disabled:opacity-50"
         >
-          {syncStatus === 'syncing' ? 'Syncing…' : 'Sync now'}
+          {syncStatus === 'syncing' ? 'Syncing…' : 'Sync ⇅'}
         </button>
         <button
           onClick={signOut}

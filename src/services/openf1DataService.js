@@ -191,6 +191,58 @@ export async function getRecentRaceSessions(limit = 5) {
   }
 }
 
+/** Get a currently-ongoing race weekend (if any) */
+export async function getCurrentRaceSession() {
+  try {
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    for (const year of [currentYear, currentYear - 1]) {
+      let meetings;
+      try {
+        meetings = await openF1API.getMeetings(year);
+      } catch {
+        continue;
+      }
+      if (!meetings || meetings.length === 0) continue;
+
+      // A meeting is "current" if it started in the past 6 days and hasn't ended yet
+      const ongoing = meetings
+        .filter(m => {
+          const start = m.date_start ? new Date(m.date_start) : null;
+          const end   = m.date_end   ? new Date(m.date_end)   : null;
+          if (!start) return false;
+          const sixDaysAgo = new Date(now - 6 * 24 * 60 * 60 * 1000);
+          // Started within the past 6 days AND either no end date yet or end is still in the future
+          return start > sixDaysAgo && start <= now && (!end || end >= now);
+        })
+        .sort((a, b) => new Date(b.date_start) - new Date(a.date_start));
+
+      if (ongoing.length === 0) continue;
+
+      const meeting = ongoing[0];
+      try {
+        const sessions = await openF1API.getSessions(meeting.meeting_key);
+        const raceSession = sessions.find(s => s.session_name === 'Race');
+        if (raceSession) return raceSession;
+      } catch {
+        // fall through to meeting-level info
+      }
+
+      return {
+        session_name: meeting.meeting_name || 'Race',
+        circuit_short_name: meeting.circuit_short_name || meeting.location || null,
+        country_name: meeting.country_name || null,
+        date_start: meeting.date_start || null,
+        _from_meeting: true,
+      };
+    }
+    return null;
+  } catch (error) {
+    console.error('Error fetching current race session:', error);
+    return null;
+  }
+}
+
 /** Get the next upcoming race session */
 export async function getNextRaceSession() {
   try {
@@ -502,9 +554,10 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
   }
 
   try {
-    const [recentSessions, nextSession] = await Promise.all([
+    const [recentSessions, nextSession, currentSession] = await Promise.all([
       getRecentRaceSessions(recentRaceCount),
       getNextRaceSession(),
+      getCurrentRaceSession(),
     ]);
 
     // Check if we have any data
@@ -615,6 +668,14 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
     }
 
     const payload = {
+      current_race: currentSession
+        ? {
+            name: currentSession.session_name || currentSession.circuit_short_name,
+            circuit: currentSession.circuit_short_name,
+            country: currentSession.country_name,
+            date: currentSession.date_start,
+          }
+        : null,
       next_race: nextSession
         ? {
             name: nextSession.session_name || nextSession.circuit_short_name,

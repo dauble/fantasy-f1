@@ -1,6 +1,6 @@
 # Fantasy F1 Team Builder & Predictor
 
-A modern React application for building and managing your Fantasy Formula 1 team, with data-driven predictions and comprehensive statistics.
+A modern React application for building and managing your Fantasy Formula 1 team, with AI-powered predictions, cloud sync across devices, and full dark mode.
 
 ![Fantasy F1](https://img.shields.io/badge/Fantasy%20F1-E10600?style=flat&logo=f1&logoColor=white)
 ![React](https://img.shields.io/badge/React-19.2.0-61DAFB?style=flat&logo=react)
@@ -39,22 +39,34 @@ A modern React application for building and managing your Fantasy Formula 1 team
 - **Reset to Defaults**: Quickly revert to default prices if needed
 - **Visual Feedback**: Custom prices are highlighted in green, changes shown in red/green
 
-### �📊 Predictions
-
-- **Race Outcome Predictions**: Data-driven forecasts for upcoming races
-- **Points Calculator**: See predicted points for each driver
-- **Turbo Multiplier Preview**: Compare standard vs. turbocharged points
-- **Historical Analysis**: Predictions based on circuit characteristics
-
 ### 🤖 AI-Powered Predictions
 
 - **Claude AI Integration**: Intelligent team recommendations powered by Anthropic's Claude
-- **Historical Data Analysis**: Analyzes recent race results, lap times, and driver trends
-- **Smart Recommendations**: 5 drivers + 2 constructors optimized for predicted points
-- **Turbo Driver Suggestions**: AI identifies best turbo pick based on recent form
-- **Value Analysis**: Highlights drivers with best points-per-dollar ratio
+- **Full Grid Analysis**: Every driver and constructor ranked — not just a shortlist
+- **Real-time News Context**: Articles from Autosport, The Race, PlanetF1, and Reddit feed into the AI prompt
+- **4-Layer Caching**: Most visits need zero OpenF1 API calls
+- **Cross-Device Sync**: Cached predictions sync to your Supabase profile so Device B reuses Device A's result
+- **Smart Recommendations**: 5 drivers + 2 constructors optimised for predicted points within $100M
+- **Turbo Driver Suggestions**: AI identifies the best turbo pick based on recent form
+- **Value Analysis**: Highlights drivers with the best points-per-dollar ratio
 - **Confidence Ratings**: Each recommendation includes confidence level (high/medium/low)
-- **Circuit-Specific Insights**: Predictions consider track type and characteristics
+- **Current Race Detection**: Automatically detects an ongoing race weekend and shows it in the header
+- **Step-by-step Progress**: Real-time loading log shows exactly what the AI is analysing
+
+### 👤 User Accounts & Cloud Sync
+
+- **Email Authentication**: Sign up and log in with email/password via Supabase Auth
+- **Cloud Sync**: Team, prices, history, and AI predictions stored in Supabase and synced across devices
+- **Bidirectional Sync**: Logging in pulls the latest data from the cloud; changes push automatically every 60 seconds
+- **Auto-Pull on Return**: If you've had the tab hidden for 5+ minutes, data is refreshed automatically on refocus
+- **Manual Sync**: "Sync ⇅" button for on-demand sync
+- **Theme Persistence**: Dark/light mode preference saved to your profile
+
+### 🌙 Dark Mode
+
+- **System-quality dark theme** covering all pages and components
+- **Toggle in sidebar** (🌙/☀️) — persisted per-user to Supabase profile
+- **WCAG 2.2 AA+** contrast ratios throughout
 
 ### 📋 Rules & Scoring
 
@@ -65,13 +77,15 @@ A modern React application for building and managing your Fantasy Formula 1 team
 
 ## Tech Stack
 
-- **React 19** - Modern UI library
-- **Vite 7** - Lightning-fast build tool
-- **Tailwind CSS 3** - Utility-first styling
-- **React Router** - Client-side routing
-- **Axios** - HTTP client for API requests
-- **Heroicons** - Beautiful hand-crafted SVG icons
-- **Moment.js** - Date/time formatting
+- **React 19** — Modern UI library
+- **Vite 7** — Lightning-fast build tool
+- **Tailwind CSS 3** — Utility-first styling with `darkMode: 'class'`
+- **React Router 7** — Client-side routing
+- **Supabase** — Auth, cloud storage, and profile sync
+- **Axios** — HTTP client for API requests
+- **Heroicons** — SVG icon library
+- **Express 5** — API proxy server (AI predictions, news, config)
+- **Concurrently** — Runs Vite and Express together during development
 
 ## Data Source
 
@@ -82,38 +96,49 @@ This application uses the [OpenF1 API](https://openf1.org/) which provides:
 - Session data and results
 - Official F1 timing data
 
-### API Caching
+### API Caching — 4-Layer System
 
-To prevent rate limiting (429 errors) from the OpenF1 API, this app implements an intelligent caching system:
+To prevent rate limiting (429 errors) from the OpenF1 API, the app uses a 4-layer cache:
 
-- **5-minute cache TTL**: API responses are cached in localStorage for 5 minutes
-- **Automatic cache management**: Old entries are automatically cleaned up
-- **Cache status widget**: View cache statistics and manually clear cache if needed
-- **Smart cache keys**: Each API endpoint and parameter combination has a unique cache key
+| Layer | What's cached            | TTL      |
+| ----- | ------------------------ | -------- |
+| 1     | Raw OpenF1 API responses | 24 hours |
+| 2     | Per-session driver stats | 7 days   |
+| 3     | Inter-meeting delay      | —        |
+| 4     | Full prediction payload  | 4 hours  |
 
-The cache status widget appears in the bottom-right corner of the app, showing the number of cached items and total cache size.
+Most page loads require **zero** OpenF1 API calls. Use **Refresh Predictions** to bypass all layers and force a fresh fetch.
 
-### Team Persistence
+### Cloud Sync (Supabase)
 
-Your team selections are automatically saved to browser localStorage:
+When logged in, the following data is stored in Supabase and synced across devices:
 
-- **Auto-save**: Your selections are saved automatically as you build your team
-- **Current Team**: Your active team is always persisted between sessions
-- **Team History**: Save up to 20 historical teams with custom labels (e.g., "Monaco GP", "Race 5")
-- **Import/Export**: Share teams via downloadable JSON files
-- **Cross-Session**: Your team persists even after closing your browser
+- Current team selection
+- Custom prices
+- Team history
+- Price history
+- AI predictions (avoids redundant Claude API calls on second device)
+- Dark/light theme preference (stored in `user_metadata`)
 
-**Storage Keys:**
+**Sync behaviour**:
 
-- `fantasy_f1_current_team`: Your active team selections
-- `fantasy_f1_teams_history`: Up to 20 saved historical teams
+- Pulls on login
+- Pushes every 60 seconds automatically
+- Bidirectional sync on the "Sync ⇅" button
+- Auto-pulls when tab returns to focus after 5+ minutes hidden
 
-**Team Data Includes:**
+### Local Storage
 
-- Selected drivers and constructors
-- Turbo driver choice
-- Total budget spent
-- Save timestamps
+All data is also persisted locally so the app works without an account:
+
+| Key                        | Contents                                |
+| -------------------------- | --------------------------------------- |
+| `fantasy_f1_current_team`  | Active team selections                  |
+| `fantasy_f1_teams_history` | Up to 20 saved historical teams         |
+| `fantasy_f1_custom_prices` | Current custom price values             |
+| `fantasy_f1_price_history` | Historical price snapshots (up to 10)   |
+| `fantasy_f1_ai_prediction` | Latest AI prediction + raw data payload |
+| `fantasy_f1_theme`         | `'light'` or `'dark'`                   |
 
 ### Custom Pricing
 
@@ -142,6 +167,8 @@ Update driver and constructor prices weekly to match official Fantasy F1 values:
 ### Prerequisites
 
 - Node.js 18+ and npm
+- A [Supabase](https://supabase.com/) project (free tier is sufficient) — for auth and cloud sync
+- An [Anthropic API key](https://console.anthropic.com/) — for AI predictions
 
 ### Installation
 
@@ -151,19 +178,24 @@ Update driver and constructor prices weekly to match official Fantasy F1 values:
 npm install
 ```
 
-2. **(Optional)** For AI Predictions, create a `.env` file:
+2. Create a `.env` file in the project root:
 
 ```bash
+# Required for AI Predictions
 ANTHROPIC_API_KEY=sk-ant-your-api-key-here
+
+# Required for Auth & Cloud Sync
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-3. Start the development server:
+3. Start the development servers:
 
 ```bash
 npm run dev
 ```
 
-This starts both the Express server (port 3000) and Vite (port 5173) concurrently.
+This starts the Express server (port 3000) and Vite (port 5173) concurrently.
 
 4. Open your browser and navigate to:
 
@@ -171,32 +203,17 @@ This starts both the Express server (port 3000) and Vite (port 5173) concurrentl
 http://localhost:5173
 ```
 
-### For AI Predictions Feature
+> **Note**: Both servers must be running for login and AI predictions to work. The Vite dev server proxies `/api` requests to Express (configured in `vite.config.js`).
 
-The AI Predictions feature requires additional setup:
+### Running Servers Individually
 
-1. **Get an Anthropic API key** at [console.anthropic.com](https://console.anthropic.com/)
+```bash
+# Express API server only (AI predictions, auth config, news)
+npm run server
 
-2. **Create a `.env` file** in the project root:
-
-   ```bash
-   ANTHROPIC_API_KEY=sk-ant-your-api-key-here
-   ```
-
-3. **Start the development servers**:
-
-   ```bash
-   npm run dev
-   ```
-
-   This starts both the Express server (port 3000) and Vite dev server (port 5173) concurrently.
-
-4. Open `http://localhost:5173` and navigate to Predictions page
-
-**Note**: You can also run servers individually if needed:
-
-- Express only: `npm run server`
-- Vite only: `npm run dev:client`
+# Vite dev server only (requires Express also running for /api calls)
+npm run dev:client
+```
 
 See [documentation/AI_PREDICTIONS_SETUP.md](documentation/AI_PREDICTIONS_SETUP.md) for complete setup instructions.
 
@@ -250,15 +267,17 @@ See [documentation/AI_PREDICTIONS_SETUP.md](documentation/AI_PREDICTIONS_SETUP.m
 
 Comprehensive technical documentation is available in the [`documentation/`](documentation/) folder:
 
-- **[Architecture Guide](documentation/ARCHITECTURE.md)** - Complete technical documentation covering:
+- **[Architecture Guide](documentation/ARCHITECTURE.md)** — Complete technical documentation covering:
   - Project structure and core systems
   - API & caching layer implementation
-  - Team persistence and pricing systems
+  - Cloud sync & auth system
+  - AI predictions system
   - Data flow and localStorage schema
   - Component architecture and styling
-  - Performance optimizations and error handling
 
-- **[Deployment Guide](documentation/DEPLOYMENT.md)** - Step-by-step instructions for deploying to Fly.io:
+- **[News Integration Guide](documentation/NEWS_INTEGRATION.md)** — Coverage of the server-side news aggregation system (Autosport, The Race, PlanetF1, Reddit)
+
+- **[Deployment Guide](documentation/DEPLOYMENT.md)** — Step-by-step instructions for deploying to Fly.io:
   - Prerequisites and initial setup
   - Configuration and deployment process
   - Monitoring, scaling, and troubleshooting

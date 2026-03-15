@@ -11,7 +11,10 @@ The Fantasy F1 app uses an Express proxy server to keep the Anthropic API key se
 ## Architecture
 
 ```
-Client (React/Vite) → POST /api/predict → Express Proxy → Anthropic API
+Client (React/Vite)
+  ├── POST /api/predict  →  Express Proxy  →  Anthropic API (Claude)
+  ├── GET  /api/config   →  Express Proxy  →  returns SUPABASE_URL + SUPABASE_ANON_KEY
+  └── GET  /api/news     →  Express Proxy  →  newsService.js (Autosport, The Race, PlanetF1, Reddit)
 ```
 
 ## File Changes
@@ -56,7 +59,12 @@ _Runs on port 5173, proxies /api to Express_
 Create `.env` in project root:
 
 ```bash
+# AI predictions (required)
 ANTHROPIC_API_KEY=sk-ant-your-actual-api-key-here
+
+# Supabase auth & cloud sync (required for login)
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 ⚠️ Make sure `.env` is in `.gitignore`!
@@ -67,6 +75,8 @@ Set as a Fly secret (never commit to source):
 
 ```bash
 fly secrets set ANTHROPIC_API_KEY=sk-ant-your-key-here
+fly secrets set SUPABASE_URL=https://your-project.supabase.co
+fly secrets set SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 ---

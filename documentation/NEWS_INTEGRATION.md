@@ -4,13 +4,14 @@ Fantasy F1 integrates real-time F1 news and community discussions into the AI pr
 
 ## Overview
 
-When you generate predictions, the server automatically fetches recent articles from three sources and includes their headlines and summaries in the prompt sent to Claude AI:
+When you generate predictions, the server automatically fetches recent articles from four sources and includes their headlines and summaries in the prompt sent to Claude AI:
 
-| Source | Type | URL |
-|---|---|---|
-| PlanetF1 | RSS feed | https://www.planetf1.com/feed/ |
-| Motorsport.com | RSS feed | https://www.motorsport.com/rss/f1/news/ |
-| Reddit r/formula1 | JSON API | https://www.reddit.com/r/formula1/ |
+| Source            | Type     | URL                                    | Max articles |
+| ----------------- | -------- | -------------------------------------- | ------------ |
+| Autosport         | RSS feed | https://www.autosport.com/rss/f1/news/ | 15           |
+| The Race          | RSS feed | https://the-race.com/feed/             | 10           |
+| PlanetF1          | RSS feed | https://www.planetf1.com/feed/         | 10           |
+| Reddit r/formula1 | JSON API | https://www.reddit.com/r/formula1/     | 10           |
 
 ## How News Data Influences Predictions
 
@@ -32,8 +33,9 @@ Browser (React)
          ├── fetchF1News()          ← src/services/newsService.js
          │     └── GET /api/news   ← server.js endpoint
          │           └── newsService.js (server-side)
+         │                 ├── Autosport RSS
+         │                 ├── The Race RSS
          │                 ├── PlanetF1 RSS
-         │                 ├── Motorsport.com RSS
          │                 └── Reddit JSON API
          └── buildUserMessage()    ← includes news context in Claude prompt
 ```
@@ -48,6 +50,7 @@ This means news is fetched at most once per 30 minutes per server instance, resp
 ### Error Handling
 
 If any news source is unavailable:
+
 - The server logs the error and continues with the other sources
 - If **all** sources fail, predictions still work — news is optional context
 - The client also gracefully falls back to predicting without news data
@@ -56,27 +59,32 @@ If any news source is unavailable:
 
 Set these in your `.env` file:
 
-| Variable | Default | Description |
-|---|---|---|
-| `NEWS_PLANETF1_ENABLED` | `true` | Enable/disable PlanetF1 RSS |
-| `NEWS_MOTORSPORT_ENABLED` | `true` | Enable/disable Motorsport.com RSS |
-| `NEWS_REDDIT_ENABLED` | `true` | Enable/disable Reddit r/formula1 |
-| `NEWS_MAX_ARTICLES_PER_SOURCE` | `10` | Maximum articles fetched per source |
-| `NEWS_CACHE_TTL_MINUTES` | `30` | Server-side cache lifetime in minutes |
+| Variable                       | Default | Description                                         |
+| ------------------------------ | ------- | --------------------------------------------------- |
+| `NEWS_AUTOSPORT_ENABLED`       | `true`  | Enable/disable Autosport RSS (primary source)       |
+| `NEWS_THERACE_ENABLED`         | `true`  | Enable/disable The Race RSS                         |
+| `NEWS_PLANETF1_ENABLED`        | `true`  | Enable/disable PlanetF1 RSS                         |
+| `NEWS_MOTORSPORT_ENABLED`      | `false` | Enable/disable Motorsport.com RSS                   |
+| `NEWS_REDDIT_ENABLED`          | `true`  | Enable/disable Reddit r/formula1                    |
+| `NEWS_MAX_ARTICLES_PER_SOURCE` | `10`    | Default max articles per source (Autosport uses 15) |
+| `NEWS_CACHE_TTL_MINUTES`       | `30`    | Server-side cache lifetime in minutes               |
 
 ### Examples
 
 Disable Reddit (e.g., if rate-limited):
+
 ```
 NEWS_REDDIT_ENABLED=false
 ```
 
 Fetch more articles per source for richer context:
+
 ```
 NEWS_MAX_ARTICLES_PER_SOURCE=15
 ```
 
 Refresh news more frequently (e.g., race weekends):
+
 ```
 NEWS_CACHE_TTL_MINUTES=10
 ```
@@ -88,6 +96,7 @@ NEWS_CACHE_TTL_MINUTES=10
 Returns the latest cached news data.
 
 **Response:**
+
 ```json
 {
   "articles": [
@@ -101,8 +110,18 @@ Returns the latest cached news data.
       "team_mentions": ["Red Bull", "Ferrari"]
     }
   ],
-  "sources_attempted": ["PlanetF1", "Motorsport.com", "Reddit r/formula1"],
-  "sources_succeeded": ["PlanetF1", "Motorsport.com", "Reddit r/formula1"],
+  "sources_attempted": [
+    "Autosport",
+    "The Race",
+    "PlanetF1",
+    "Reddit r/formula1"
+  ],
+  "sources_succeeded": [
+    "Autosport",
+    "The Race",
+    "PlanetF1",
+    "Reddit r/formula1"
+  ],
   "sources_failed": [],
   "fetched_at": "2025-05-22T11:00:00.000Z",
   "cache_ttl_minutes": 30
