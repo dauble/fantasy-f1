@@ -3,17 +3,15 @@
  *
  * Server-side news aggregation service for Fantasy F1 predictions.
  * Fetches recent F1 articles and discussions from:
- *   1. PlanetF1       — RSS feed (https://www.planetf1.com/feed/)
- *   2. Motorsport.com — F1 RSS feed (https://www.motorsport.com/rss/f1/news/)
- *   3. Reddit         — r/formula1 JSON API (no auth required)
+ *   1. Autosport       — RSS feed (primary, high-volume F1 news)
+ *   2. The Race        — RSS feed (premium F1 journalism)
+ *   3. PlanetF1        — RSS feed
+ *   4. Motorsport.com  — F1 RSS feed (supplementary)
+ *   5. Reddit          — r/formula1 JSON API (no auth required)
  *
- * Features:
- *   - In-memory cache with configurable TTL (default 30 min)
- *   - Graceful degradation: if one source fails, others still run
- *   - Driver and team name extraction from article text
- *   - Configurable via environment variables
- *   - Respects rate limits with request timeouts
- */
+ * Note: Formula1.com retired their public RSS feed; Autosport and The Race
+ * are the most reliable replacements with equivalent coverage quality.
+ *
 
 // ─── F1 entity name lists for mention extraction ─────────────────────────────
 
@@ -43,6 +41,8 @@ const MAX_ARTICLES_PER_SOURCE =
 const FETCH_TIMEOUT_MS = 8000; // 8 seconds per source request
 
 const SOURCE_ENABLED = {
+  autosport:  (process.env.NEWS_AUTOSPORT_ENABLED  ?? "true") === "true",
+  therace:    (process.env.NEWS_THERACE_ENABLED    ?? "true") === "true",
   planetf1:   (process.env.NEWS_PLANETF1_ENABLED   ?? "true") === "true",
   motorsport: (process.env.NEWS_MOTORSPORT_ENABLED ?? "true") === "true",
   reddit:     (process.env.NEWS_REDDIT_ENABLED     ?? "true") === "true",
@@ -51,20 +51,35 @@ const SOURCE_ENABLED = {
 // ─── RSS feed URLs ────────────────────────────────────────────────────────────
 
 const SOURCES = {
+  autosport: {
+    name: "Autosport",
+    url: "https://www.autosport.com/rss/f1/news/",
+    type: "rss",
+    maxArticles: 15,
+  },
+  therace: {
+    name: "The Race",
+    url: "https://the-race.com/feed/",
+    type: "rss",
+    maxArticles: 10,
+  },
   planetf1: {
     name: "PlanetF1",
     url: "https://www.planetf1.com/feed/",
     type: "rss",
+    maxArticles: 10,
   },
   motorsport: {
     name: "Motorsport.com",
     url: "https://www.motorsport.com/rss/f1/news/",
     type: "rss",
+    maxArticles: 5,
   },
   reddit: {
     name: "Reddit r/formula1",
     url: "https://www.reddit.com/r/formula1.json?limit=25&sort=hot",
     type: "reddit",
+    maxArticles: 10,
   },
 };
 
@@ -195,7 +210,7 @@ function isF1Relevant(title, description) {
  * @param {string} url         — RSS feed URL
  * @returns {Promise<Array>}   — array of normalised article objects
  */
-async function fetchRssSource(sourceName, url) {
+async function fetchRssSource(sourceName, url, limit = MAX_ARTICLES_PER_SOURCE) {
   console.log(`[news] Fetching RSS: ${sourceName}`);
   const res = await fetchWithTimeout(url, {
     headers: {
@@ -213,7 +228,7 @@ async function fetchRssSource(sourceName, url) {
 
   const articles = raw
     .filter(item => isF1Relevant(item.title, item.description))
-    .slice(0, MAX_ARTICLES_PER_SOURCE)
+    .slice(0, limit)
     .map(item => {
       const { drivers, teams } = extractMentions(`${item.title} ${item.description}`);
       return {
@@ -319,10 +334,40 @@ export async function fetchF1News() {
 
   const tasks = [];
 
+  if (SOURCE_ENABLED.autosport) {
+    sourcesAttempted.push("Autosport");
+    tasks.push(
+      fetchRssSource("Autosport", SOURCES.autosport.url, SOURCES.autosport.maxArticles)
+        .then(articles => {
+          sourcesSucceeded.push("Autosport");
+          allArticles = allArticles.concat(articles);
+        })
+        .catch(err => {
+          console.error(`[news] Autosport failed: ${err.message}`);
+          sourcesFailed.push({ name: "Autosport", error: err.message });
+        })
+    );
+  }
+
+  if (SOURCE_ENABLED.therace) {
+    sourcesAttempted.push("The Race");
+    tasks.push(
+      fetchRssSource("The Race", SOURCES.therace.url, SOURCES.therace.maxArticles)
+        .then(articles => {
+          sourcesSucceeded.push("The Race");
+          allArticles = allArticles.concat(articles);
+        })
+        .catch(err => {
+          console.error(`[news] The Race failed: ${err.message}`);
+          sourcesFailed.push({ name: "The Race", error: err.message });
+        })
+    );
+  }
+
   if (SOURCE_ENABLED.planetf1) {
     sourcesAttempted.push("PlanetF1");
     tasks.push(
-      fetchRssSource("PlanetF1", SOURCES.planetf1.url)
+      fetchRssSource("PlanetF1", SOURCES.planetf1.url, SOURCES.planetf1.maxArticles)
         .then(articles => {
           sourcesSucceeded.push("PlanetF1");
           allArticles = allArticles.concat(articles);
@@ -337,7 +382,7 @@ export async function fetchF1News() {
   if (SOURCE_ENABLED.motorsport) {
     sourcesAttempted.push("Motorsport.com");
     tasks.push(
-      fetchRssSource("Motorsport.com", SOURCES.motorsport.url)
+      fetchRssSource("Motorsport.com", SOURCES.motorsport.url, SOURCES.motorsport.maxArticles)
         .then(articles => {
           sourcesSucceeded.push("Motorsport.com");
           allArticles = allArticles.concat(articles);

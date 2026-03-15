@@ -51,6 +51,18 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 - Optional configurations (branch deployments, PR previews)
 - Security best practices
 
+### [NEWS_INTEGRATION.md](NEWS_INTEGRATION.md)
+
+**News aggregation system** feeding real-time F1 articles into the AI predictions engine:
+
+- Supported sources: Autosport, The Race, PlanetF1, Reddit r/formula1
+- Server-side and client-side caching (30-minute TTL)
+- Configuration via environment variables
+- API endpoint reference (`GET /api/news`)
+- Driver & team entity detection
+
+**Target Audience**: Developers customising or debugging the news pipeline
+
 ### [AI_PREDICTIONS_SETUP.md](AI_PREDICTIONS_SETUP.md)
 
 **AI-powered predictions feature setup** using Claude (Anthropic):
@@ -93,24 +105,28 @@ Fantasy F1 is a modern React/Vite application for building and managing Fantasy 
 - **Team Building**: Select 5 drivers + 2 constructors
 - **Price Management**: Custom pricing with weekly updates
 - **Team History**: Save and restore teams for each race week
-- **Predictions**: Data-driven race outcome forecasts
+- **AI Predictions**: Claude-powered team recommendations with news context and 4-layer caching
+- **Cloud Sync**: Supabase auth + bidirectional sync across devices
+- **Dark Mode**: System-quality light/dark theme persisted per user
 - **Rules Reference**: Complete Fantasy F1 scoring guide
 
 ## Tech Stack Summary
 
-| Component          | Technology                     |
-| ------------------ | ------------------------------ |
-| Frontend Framework | React 19.2.0                   |
-| Build Tool         | Vite 7.3.1                     |
-| Styling            | Tailwind CSS 3                 |
-| Routing            | React Router DOM 7.13.1        |
-| HTTP Client        | Axios 1.13.6                   |
-| Icons              | Heroicons 2.2.0                |
-| Data Source        | OpenF1 API                     |
-| AI Service         | Anthropic Claude (optional)    |
-| Proxy Server       | Express 5.2.1                  |
-| Deployment         | Fly.io (Docker + Node/Express) |
-| Storage            | localStorage (client-side)     |
+| Component          | Technology                         |
+| ------------------ | ---------------------------------- |
+| Frontend Framework | React 19.2.0                       |
+| Build Tool         | Vite 7.3.1                         |
+| Styling            | Tailwind CSS 3 (`darkMode: class`) |
+| Routing            | React Router DOM 7.13.1            |
+| HTTP Client        | Axios 1.13.6                       |
+| Icons              | Heroicons 2.2.0                    |
+| Auth & Cloud Sync  | Supabase (@supabase/supabase-js 2) |
+| Data Source        | OpenF1 API                         |
+| AI Service         | Anthropic Claude                   |
+| Proxy Server       | Express 5.2.1                      |
+| Dev Process Mgmt   | Concurrently                       |
+| Deployment         | Fly.io (Docker + Node/Express)     |
+| Storage            | localStorage + Supabase            |
 
 ## Development Workflow
 

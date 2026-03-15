@@ -8,6 +8,7 @@ const LS_KEYS = {
   customPrices: 'fantasy_f1_custom_prices',
   teamHistory: 'fantasy_f1_teams_history',
   priceHistory: 'fantasy_f1_price_history',
+  aiPrediction: 'fantasy_f1_ai_prediction',
 };
 
 export function AuthProvider({ children }) {
@@ -16,6 +17,40 @@ export function AuthProvider({ children }) {
   const [authLoading, setAuthLoading] = useState(true);
   const [syncStatus, setSyncStatus] = useState('idle'); // 'idle' | 'syncing' | 'synced' | 'error'
   const [isRecoveryMode, setIsRecoveryMode] = useState(false);
+
+  // ─── Theme ────────────────────────────────────────────────────────────────
+  const [theme, setThemeState] = useState(
+    () => localStorage.getItem('fantasy_f1_theme') ?? 'light'
+  );
+
+  // Apply / remove the `dark` class on <html> whenever theme changes
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const setTheme = useCallback(async (newTheme) => {
+    setThemeState(newTheme);
+    localStorage.setItem('fantasy_f1_theme', newTheme);
+    // Persist to Supabase user metadata when logged in
+    if (supabase && user) {
+      supabase.auth.updateUser({ data: { theme: newTheme } }).catch((e) =>
+        console.warn('[theme] Failed to save theme to profile:', e.message)
+      );
+    }
+  }, [supabase, user]);
+
+  // When a user logs in, pull their saved theme from user_metadata
+  useEffect(() => {
+    const cloudTheme = user?.user_metadata?.theme;
+    if (cloudTheme && (cloudTheme === 'dark' || cloudTheme === 'light')) {
+      setThemeState(cloudTheme);
+      localStorage.setItem('fantasy_f1_theme', cloudTheme);
+    }
+  }, [user]);
 
   // Initialize Supabase from runtime config
   useEffect(() => {
@@ -55,7 +90,7 @@ export function AuthProvider({ children }) {
     try {
       const { data, error } = await client
         .from('user_data')
-        .select('current_team, custom_prices, team_history, price_history')
+        .select('current_team, custom_prices, team_history, price_history, ai_prediction')
         .eq('id', userId)
         .single();
 
@@ -66,6 +101,7 @@ export function AuthProvider({ children }) {
         if (data.custom_prices) localStorage.setItem(LS_KEYS.customPrices, JSON.stringify(data.custom_prices));
         if (data.team_history) localStorage.setItem(LS_KEYS.teamHistory, JSON.stringify(data.team_history));
         if (data.price_history) localStorage.setItem(LS_KEYS.priceHistory, JSON.stringify(data.price_history));
+        if (data.ai_prediction) localStorage.setItem(LS_KEYS.aiPrediction, JSON.stringify(data.ai_prediction));
       }
 
       setSyncStatus('synced');
@@ -91,6 +127,7 @@ export function AuthProvider({ children }) {
         custom_prices: parse(LS_KEYS.customPrices),
         team_history: parse(LS_KEYS.teamHistory),
         price_history: parse(LS_KEYS.priceHistory),
+        ai_prediction: parse(LS_KEYS.aiPrediction),
         updated_at: new Date().toISOString(),
       });
 
@@ -108,8 +145,25 @@ export function AuthProvider({ children }) {
 
     pullFromCloud(supabase, user.id);
 
-    const interval = setInterval(syncToCloud, 60_000);
-    return () => clearInterval(interval);
+    // Push every 60s
+    const pushInterval = setInterval(syncToCloud, 60_000);
+
+    // Pull from cloud when the tab becomes visible again after being hidden
+    // (handles the "just came from another device" scenario)
+    let hiddenAt = 0;
+    const onVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        hiddenAt = Date.now();
+      } else if (document.visibilityState === 'visible' && Date.now() - hiddenAt > 5 * 60 * 1000) {
+        pullFromCloud(supabase, user.id);
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      clearInterval(pushInterval);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
   }, [supabase, user, pullFromCloud, syncToCloud]);
 
   const signIn = useCallback(async (email, password) => {
@@ -148,11 +202,26 @@ export function AuthProvider({ children }) {
     setSyncStatus('idle');
   }, [supabase]);
 
+  // Bidirectional sync: pull cloud data into local, then push local back up.
+  // This ensures Device B picks up changes made on Device A.
+  const syncBidirectional = useCallback(async () => {
+    if (!supabase || !user) return;
+    await pullFromCloud(supabase, user.id);
+    await syncToCloud();
+  }, [supabase, user, pullFromCloud, syncToCloud]);
+
+  // Exposed pull-only helper (used by manual "Pull from cloud" action)
+  const pullNow = useCallback(() => {
+    if (!supabase || !user) return Promise.resolve();
+    return pullFromCloud(supabase, user.id);
+  }, [supabase, user, pullFromCloud]);
+
   return (
     <AuthContext.Provider value={{
       user, authLoading, syncStatus, isRecoveryMode,
+      theme, setTheme,
       signIn, signUp, signOut, resetPassword, updatePassword,
-      syncToCloud, supabaseReady: !!supabase,
+      syncToCloud, syncBidirectional, pullNow, supabaseReady: !!supabase,
     }}>
       {children}
     </AuthContext.Provider>

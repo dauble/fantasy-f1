@@ -3,13 +3,19 @@ import { Link, useLocation } from 'react-router-dom';
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import CacheStatus from '../components/ui/CacheStatus';
 import AuthButton from '../components/ui/AuthButton';
+import { useAuth } from '../context/AuthContext';
 
 const Layout = ({ children }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
+  const { theme, setTheme } = useAuth();
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);
+  };
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
   };
 
   const navItems = [
@@ -21,7 +27,7 @@ const Layout = ({ children }) => {
   ];
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 dark:bg-gray-950">
       {/* Sidebar */}
       <aside className={`fixed inset-0 z-50 w-64 bg-gradient-to-b from-f1-red to-f1-red-dark text-white shadow-2xl overflow-y-auto transform ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:relative md:w-64 transition-transform duration-300 ease-in-out`}>
         {/* Mobile Header */}
@@ -65,9 +71,20 @@ const Layout = ({ children }) => {
 
         {/* Footer Info */}
         <div className="p-4 mt-auto border-t border-white border-opacity-20 space-y-4">
-          <div className="text-sm text-white text-opacity-75 space-y-2">
-            <p>Budget: $100M</p>
-            <p>5 Drivers + 2 Constructors</p>
+          <div className="flex items-center justify-between text-sm text-white text-opacity-75">
+            <div className="space-y-1">
+              <p>Budget: $100M</p>
+              <p>5 Drivers + 2 Constructors</p>
+            </div>
+            {/* Dark / light mode toggle */}
+            <button
+              onClick={toggleTheme}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              className="p-2 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors text-base leading-none"
+              aria-label="Toggle dark mode"
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
           </div>
           <AuthButton />
         </div>
@@ -89,7 +106,7 @@ const Layout = ({ children }) => {
         </header>
         
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100">
+        <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900">
           {children}
         </main>
       </div>

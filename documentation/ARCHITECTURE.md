@@ -6,12 +6,15 @@ Complete technical documentation for the Fantasy F1 application architecture, da
 
 ```
 fantasy-f1/
-├── server.js            # Express proxy server for AI predictions
+├── server.js            # Express proxy server (AI predictions, news, config, auth)
+├── newsService.js       # Server-side news aggregator (Autosport, The Race, PlanetF1, Reddit)
+├── CHANGELOG.md         # Version history
 ├── documentation/       # Project documentation
 │   ├── ARCHITECTURE.md           # This file
 │   ├── DEPLOYMENT.md             # Deployment guide
 │   ├── GITHUB_ACTIONS.md         # CI/CD setup guide
 │   ├── AI_PREDICTIONS_SETUP.md   # AI predictions setup
+│   ├── NEWS_INTEGRATION.md       # News aggregation guide
 │   ├── PROXY_SETUP.md            # Proxy configuration notes
 │   └── README.md                 # Documentation index
 ├── src/
@@ -20,13 +23,18 @@ fantasy-f1/
 │   │   │   ├── ConstructorCard.jsx
 │   │   │   └── DriverCard.jsx
 │   │   └── ui/          # Generic UI components
+│   │       ├── AuthButton.jsx     # Login/logout + sync button
 │   │       ├── Card.jsx
 │   │       ├── CacheStatus.jsx
 │   │       ├── LoadingSkeleton.jsx
 │   │       └── WelcomeModal.jsx
+│   ├── context/         # React context providers
+│   │   └── AuthContext.jsx    # Auth state, theme, cloud sync
 │   ├── layouts/         # Layout wrapper with navigation
 │   │   └── Layout.jsx
 │   ├── pages/           # Page components
+│   │   ├── Auth.jsx
+│   │   ├── AuthCallback.jsx
 │   │   ├── TeamBuilder.jsx
 │   │   ├── Predictions.jsx        # AI-powered predictions
 │   │   ├── TeamHistory.jsx
@@ -246,7 +254,43 @@ All pages use the getter functions:
 
 **Purpose**: Encourages users to update prices on first visit to ensure accurate budget calculations.
 
-### 5. Page-Level Operations
+### 5. Cloud Sync & Auth System
+
+**File**: `src/context/AuthContext.jsx`
+
+The `AuthContext` provider wraps the entire app and exposes:
+
+- `user` — the logged-in Supabase user (or `null`)
+- `theme` / `setTheme` — dark/light mode with cloud persistence
+- `syncToCloud()` — push all localStorage data to Supabase `user_data` row
+- `pullFromCloud()` — pull cloud data into localStorage (overwrites local)
+- `syncBidirectional()` — merge in both directions (cloud wins on conflict)
+
+#### Storage Keys Synced
+
+| `LS_KEYS` constant | localStorage key           | Supabase column         |
+| ------------------ | -------------------------- | ----------------------- |
+| `currentTeam`      | `fantasy_f1_current_team`  | `current_team` (jsonb)  |
+| `customPrices`     | `fantasy_f1_custom_prices` | `custom_prices` (jsonb) |
+| `teamsHistory`     | `fantasy_f1_teams_history` | `team_history` (jsonb)  |
+| `priceHistory`     | `fantasy_f1_price_history` | `price_history` (jsonb) |
+| `aiPrediction`     | `fantasy_f1_ai_prediction` | `ai_prediction` (jsonb) |
+
+#### Sync Triggers
+
+- **Login** — bidirectional sync immediately
+- **Automatic** — `syncToCloud` every 60 seconds when logged in
+- **Tab refocus** — `pullFromCloud` if tab was hidden for 5+ minutes
+- **Manual** — "Sync ⇅" button calls `syncBidirectional`
+- **After prediction** — `syncToCloud` called after generating a new AI prediction
+
+#### Theme Persistence
+
+- Theme preference (`'dark'` / `'light'`) is stored in Supabase `user_metadata`
+- Applied as `class="dark"` on the `<html>` element via `tailwind.config.js` `darkMode: 'class'`
+- Falls back to localStorage (`fantasy_f1_theme`) when not logged in
+
+### 6. Page-Level Operations
 
 #### Team Builder (`src/pages/TeamBuilder.jsx`)
 
@@ -371,13 +415,14 @@ Ferrari,30.0
 - Loading skeleton during data fetch
 - Refresh button to update tips with latest race data
 
-### 6. AI Predictions System
+### 7. AI Predictions System
 
 **Files**:
 
 - `server.js` - Express proxy server
-- `src/services/openf1DataService.js` - Historical data aggregation
-- `src/services/aiPredictionService.js` - Anthropic API client
+- `newsService.js` - Server-side news aggregator
+- `src/services/openf1DataService.js` - Historical data aggregation + current race detection
+- `src/services/aiPredictionService.js` - Anthropic API client + news fetch
 - `src/pages/Predictions.jsx` - AI-powered UI
 
 **Architecture**:
@@ -387,7 +432,9 @@ Frontend (Predictions.jsx)
      ↓
   buildPredictionPayload()
      ↓
-openf1DataService.js
+openf1DataService.js  ←── 4-layer cache (raw API / per-session stats / delay / full payload)
+     ↓
+  fetchF1News()  →  GET /api/news  →  newsService.js
      ↓
   POST /api/predict
      ↓
@@ -396,47 +443,55 @@ Express Proxy (server.js)
 Anthropic API (Claude)
      ↓
   AI Predictions Response
+     ↓
+syncToCloud() → Supabase (ai_prediction column)
 ```
+
+**4-Layer Cache** (`openf1DataService.js`):
+
+| Layer | What's cached            | TTL      |
+| ----- | ------------------------ | -------- |
+| 1     | Raw OpenF1 API responses | 24 hours |
+| 2     | Per-session driver stats | 7 days   |
+| 3     | Inter-meeting delay      | —        |
+| 4     | Full prediction payload  | 4 hours  |
+
+Most visits require zero OpenF1 API calls. "Refresh Predictions" bypasses all layers.
 
 **How it works**:
 
 1. **Data Collection** (`openf1DataService.js`):
-   - Fetches recent completed races via OpenF1 API
+   - Fetches recent completed races via OpenF1 API (cache-first)
    - Builds driver statistics (avg position, trends, lap times)
-   - Aggregates data across multiple races
-   - Handles missing data gracefully with error recovery
+   - `getCurrentRaceSession()` detects whether a race weekend is currently active (meeting started within 6 days and not yet ended)
+   - `getNextRaceSession()` returns the next scheduled meeting
+   - Both `current_race` and `next_race` are included in the payload sent to Claude
 
-2. **AI Analysis** (`aiPredictionService.js`):
-   - Sends aggregated data to `/api/predict` endpoint
+2. **News Fetch** (`aiPredictionService.js`):
+   - Calls `GET /api/news` before building the Claude prompt
+   - `newsService.js` aggregates headlines from Autosport, The Race, PlanetF1, and Reddit
+   - Headlines are appended to the Claude prompt for contextual awareness
+
+3. **AI Analysis** (`aiPredictionService.js`):
+   - Sends aggregated driver data + news to `/api/predict`
    - Includes system prompt with Fantasy F1 scoring rules
    - Receives structured JSON prediction from Claude
 
-3. **Proxy Server** (`server.js`):
+4. **Proxy Server** (`server.js`):
    - Keeps `ANTHROPIC_API_KEY` secret (never exposed to client)
-   - Forwards predictions requests to Anthropic API
-   - Implements rate limiting (60 requests per IP per 15 minutes)
-   - Serves static Vite build in production
+   - `/api/predict` → Anthropic
+   - `/api/news` → `newsService.js`
+   - `/api/config` → returns `SUPABASE_URL` + `SUPABASE_ANON_KEY` to client
+   - Rate limiting: 60 requests per IP per 15 minutes
 
-4. **Display** (`Predictions.jsx`):
+5. **Display** (`Predictions.jsx`):
+   - Pulsing green dot + "Current Race" label when race weekend is live
+   - "Next race" shown below
+   - Step-by-step progress log during generation
    - Shows recommended 5 drivers + 2 constructors
    - Displays confidence levels and reasoning
    - Highlights turbo driver suggestion
-   - Shows value picks and risk assessments
-
-**Environment Setup**:
-
-- Development: Requires two processes (Vite + Express)
-- Production: Single Express server serves both app and API
-- API Key: Stored in `.env` locally, Fly secrets in production
-
-**Benefits**:
-
-- Intelligent team recommendations based on real data
-- Circuit-specific insights
-- Value analysis for budget optimization
-- Secure API key handling
-
-### 7. Express Proxy Server
+   - After generation, calls `syncToCloud()` to persist prediction across devices
 
 **File**: `server.js`
 
@@ -539,9 +594,10 @@ Constructor/team selection card:
 
 - Fixed sidebar navigation (hidden on mobile, visible on desktop)
 - Mobile hamburger menu icon
-- Active route highlighting (red background)
-- CacheStatus widget in bottom-right
+- Active route highlighting (white background on red sidebar)
 - F1 red gradient theme (#E10600 → darker red)
+- Sidebar footer: dark/light mode toggle (🌙/☀️) + `<AuthButton />` (login/sync/logout)
+- `<CacheStatus />` widget rendered outside sidebar (bottom-right corner)
 
 **Navigation Items**:
 
@@ -551,10 +607,11 @@ Constructor/team selection card:
 - 💰 Price Manager (/prices)
 - 📋 Rules (/rules)
 
-**Responsive**:
+**Dark Mode**:
 
-- Mobile: Hamburger menu, overlay sidebar
-- Desktop: Fixed sidebar, always visible
+- `useAuth().theme` drives the `class="dark"` toggle on `<html>`
+- `tailwind.config.js` uses `darkMode: 'class'`
+- All pages use `dark:` Tailwind variants for full dark mode support
 
 ## Data Flow
 
@@ -707,6 +764,22 @@ Complete data structures and storage keys:
 
 ```javascript
 "fantasy_f1_setup_complete": true  // Boolean flag
+```
+
+### AI Prediction Storage
+
+```javascript
+"fantasy_f1_ai_prediction": {
+  prediction: {
+    recommended_drivers: [ /* array of driver picks with confidence + reasoning */ ],
+    recommended_constructors: [ /* array of constructor picks */ ],
+    turbo_driver: 1,
+    value_picks: [ /* driver numbers */ ],
+    reasoning: "..."
+  },
+  payload: { /* raw openf1DataService payload used for this prediction */ },
+  generatedAt: "2026-07-13T10:00:00Z"
+}
 ```
 
 ## Styling & Design System

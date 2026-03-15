@@ -38,6 +38,10 @@ Create a `.env` file in the project root:
 ```bash
 # .env
 ANTHROPIC_API_KEY=sk-ant-your-actual-api-key-here
+
+# Required for Auth & Cloud Sync
+SUPABASE_URL=https://your-project.supabase.co
+SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
 ⚠️ **Important**: Make sure `.env` is in your `.gitignore` to avoid committing secrets!
@@ -84,12 +88,14 @@ This starts the Vite dev server on port 5173, which:
 1. Navigate to the **Predictions** page
 2. Select data window (3 or 5 recent races)
 3. Click "Generate Predictions"
-4. Wait ~10-20 seconds for AI analysis
+4. Wait ~15-25 seconds for AI analysis (step-by-step progress is shown)
 5. Review recommendations:
    - 5 recommended drivers with reasoning
    - 2 recommended constructors
    - Turbo driver suggestion
    - Value picks and risk assessments
+
+> **Cross-device sync**: When you're logged in, the generated prediction is automatically saved to your Supabase profile. Opening the Predictions page on a second device will load the cached result from the cloud instead of calling Claude again.
 
 ## How It Works
 
@@ -100,9 +106,16 @@ This starts the Vite dev server on port 5173, which:
    - Calls `buildPredictionPayload()` from `openf1DataService.js`
 
 2. **Data Service** (`openf1DataService.js`):
-   - Fetches last N races from OpenF1 API
+   - Fetches last N races from OpenF1 API (4-layer cache prevents redundant calls)
    - Builds driver statistics (avg position, trends, pace)
+   - Also detects whether a race weekend is currently active (`getCurrentRaceSession`)
    - Aggregates data into AI-friendly payload
+
+2.5. **News Fetch** (`aiPredictionService.js` → `/api/news`):
+
+- Fetches recent F1 articles from Autosport, The Race, PlanetF1, and Reddit
+- Cached server-side for 30 minutes; cached client-side in localStorage
+- Headlines and summaries are appended to the Claude prompt for contextual awareness
 
 3. **AI Service** (`aiPredictionService.js`):
    - Sends payload to `/api/predict` endpoint
@@ -234,6 +247,8 @@ The Dockerfile is configured to:
 ### Environment Variables in Production
 
 - `ANTHROPIC_API_KEY`: Set via `fly secrets set` (required)
+- `SUPABASE_URL`: Set via `fly secrets set` (required for auth)
+- `SUPABASE_ANON_KEY`: Set via `fly secrets set` (required for auth)
 - `PORT`: Automatically set by Fly.io (default: 3000)
 
 ## Security Notes
