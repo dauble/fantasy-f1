@@ -273,59 +273,6 @@ const PriceManager = () => {
         </div>
       )}
 
-      {/* Info Card */}
-      <Card className="mb-6 bg-blue-50 dark:bg-blue-950/50 border-blue-200 dark:border-blue-700">
-        <CardContent className="py-4">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">💡</span>
-            <div className="text-sm text-blue-900 dark:text-blue-100">
-              <p className="font-semibold mb-1">{isSetupMode ? 'Getting Started:' : 'How to use:'}</p>
-              <ul className="list-disc list-inside space-y-1">
-                {isSetupMode ? (
-                  <>
-                    <li>Visit <a href="https://fantasy.formula1.com" target="_blank" rel="noopener noreferrer" className="underline font-semibold">fantasy.formula1.com</a> to see current prices</li>
-                    <li>Enter prices in millions below (e.g., "32.5" for $32.5M)</li>
-                    <li>You can update just a few drivers or all of them - it's up to you</li>
-                    <li>Click "Save & Continue" when ready, or "Skip" to use default prices</li>
-                    <li>You can always return to update prices later from the navigation menu</li>
-                  </>
-                ) : (
-                  <>
-                    <li>Enter prices in millions (e.g., "32.5" for $32.5M)</li>
-                    <li>Values highlighted in <span className="text-green-600 dark:text-green-300 font-semibold">green</span> have custom prices set</li>
-                    <li>Click "Save Changes" to apply your prices across the app</li>
-                    <li>Export/import CSV files to share prices or backup your data</li>
-                  </>
-                )}
-              </ul>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Automatic Scraping Info */}
-      {!isSetupMode && (
-      <Card className="mb-6 bg-purple-50 dark:bg-purple-950/50 border-purple-200 dark:border-purple-700">
-        <CardContent className="py-4">
-          <div className="flex items-start gap-3">
-            <span className="text-2xl">🤖</span>
-            <div className="flex-1">
-              <h3 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">Want Automatic Price Fetching?</h3>
-              <p className="text-sm text-purple-800 dark:text-purple-200 mb-3">
-                  Learn about options for automatically scraping prices from the official Fantasy F1 site, including backend setup, browser extensions, and community sources.
-                </p>
-                <button
-                  onClick={() => navigate('/live-pricing')}
-                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-semibold transition-colors"
-                >
-                  📚 View Live Pricing Guide
-                </button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-200 dark:border-gray-700">
         <button
