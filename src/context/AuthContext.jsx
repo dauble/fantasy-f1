@@ -9,6 +9,9 @@ const LS_KEYS = {
   teamHistory: 'fantasy_f1_teams_history',
   priceHistory: 'fantasy_f1_price_history',
   aiPrediction: 'fantasy_f1_ai_prediction',
+  // Tracks when this device last pulled or pushed, so smartSync can compare
+  // against the cloud's updated_at before deciding which direction to sync.
+  syncMeta: 'fantasy_f1_sync_meta',
 };
 
 export function AuthProvider({ children }) {
@@ -84,13 +87,15 @@ export function AuthProvider({ children }) {
       });
   }, []);
 
-  // Pull data from Supabase into localStorage on login
+  // Pull data from Supabase into localStorage.
+  // Also records the cloud's updated_at as lastPushedAt so that smartSync
+  // knows this device is already in-sync and won't push stale data over it.
   const pullFromCloud = useCallback(async (client, userId) => {
     setSyncStatus('syncing');
     try {
       const { data, error } = await client
         .from('user_data')
-        .select('current_team, custom_prices, team_history, price_history, ai_prediction')
+        .select('current_team, custom_prices, team_history, price_history, ai_prediction, updated_at')
         .eq('id', userId)
         .single();
 
@@ -102,6 +107,11 @@ export function AuthProvider({ children }) {
         if (data.team_history) localStorage.setItem(LS_KEYS.teamHistory, JSON.stringify(data.team_history));
         if (data.price_history) localStorage.setItem(LS_KEYS.priceHistory, JSON.stringify(data.price_history));
         if (data.ai_prediction) localStorage.setItem(LS_KEYS.aiPrediction, JSON.stringify(data.ai_prediction));
+        // Mark this device as up-to-date with the cloud timestamp so the
+        // next smartSync doesn't immediately push local data back over it.
+        if (data.updated_at) {
+          localStorage.setItem(LS_KEYS.syncMeta, JSON.stringify({ lastSyncedAt: data.updated_at }));
+        }
       }
 
       setSyncStatus('synced');
@@ -111,7 +121,9 @@ export function AuthProvider({ children }) {
     }
   }, []);
 
-  // Push localStorage data up to Supabase
+  // Push localStorage data up to Supabase.
+  // Records lastSyncedAt after a successful push so smartSync can compare
+  // against the cloud's updated_at on the next cycle.
   const syncToCloud = useCallback(async () => {
     if (!supabase || !user) return;
     setSyncStatus('syncing');
@@ -121,6 +133,7 @@ export function AuthProvider({ children }) {
         return raw ? JSON.parse(raw) : null;
       };
 
+      const now = new Date().toISOString();
       const { error } = await supabase.from('user_data').upsert({
         id: user.id,
         current_team: parse(LS_KEYS.currentTeam),
@@ -128,10 +141,11 @@ export function AuthProvider({ children }) {
         team_history: parse(LS_KEYS.teamHistory),
         price_history: parse(LS_KEYS.priceHistory),
         ai_prediction: parse(LS_KEYS.aiPrediction),
-        updated_at: new Date().toISOString(),
+        updated_at: now,
       });
 
       if (error) throw error;
+      localStorage.setItem(LS_KEYS.syncMeta, JSON.stringify({ lastSyncedAt: now }));
       setSyncStatus('synced');
     } catch (err) {
       console.error('Error syncing to cloud:', err);
@@ -139,32 +153,63 @@ export function AuthProvider({ children }) {
     }
   }, [supabase, user]);
 
-  // Auto-pull when user logs in, auto-sync every 60s while logged in
+  // Compare the cloud's updated_at against the timestamp of our last push/pull.
+  // If the cloud is newer → pull (another device made changes).
+  // If local is current or newer → push (this device has unsaved changes).
+  const smartSync = useCallback(async () => {
+    if (!supabase || !user) return;
+    setSyncStatus('syncing');
+    try {
+      const { data, error } = await supabase
+        .from('user_data')
+        .select('updated_at')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') throw error;
+
+      const cloudTs = data?.updated_at ? new Date(data.updated_at) : null;
+      const meta = localStorage.getItem(LS_KEYS.syncMeta);
+      const localTs = meta ? new Date(JSON.parse(meta).lastSyncedAt) : null;
+
+      if (cloudTs && (!localTs || cloudTs > localTs)) {
+        console.log('[sync] Cloud is newer — pulling from cloud');
+        await pullFromCloud(supabase, user.id);
+      } else {
+        console.log('[sync] Local is current — pushing to cloud');
+        await syncToCloud();
+      }
+    } catch (err) {
+      console.error('[sync] smartSync failed:', err);
+      setSyncStatus('error');
+    }
+  }, [supabase, user, pullFromCloud, syncToCloud]);
+
+  // On login: pull from cloud (trust cloud on fresh login).
+  // Every 60s: smartSync (compare timestamps, pull or push accordingly).
+  // On tab refocus after 5+ min: smartSync (another device may have made changes).
   useEffect(() => {
     if (!supabase || !user) return;
 
     pullFromCloud(supabase, user.id);
 
-    // Push every 60s
-    const pushInterval = setInterval(syncToCloud, 60_000);
+    const syncInterval = setInterval(smartSync, 60_000);
 
-    // Pull from cloud when the tab becomes visible again after being hidden
-    // (handles the "just came from another device" scenario)
     let hiddenAt = 0;
     const onVisibility = () => {
       if (document.visibilityState === 'hidden') {
         hiddenAt = Date.now();
       } else if (document.visibilityState === 'visible' && Date.now() - hiddenAt > 5 * 60 * 1000) {
-        pullFromCloud(supabase, user.id);
+        smartSync();
       }
     };
     document.addEventListener('visibilitychange', onVisibility);
 
     return () => {
-      clearInterval(pushInterval);
+      clearInterval(syncInterval);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [supabase, user, pullFromCloud, syncToCloud]);
+  }, [supabase, user, pullFromCloud, smartSync]);
 
   const signIn = useCallback(async (email, password) => {
     if (!supabase) return { error: { message: 'Auth not available' } };
@@ -202,13 +247,12 @@ export function AuthProvider({ children }) {
     setSyncStatus('idle');
   }, [supabase]);
 
-  // Bidirectional sync: pull cloud data into local, then push local back up.
-  // This ensures Device B picks up changes made on Device A.
+  // The Sync ⇅ button calls this — delegate to smartSync so the
+  // correct direction (pull or push) is chosen based on timestamps.
   const syncBidirectional = useCallback(async () => {
     if (!supabase || !user) return;
-    await pullFromCloud(supabase, user.id);
-    await syncToCloud();
-  }, [supabase, user, pullFromCloud, syncToCloud]);
+    await smartSync();
+  }, [supabase, user, smartSync]);
 
   // Exposed pull-only helper (used by manual "Pull from cloud" action)
   const pullNow = useCallback(() => {
