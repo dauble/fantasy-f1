@@ -20,11 +20,13 @@ const MAX_CACHE_AGE_MS      =  7 * 24 * 60 * 60 * 1000; // 7 days — stale fall
 const SESSION_STATS_TTL_MS  =  7 * 24 * 60 * 60 * 1000; // 7 days — processed session stats (tiny & immutable)
 const SESSIONS_LIST_TTL_MS  =  6 * 60 * 60 * 1000;  // 6 h   — list of which sessions to use
 const PAYLOAD_TTL_MS        =  4 * 60 * 60 * 1000;  // 4 h   — full prediction payload
+const PRACTICE_CACHE_TTL_MS =  2 * 60 * 60 * 1000;  // 2 h   — practice session results (updates as sessions complete)
 
 // ─── Cache key prefixes ───────────────────────────────────────────────────────
 const SESSION_STATS_CACHE_PREFIX  = 'openf1_session_stats_';
 const RECENT_SESSIONS_CACHE_KEY   = 'openf1_recent_sessions_v2_';
 const PAYLOAD_CACHE_KEY           = 'openf1_prediction_payload_v2_';
+const PRACTICE_CACHE_KEY          = 'openf1_practice_';
 
 // ─── Request pacing ───────────────────────────────────────────────────────────
 // Sequential delays prevent bursting the OpenF1 API.
@@ -390,6 +392,97 @@ export async function getIntervalsForSession(sessionKey) {
     console.error(`Error fetching intervals for session ${sessionKey}:`, error);
     return [];
   }
+}
+
+/**
+ * Fetches practice session (FP1/FP2/FP3) final classifications for the current
+ * or next race weekend. Returns null when no practice data is available yet
+ * (e.g. before the weekend starts). Results are cached with a 2-hour TTL so
+ * they update as each session completes during the race weekend.
+ *
+ * @returns {Array|null} [{name: "Practice 1", results: [{position, abbreviation, full_name, team_name}]}] | null
+ */
+export async function getPracticeDataForUpcomingRace() {
+  const now = new Date();
+  const currentYear = now.getFullYear();
+
+  // Look for a meeting that started in the last 6 days or is within the next 2 days
+  const windowStart = new Date(now.getTime() - 6 * 24 * 60 * 60 * 1000);
+  const windowEnd   = new Date(now.getTime() + 2 * 24 * 60 * 60 * 1000);
+
+  for (const year of [currentYear, currentYear - 1]) {
+    let meetings;
+    try {
+      meetings = await openF1API.getMeetings(year);
+    } catch {
+      continue;
+    }
+    if (!meetings?.length) continue;
+
+    const activeMeeting = meetings
+      .filter(m => {
+        const start = m.date_start ? new Date(m.date_start) : null;
+        return start && start >= windowStart && start <= windowEnd;
+      })
+      .sort((a, b) => new Date(b.date_start) - new Date(a.date_start))[0];
+
+    if (!activeMeeting) continue;
+
+    const cacheKey = `${PRACTICE_CACHE_KEY}${activeMeeting.meeting_key}`;
+    const cached = getCached(cacheKey, false, PRACTICE_CACHE_TTL_MS);
+    if (cached) return cached;
+
+    let sessions;
+    try {
+      sessions = await openF1API.getSessions(activeMeeting.meeting_key);
+    } catch {
+      return null;
+    }
+
+    const practiceSessions = (sessions || [])
+      .filter(s =>
+        ['Practice 1', 'Practice 2', 'Practice 3'].includes(s.session_name) &&
+        s.date_end && new Date(s.date_end) < now
+      )
+      .sort((a, b) => new Date(a.date_start) - new Date(b.date_start));
+
+    if (practiceSessions.length === 0) return null;
+
+    const practiceData = [];
+    for (let i = 0; i < practiceSessions.length; i++) {
+      const session = practiceSessions[i];
+      try {
+        const [drivers, positions] = await Promise.all([
+          getDriversForSession(session.session_key),
+          getPositionsForSession(session.session_key),
+        ]);
+        const driverMap = {};
+        for (const d of (drivers || [])) driverMap[d.driver_number] = d;
+
+        const results = (positions || [])
+          .map(p => ({
+            position: p.position,
+            driver_number: p.driver_number,
+            abbreviation: driverMap[p.driver_number]?.name_acronym || null,
+            full_name: driverMap[p.driver_number]?.full_name || null,
+            team_name: driverMap[p.driver_number]?.team_name || null,
+          }))
+          .filter(r => r.abbreviation);
+
+        if (results.length > 0) practiceData.push({ name: session.session_name, results });
+      } catch (err) {
+        console.warn(`Could not fetch practice data for ${session.session_name}:`, err.message);
+      }
+      if (i < practiceSessions.length - 1) await delay(INTER_CALL_DELAY_MS);
+    }
+
+    if (practiceData.length > 0) {
+      setCache(cacheKey, practiceData);
+      return practiceData;
+    }
+    return null;
+  }
+  return null;
 }
 
 // ─── localStorage Data Gathering ──────────────────────────────────────────────

@@ -13,7 +13,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import { buildPredictionPayload, clearPredictionCaches } from "../services/openf1DataService";
+import { buildPredictionPayload, clearPredictionCaches, getPracticeDataForUpcomingRace } from "../services/openf1DataService";
 import { generatePredictions } from "../services/aiPredictionService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { useAuth } from "../context/AuthContext";
@@ -202,6 +202,134 @@ function ErrorState({ error, onRetry }) {
   );
 }
 
+function TeamAssessmentCard({ prediction }) {
+  const assessment = prediction?.current_team_assessment;
+  const verdict = prediction?.team_verdict;
+  if (!assessment?.length || !verdict) return null;
+
+  const verdictConfig = {
+    keep:     { bg: "bg-emerald-50 dark:bg-emerald-900/20", border: "border-emerald-200 dark:border-emerald-700/30", text: "text-emerald-800 dark:text-emerald-300", icon: "✅", label: "Keep your team", sub: "Your current picks are solid for this race — no transfers needed." },
+    partial:  { bg: "bg-amber-50 dark:bg-amber-900/20",     border: "border-amber-200 dark:border-amber-700/30",     text: "text-amber-800 dark:text-amber-300",   icon: "⚠️", label: "Consider a transfer or two", sub: "One or two swaps could improve your score given current form and practice data." },
+    transfer: { bg: "bg-red-50 dark:bg-red-900/20",         border: "border-red-200 dark:border-red-700/30",         text: "text-red-800 dark:text-red-300",       icon: "🔄", label: "Multiple changes recommended", sub: "Several upgrades are available that justify the transfer penalty cost." },
+  };
+  const cfg = verdictConfig[verdict] || verdictConfig.partial;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>🏎️ Your Team Assessment</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className={`flex items-start gap-3 px-4 py-3 rounded-lg border mb-5 ${cfg.bg} ${cfg.border}`}>
+          <span className="text-xl shrink-0">{cfg.icon}</span>
+          <div>
+            <p className={`font-semibold ${cfg.text}`}>{cfg.label}</p>
+            <p className={`text-sm mt-0.5 ${cfg.text} opacity-80`}>{cfg.sub}</p>
+          </div>
+        </div>
+        <div className="space-y-3">
+          {assessment.map((pick, i) => (
+            <div key={i} className="flex items-start gap-3 p-3 bg-gray-50 dark:bg-gray-700/40 rounded-lg">
+              <span className="text-base mt-0.5 shrink-0">{pick.verdict === 'keep' ? '✅' : '🔄'}</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="font-semibold text-gray-900 dark:text-white text-sm">{pick.identifier}</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wide">{pick.type}</span>
+                  {pick.verdict === 'keep' && (
+                    <span className="text-xs bg-emerald-100 dark:bg-emerald-900/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-700/40 px-2 py-0.5 rounded-full">
+                      Keep
+                    </span>
+                  )}
+                  {pick.verdict === 'transfer' && pick.suggested_alternative && (
+                    <span className="text-xs bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-700/40 px-2 py-0.5 rounded-full">
+                      → {pick.suggested_alternative}
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">{pick.reason}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TransferWarning({ prediction, rawData }) {
+  const rawCurrentTeam = rawData?.user_context?.current_team;
+  if (!rawCurrentTeam) return null;
+
+  // Normalize current team shape to always have driver/constructor arrays
+  const currentDrivers = rawCurrentTeam.drivers || rawCurrentTeam.selectedDrivers || [];
+  const currentConstructors = rawCurrentTeam.constructors || rawCurrentTeam.selectedConstructors || [];
+
+  if (!currentDrivers.length || !currentConstructors.length) return null;
+
+  // Build abbreviation → driver_number map from driver_trends once
+  const abbrevToNum = {};
+  for (const d of (rawData.driver_trends || [])) {
+    if (d.abbreviation) abbrevToNum[d.abbreviation] = Number(d.driver_number);
+  }
+
+  const currentDriverNums = new Set(currentDrivers.map(n => Number(n)));
+  const currentConstructorNames = new Set(currentConstructors.map(n => String(n).toLowerCase().trim()));
+
+  const addedDrivers = [];
+  const addedConstructors = [];
+
+  for (const d of (prediction.recommended_drivers || [])) {
+    const num = abbrevToNum[d.abbreviation];
+    if (num == null || !currentDriverNums.has(num)) addedDrivers.push(d.full_name || d.abbreviation);
+  }
+  for (const c of (prediction.recommended_constructors || [])) {
+    if (!currentConstructorNames.has(String(c.team_name).toLowerCase().trim())) addedConstructors.push(c.team_name);
+  }
+
+  const totalChanges = addedDrivers.length + addedConstructors.length;
+  const penalty = totalChanges * 30;
+
+  if (totalChanges === 0) {
+    return (
+      <div className="mb-4 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-700/30 rounded-lg p-3 text-sm text-emerald-800 dark:text-emerald-300">
+        <p className="flex items-start gap-2">
+          <span>✅</span>
+          <span>This recommendation matches your current team — no transfer penalty!</span>
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/30 rounded-lg p-4 text-sm">
+      <p className="font-semibold text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-2">
+        <span>⚠️</span>
+        <span>Transfer penalty: {totalChanges} change{totalChanges !== 1 ? 's' : ''} = <strong>-{penalty} pts</strong></span>
+      </p>
+      <p className="text-amber-700 dark:text-amber-400 mb-3">
+        Adopting this recommendation requires {totalChanges} transfer{totalChanges !== 1 ? 's' : ''} from your current team.
+        Each change costs -30 pts in the official Fantasy F1 game.
+      </p>
+      {addedDrivers.length > 0 && (
+        <div className="mb-1">
+          <span className="font-medium text-amber-800 dark:text-amber-300">New drivers in: </span>
+          <span className="text-amber-700 dark:text-amber-400">{addedDrivers.join(', ')}</span>
+        </div>
+      )}
+      {addedConstructors.length > 0 && (
+        <div>
+          <span className="font-medium text-amber-800 dark:text-amber-300">New constructors in: </span>
+          <span className="text-amber-700 dark:text-amber-400">{addedConstructors.join(', ')}</span>
+        </div>
+      )}
+      <p className="mt-3 text-xs text-amber-600 dark:text-amber-500">
+        💡 This team already accounts for transfer costs — picks were chosen for their net value after penalties.
+        Use the <strong>Wildcard</strong> chip to rebuild without penalty.
+      </p>
+    </div>
+  );
+}
+
 function EmptyState({ onGenerate, loading }) {
   return (
     <Card className="max-w-xl mx-auto">
@@ -274,7 +402,22 @@ export default function Predictions() {
       const payload = await buildPredictionPayload(raceCount, bypassDataCache);
       setRawData(payload);
       onProgress(`📊 Loaded ${payload.driver_trends?.length ?? 0} drivers across ${payload.recent_races?.length ?? 0} recent races`);
-      const result = await generatePredictions(payload, onProgress);
+
+      onProgress("🔍 Checking for practice session data this weekend…");
+      let practiceData = null;
+      try {
+        practiceData = await getPracticeDataForUpcomingRace();
+        if (practiceData?.length) {
+          onProgress(`🏁 Found ${practiceData.length} completed practice session${practiceData.length !== 1 ? 's' : ''} — included in analysis`);
+        } else {
+          onProgress("🏁 No practice data yet this weekend — using race history only");
+        }
+      } catch (practiceErr) {
+        console.warn("[predictions] Practice data unavailable:", practiceErr.message);
+        onProgress("🏁 Practice data unavailable — continuing with race history");
+      }
+
+      const result = await generatePredictions({ ...payload, practice_data: practiceData }, onProgress);
       if (result.error) throw new Error(result.error_message);
       onProgress("✅ Predictions ready!");
       setPrediction(result);
@@ -431,6 +574,9 @@ export default function Predictions() {
 
       {status === "success" && prediction && (
         <div className="space-y-6">
+          <TransferWarning prediction={prediction} rawData={rawData} />
+          <TeamAssessmentCard prediction={prediction} />
+
           {/* Analysis summary */}
           <Card>
             <CardHeader>

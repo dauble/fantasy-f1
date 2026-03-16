@@ -4,9 +4,80 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
-## Version 0.7- 2026-03-14 - Predictions Polish, Sync & News
+## Version 0.8.0 - 2026-03-15 - Smart Sync, Transfer Penalties, Team Assessment & Documentation Refresh
 
-> Unreleased — working branch `feat/updates`
+> Commit `HEAD` — working branch `feat/ai-enhancements`
+
+### AI — Team Assessment & Transfer Advice
+
+- Claude now evaluates **every pick in the user's current team** and produces a per-pick verdict (`keep` / `transfer`) with one-sentence reasoning for each, factoring in circuit fit, recent form, and whether a swap justifies the -30 pt penalty
+- New `team_verdict` field (`"keep"` / `"partial"` / `"transfer"`) gives an overall headline recommendation
+- New `current_team_assessment` array in the AI response carries `identifier`, `type`, `verdict`, `reason`, and `suggested_alternative` for each current pick
+- Both fields forwarded through `parsePredictionJSON` and surfaced in the result object
+- Driver names in the current-team prompt note now include abbreviations in parentheses for exact Claude matching
+
+### AI — Practice Session Data Integration
+
+- New `getPracticeDataForUpcomingRace()` in `openf1DataService.js` fetches completed FP1/FP2/FP3 classifications for the active race weekend
+- Looks for any meeting within a ±6-day window; 2-hour cache TTL per meeting so each session completion is picked up automatically
+- Practice top-10 tables injected into the Claude prompt so circuit-specific pace informs rankings and team assessment
+- Loading progress messages: "Found N completed practice sessions — included in analysis" / "No practice data yet this weekend"
+- `practice_data` passed alongside the prediction payload; `buildUserMessage` formats it into the driver ranking context
+
+### Transfer Penalty Awareness
+
+- **Transfer penalties now factored into team optimisation** — `computeOptimalTeam` deducts 30 pts per driver or constructor change when a current team is saved; the algorithm only recommends a swap when the expected gain exceeds the cost
+- Added local `TRANSFER_PENALTY_PTS = 30` constant in `aiPredictionService.js` to keep optimisation logic self-contained (no import from `src/config/api.js`)
+- `parsePredictionJSON` and `buildFallbackResult` both pass `currentTeam` to the optimizer
+- Result object now exposes a `transfers` count and `budget_analysis` reports the penalty (e.g. _"— 2 transfers from current team (-60 pts penalty)"_)
+- Fixed driver name resolution in `buildUserMessage`: current team is stored as `selectedDrivers` / `selectedConstructors` objects, so the prompt now derives names directly from those objects (rather than assuming driver numbers) to avoid `undefined` entries
+- Claude prompt updated: transfer rule included in `SCORING_RULES` and `SYSTEM_PROMPT` so analysis commentary can flag whether keeping current picks is worth it vs. paying the penalty
+
+### UI — Team Assessment Card (`Predictions.jsx`)
+
+- New `TeamAssessmentCard` component renders below the transfer warning banner when a current team is saved
+- Overall verdict banner styled green / amber / red with plain-English description
+- Per-pick rows: ✅ Keep or 🔄 with suggested replacement abbreviation/name, plus Claude's reasoning sentence for each
+
+### UI — Transfer Warning Banner (`Predictions.jsx`)
+
+- New `TransferWarning` component renders above the AI Analysis card after predictions load
+- Shows an **amber warning** listing each new driver and constructor with the total point penalty when transfers are required
+- Shows a **green confirmation** badge when the recommendation matches the current team exactly (no penalty)
+- Includes a tip reminding users that picks were already chosen for their net value after penalties, and that the Wildcard chip removes transfer costs
+
+### Rules Page (`Rules.jsx`)
+
+- Added **🔄 Transfers & Penalties** card between "Chips & Power-ups" and "Strategy Tips"
+- Lists the -30 pt per change rule, the break-even threshold (new pick must score 30+ more pts), and the Wildcard escape hatch
+- Callout box notes that AI predictions already account for transfer costs
+
+### Sync Improvements
+
+- Replaced blind push-every-60s with `smartSync` — fetches the cloud's `updated_at` timestamp before deciding whether to push or pull
+- If cloud is newer than local (another device made changes): **pull from cloud**
+- If local is current or newer: **push to cloud**
+- `pullFromCloud` now also captures the cloud's `updated_at` into `fantasy_f1_sync_meta` so the next cycle has an accurate baseline
+- `syncToCloud` records `lastSyncedAt` in `fantasy_f1_sync_meta` after every successful push
+- Tab-refocus handler now calls `smartSync` instead of unconditional `pullFromCloud`
+- "Sync ⇅" button (`syncBidirectional`) delegates to `smartSync` for the same reason
+- Login still performs a full `pullFromCloud` — cloud is always trusted on a fresh session
+
+### Documentation
+
+- Updated all six documentation files to reflect current application state:
+  - `README.md`: new tech stack entries, cloud sync section, dark mode section, corrected caching table, updated getting-started steps
+  - `documentation/ARCHITECTURE.md`: added project-tree entries for `newsService.js`, `CHANGELOG.md`, `AuthContext.jsx`, `AuthButton.jsx`, `NEWS_INTEGRATION.md`; added Section 5 (Cloud Sync & Auth System); updated AI Predictions section (4-layer cache, news step, current race detection, sync after generation); corrected Layout section (AuthButton, dark mode toggle)
+  - `documentation/AI_PREDICTIONS_SETUP.md`: added Supabase env vars, corrected loading time to 15–25s, added news-fetch step to data flow, added cross-device sync callout
+  - `documentation/NEWS_INTEGRATION.md`: replaced Motorsport.com source with Autosport + The Race; updated config table and architecture diagram
+  - `documentation/PROXY_SETUP.md`: expanded architecture to show all three endpoints (`/api/predict`, `/api/config`, `/api/news`); added Supabase env vars
+  - `documentation/README.md`: added `NEWS_INTEGRATION.md` to the index; updated Application Overview and Tech Stack table
+
+---
+
+## Version 0.7.0 - 2026-03-14 - Predictions Polish, Sync & News
+
+> Commit `main` — merged from `feat/updates`
 
 ### Predictions Page
 

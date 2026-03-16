@@ -52,3 +52,7 @@ export const POINTS = {
 
 // Turbo Driver multiplier (for chips)
 export const TURBO_MULTIPLIER = 2;
+
+// Transfer penalty: each driver or constructor change between race weekends
+// costs this many fantasy points in the official Fantasy F1 game.
+export const TRANSFER_PENALTY = 30;
