@@ -23,15 +23,16 @@ const PROXY_URL = "/api/predict";
 const MODEL = "claude-sonnet-4-20250514";
 
 // Points penalty applied per driver or constructor change in the official game
+const TRANSFER_PENALTY_PTS = TRANSFER_PENALTY;
+
 const SCORING_RULES = `
-FANTASY F1 SCORING:
 FANTASY F1 SCORING:
 Race finishing: 1st=25, 2nd=18, 3rd=15, 4th=12, 5th=10, 6th=8, 7th=6, 8th=4, 9th=2, 10th=1
 Qualifying: P1=10, P2=9, P3=8, P4=7, P5=6, P6=5, P7=4, P8=3, P9=2, P10=1
 Bonuses: Fastest Lap=+5, Position Gained=+2 each, Beat Teammate (Qual)=+2, Beat Teammate (Race)=+3, Classified Finish=+1
 Penalties: Position Lost=-2 each, Not Classified=-5, Disqualified=-20
 Turbo Driver: one driver scores 2x points
-Transfer penalty: each driver or constructor swap costs -${TRANSFER_PENALTY} fantasy points (a new pick must score ${TRANSFER_PENALTY}+ more pts than the one it replaces to be net-positive)
+Transfer penalty: each driver or constructor swap costs -${TRANSFER_PENALTY_PTS} fantasy points (a new pick must score ${TRANSFER_PENALTY_PTS}+ more pts than the one it replaces to be net-positive)
 `.trim();
 
 const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from Formula1.com, PlanetF1, and Reddit.
@@ -40,7 +41,7 @@ Your task is to predict the race outcome for EVERY driver and EVERY constructor 
 
 ${SCORING_RULES}
 
-TRANSFER CONTEXT: The user may already have an existing fantasy team. Each change to that team costs -${TRANSFER_PENALTY} pts. Your rankings will be used by an algorithm that automatically accounts for this penalty, so you should rank purely by expected race performance. However, when writing your analysis_summary, acknowledge if the user’s current picks look worth keeping or swapping given the transfer cost.
+TRANSFER CONTEXT: The user may already have an existing fantasy team. Each change to that team costs -${TRANSFER_PENALTY_PTS} pts. Your rankings will be used by an algorithm that automatically accounts for this penalty, so you should rank purely by expected race performance. However, when writing your analysis_summary, acknowledge if the user’s current picks look worth keeping or swapping given the transfer cost.
 - Provide predicted_points for each constructor (combined fantasy points from both their drivers: race finish + qualifying + bonuses for each)
 - Provide clear reasoning for each driver and constructor based on recent form, circuit characteristics, teammate battles, and likely qualifying pace
 - Mark exactly one driver as is_turbo_candidate (the single driver expected to score the most fantasy points — the best turbo pick regardless of price)
