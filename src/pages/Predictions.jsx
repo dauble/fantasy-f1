@@ -257,8 +257,14 @@ function TeamAssessmentCard({ prediction }) {
 }
 
 function TransferWarning({ prediction, rawData }) {
-  const currentTeam = rawData?.user_context?.current_team;
-  if (!currentTeam?.drivers?.length || !currentTeam?.constructors?.length) return null;
+  const rawCurrentTeam = rawData?.user_context?.current_team;
+  if (!rawCurrentTeam) return null;
+
+  // Normalize current team shape to always have driver/constructor arrays
+  const currentDrivers = rawCurrentTeam.drivers || rawCurrentTeam.selectedDrivers || [];
+  const currentConstructors = rawCurrentTeam.constructors || rawCurrentTeam.selectedConstructors || [];
+
+  if (!currentDrivers.length || !currentConstructors.length) return null;
 
   // Build driver_number → abbreviation map from driver_trends
   const numToAbbrev = {};
@@ -266,8 +272,8 @@ function TransferWarning({ prediction, rawData }) {
     if (d.driver_number != null) numToAbbrev[Number(d.driver_number)] = d.abbreviation;
   }
 
-  const currentDriverNums = new Set(currentTeam.drivers.map(n => Number(n)));
-  const currentConstructorNames = new Set(currentTeam.constructors.map(n => String(n).toLowerCase().trim()));
+  const currentDriverNums = new Set(currentDrivers.map(n => Number(n)));
+  const currentConstructorNames = new Set(currentConstructors.map(n => String(n).toLowerCase().trim()));
 
   const addedDrivers = [];
   const addedConstructors = [];
