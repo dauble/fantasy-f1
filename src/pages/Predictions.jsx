@@ -525,9 +525,14 @@ export default function Predictions() {
       // 2. Map recommended drivers to full objects via driver_trends
       const driverTrends = rawData?.driver_trends ?? [];
       const selectedDrivers = (prediction.recommended_drivers ?? []).map(rec => {
-        const trend = driverTrends.find(d => d.driver_number === rec.driver_number) ?? {};
+        // Derive driver_number from driver_trends using a stable key (abbreviation)
+        const trend =
+          driverTrends.find(d => d.abbreviation === rec.abbreviation) ??
+          driverTrends.find(d => d.driver_number === rec.driver_number) ??
+          {};
+        const driver_number = rec.driver_number ?? trend.driver_number ?? null;
         return {
-          driver_number: rec.driver_number,
+          driver_number,
           full_name: rec.full_name ?? trend.full_name ?? rec.abbreviation,
           abbreviation: rec.abbreviation ?? trend.abbreviation,
           team_name: rec.team_name ?? trend.team_name,
@@ -538,7 +543,7 @@ export default function Predictions() {
 
       const turboRec = prediction.recommended_drivers?.find(d => d.is_turbo_pick);
       const turboDriver = turboRec
-        ? (selectedDrivers.find(d => d.driver_number === turboRec.driver_number) ?? null)
+        ? (selectedDrivers.find(d => d.abbreviation === turboRec.abbreviation) ?? null)
         : null;
 
       // 3. Map recommended constructors (price is in $M; multiply for raw storage)
