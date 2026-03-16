@@ -208,7 +208,7 @@ function ApplyRecommendationsCard({ prediction, onApply, applied }) {
 
   const turbo = prediction.recommended_drivers.find(d => d.is_turbo_pick);
   const driverList = prediction.recommended_drivers.map(d => d.abbreviation).join(' · ');
-  const constructorList = prediction.recommended_constructors.map(c => c.team_name).join(' · ');
+  const constructorList = (prediction.recommended_constructors ?? []).map(c => c.team_name).join(' · ');
 
   if (applied) {
     return (
