@@ -27,10 +27,10 @@ All notable changes to Fantasy F1 are documented here.
 ### Transfer Penalty Awareness
 
 - **Transfer penalties now factored into team optimisation** — `computeOptimalTeam` deducts 30 pts per driver or constructor change when a current team is saved; the algorithm only recommends a swap when the expected gain exceeds the cost
-- Added `TRANSFER_PENALTY_PTS = 30` constant; imported `TRANSFER_PENALTY` from `config/api.js`
+- Added local `TRANSFER_PENALTY_PTS = 30` constant in `aiPredictionService.js` to keep optimisation logic self-contained (no import from `src/config/api.js`)
 - `parsePredictionJSON` and `buildFallbackResult` both pass `currentTeam` to the optimizer
 - Result object now exposes a `transfers` count and `budget_analysis` reports the penalty (e.g. _"— 2 transfers from current team (-60 pts penalty)"_)
-- Fixed driver name resolution in `buildUserMessage`: current team drivers were stored as numbers but resolved via `d.full_name` → all `undefined`; now cross-referenced through `driver_trends` using `driver_number`
+- Fixed driver name resolution in `buildUserMessage`: current team is stored as `selectedDrivers` / `selectedConstructors` objects, so the prompt now derives names directly from those objects (rather than assuming driver numbers) to avoid `undefined` entries
 - Claude prompt updated: transfer rule included in `SCORING_RULES` and `SYSTEM_PROMPT` so analysis commentary can flag whether keeping current picks is worth it vs. paying the penalty
 
 ### UI — Team Assessment Card (`Predictions.jsx`)
