@@ -406,9 +406,20 @@ function buildUserMessage(payload, constructorPriceMap, allConstructors, newsCon
       }
       return d?.full_name || d?.name || String(d);
     };
-    const dNames = Array.isArray(t.drivers) ? t.drivers.map(resolveDriver).join(", ") : "none";
-    const cNames = Array.isArray(t.constructors)
-      ? t.constructors.map(c => typeof c === 'string' ? c : (c?.team_name || c?.name || String(c))).join(", ")
+    // Normalise team structure: prefer explicit arrays, fall back to selectedDrivers/selectedConstructors objects
+    const normalizedDrivers = Array.isArray(t.drivers)
+      ? t.drivers
+      : (t.selectedDrivers ? Object.values(t.selectedDrivers) : []);
+    const normalizedConstructors = Array.isArray(t.constructors)
+      ? t.constructors
+      : (t.selectedConstructors ? Object.values(t.selectedConstructors) : []);
+    const dNames = normalizedDrivers.length
+      ? normalizedDrivers.map(resolveDriver).join(", ")
+      : "none";
+    const cNames = normalizedConstructors.length
+      ? normalizedConstructors
+          .map(c => typeof c === 'string' ? c : (c?.team_name || c?.name || String(c)))
+          .join(", ")
       : "none";
     const budget = t.totalSpent != null ? ` ($${(t.totalSpent / 1_000_000).toFixed(1)}M spent)` : (t.totalCost != null ? ` ($${t.totalCost}M)` : "");
     currentTeamNote = `\nUSER'S CURRENT FANTASY TEAM:\nDrivers: ${dNames}\nConstructors: ${cNames}${budget}\n\nTRANSFER RULE: Each driver or constructor swap costs -${TRANSFER_PENALTY_PTS} pts. Only recommend a transfer if the replacement is expected to score ${TRANSFER_PENALTY_PTS}+ more fantasy points than who they replace.\n\nTEAM ASSESSMENT TASK: Evaluate EVERY one of the user's current picks. For each, decide KEEP (solid for this circuit, not worth the penalty) or TRANSFER (clear upgrade that justifies the -${TRANSFER_PENALTY_PTS} pt cost). Use practice session pace and news to inform these calls. Populate "team_verdict" ("keep" / "partial" / "transfer") and "current_team_assessment" in your JSON response.\n`;
