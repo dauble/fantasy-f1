@@ -266,10 +266,10 @@ function TransferWarning({ prediction, rawData }) {
 
   if (!currentDrivers.length || !currentConstructors.length) return null;
 
-  // Build driver_number → abbreviation map from driver_trends
-  const numToAbbrev = {};
+  // Build abbreviation → driver_number map from driver_trends once
+  const abbrevToNum = {};
   for (const d of (rawData.driver_trends || [])) {
-    if (d.driver_number != null) numToAbbrev[Number(d.driver_number)] = d.abbreviation;
+    if (d.abbreviation) abbrevToNum[d.abbreviation] = Number(d.driver_number);
   }
 
   const currentDriverNums = new Set(currentDrivers.map(n => Number(n)));
@@ -279,10 +279,6 @@ function TransferWarning({ prediction, rawData }) {
   const addedConstructors = [];
 
   for (const d of (prediction.recommended_drivers || [])) {
-    const abbrevToNum = {};
-    for (const td of (rawData.driver_trends || [])) {
-      if (td.abbreviation) abbrevToNum[td.abbreviation] = Number(td.driver_number);
-    }
     const num = abbrevToNum[d.abbreviation];
     if (num == null || !currentDriverNums.has(num)) addedDrivers.push(d.full_name || d.abbreviation);
   }
