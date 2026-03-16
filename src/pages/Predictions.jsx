@@ -203,7 +203,7 @@ function ErrorState({ error, onRetry }) {
   );
 }
 
-function ApplyRecommendationsCard({ prediction, rawData, onApply, applied }) {
+function ApplyRecommendationsCard({ prediction, onApply, applied }) {
   if (!prediction?.recommended_drivers?.length) return null;
 
   const turbo = prediction.recommended_drivers.find(d => d.is_turbo_pick);
