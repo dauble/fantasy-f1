@@ -94,8 +94,11 @@ This starts the Vite dev server on port 5173, which:
    - 2 recommended constructors
    - Turbo driver suggestion
    - Value picks and risk assessments
+   - Transfer warning banner shows the point penalty if the recommendation differs from your saved team
+   - Team Assessment card gives a per-pick verdict (Keep / Transfer) when you have a team saved
+6. Optionally click **Apply & Save Team** to replace your active team in one click — your previous team is automatically backed up to Team History with a unique ID so it can be restored at any time
 
-> **Cross-device sync**: When you're logged in, the generated prediction is automatically saved to your Supabase profile. Opening the Predictions page on a second device will load the cached result from the cloud instead of calling Claude again.
+> **Cross-device sync**: When you're logged in, the generated prediction is automatically saved to your Supabase profile. Opening the Predictions page on a second device will load the cached result from the cloud instead of calling Claude again. Applying a recommendation also syncs your updated team and Team History snapshots to the cloud immediately.
 
 ## How It Works
 

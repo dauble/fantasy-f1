@@ -283,6 +283,7 @@ The `AuthContext` provider wraps the entire app and exposes:
 - **Tab refocus** — `pullFromCloud` if tab was hidden for 5+ minutes
 - **Manual** — "Sync ⇅" button calls `syncBidirectional`
 - **After prediction** — `syncToCloud` called after generating a new AI prediction
+- **After applying recommendation** — `syncToCloud` called immediately when the user taps Apply & Save Team
 
 #### Theme Persistence
 
@@ -316,19 +317,25 @@ The `AuthContext` provider wraps the entire app and exposes:
 
 **Core Functionality**:
 
-- Fetches meetings via `openF1API.getMeetings()` (uses cache)
-- Filters to current year (2026) only
-- Sorts ASC (earliest race first, next race at top)
-- Smart default selection: auto-selects next upcoming race
-- Shows all races (no 10-race limit)
+- Pulls historical race data via `openf1DataService.buildPredictionPayload()` (4-layer cache)
+- Detects current and next race to display live weekend context
+- `generatePredictions()` dispatches to the Express proxy → Anthropic Claude
+- Results cached in `fantasy_f1_ai_prediction` localStorage and synced to Supabase
 
 **Display**:
 
-- Race name, location, country flag
-- Circuit information
-- Date range (practice → race)
-- Race outcome predictions
-- Points calculator for selected drivers
+- Recommended 5 drivers + 2 constructors with per-pick reasoning and confidence badges
+- Turbo pick highlighted with ⚡ badge
+- Transfer warning banner (amber) listing new picks and total point penalty when the recommended team differs from the current saved team; green confirmation when no changes are needed
+- Team Assessment card: per-pick verdict (✅ Keep / 🔄 Transfer) with Claude's reasoning sentence; overall headline (`keep` / `partial` / `transfer`)
+- AI Analysis summary, value picks, risks, and budget breakdown
+
+**Apply & Save Team**:
+
+- After a prediction loads, an **Apply & Save Team** card appears at the top of the results
+- One click: calls `teamStorage.saveBackupToHistory()` to archive the current team with a GUID key and race-name label, then saves the AI recommendation as the new active team
+- The button is replaced with a confirmation banner linking to Team History once applied
+- `syncToCloud()` is called after applying so the change propagates instantly to Supabase
 
 #### Team History (`src/pages/TeamHistory.jsx`)
 
@@ -343,6 +350,8 @@ The `AuthContext` provider wraps the entire app and exposes:
 - **Load**: Restore team as current selection
 - **Export**: Download team as JSON file
 - **Delete**: Remove from history (with confirmation)
+
+**AI backup entries** (`source: 'ai_backup'`) are created automatically when the user applies an AI recommendation. Each entry has a UUID key and a label like _"Pre-AI snapshot – Australian GP"_, making it easy to identify and revert pre-change lineups.
 
 **Empty State**: Helpful message encouraging first team save
 

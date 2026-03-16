@@ -122,6 +122,30 @@ export const teamStorage = {
     }
   },
 
+  // Save the current active team as a backup entry in history with a GUID id.
+  // Useful for preserving the team before applying AI recommendations.
+  saveBackupToHistory(label) {
+    try {
+      const current = this.loadCurrentTeam();
+      if (!current) return false; // nothing to back up
+      const history = this.getTeamHistory();
+      const entry = {
+        ...current,
+        id: crypto.randomUUID(),
+        week: label,
+        source: 'ai_backup',
+        savedAt: new Date().toISOString(),
+      };
+      history.unshift(entry);
+      localStorage.setItem(TEAMS_HISTORY_KEY, JSON.stringify(history.slice(0, 20)));
+      console.log('Team backed up to history:', label);
+      return true;
+    } catch (error) {
+      console.error('Error saving backup to history:', error);
+      return false;
+    }
+  },
+
   // Export team as JSON
   exportTeam(teamData) {
     try {

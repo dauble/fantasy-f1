@@ -17,6 +17,7 @@ import { buildPredictionPayload, clearPredictionCaches, getPracticeDataForUpcomi
 import { generatePredictions } from "../services/aiPredictionService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { useAuth } from "../context/AuthContext";
+import teamStorage from "../utils/teamStorage";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -202,6 +203,66 @@ function ErrorState({ error, onRetry }) {
   );
 }
 
+function ApplyRecommendationsCard({ prediction, rawData, onApply, applied }) {
+  if (!prediction?.recommended_drivers?.length) return null;
+
+  const turbo = prediction.recommended_drivers.find(d => d.is_turbo_pick);
+  const driverList = prediction.recommended_drivers.map(d => d.abbreviation).join(' · ');
+  const constructorList = prediction.recommended_constructors.map(c => c.team_name).join(' · ');
+
+  if (applied) {
+    return (
+      <Card className="border-emerald-400 dark:border-emerald-600">
+        <CardContent className="py-4">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl shrink-0">✅</span>
+            <div>
+              <p className="font-semibold text-emerald-700 dark:text-emerald-300">Team updated and saved!</p>
+              <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">
+                AI recommendation is now your active team. Your previous team was backed up to{' '}
+                <a href="#/history" className="underline font-medium">Team History</a>{' '}
+                and can be restored at any time.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold text-gray-900 dark:text-white text-base">
+              Apply AI Recommendation
+            </p>
+            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+              Save this team as your current selection. Your existing team will be backed up to Team History.
+            </p>
+            <p className="text-xs text-gray-400 dark:text-gray-500 mt-1.5 truncate">
+              {driverList}
+              {turbo && <span className="text-yellow-600 dark:text-yellow-400"> · ⚡ {turbo.abbreviation}</span>}
+              <span className="mx-1.5 opacity-40">|</span>
+              {constructorList}
+            </p>
+          </div>
+          <button
+            onClick={onApply}
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition-colors shrink-0"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Apply &amp; Save Team
+          </button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function TeamAssessmentCard({ prediction }) {
   const assessment = prediction?.current_team_assessment;
   const verdict = prediction?.team_verdict;
@@ -368,6 +429,7 @@ export default function Predictions() {
   const [raceCount, setRaceCount] = useState(5);
   const [loadingStep, setLoadingStep] = useState("");
   const [loadingHistory, setLoadingHistory] = useState([]);
+  const [applied, setApplied] = useState(false);
 
   // Load cached prediction on mount
   useEffect(() => {
@@ -422,6 +484,7 @@ export default function Predictions() {
       onProgress("✅ Predictions ready!");
       setPrediction(result);
       setStatus("success");
+      setApplied(false);
       
       // Save to localStorage then push to cloud profile
       try {
@@ -445,10 +508,57 @@ export default function Predictions() {
     setPrediction(null);
     setRawData(null);
     setErrorMsg("");
+    setApplied(false);
     localStorage.removeItem(PREDICTION_CACHE_KEY);
     clearPredictionCaches(raceCount);
     console.log("All prediction caches cleared");
   };
+
+  const applyRecommendations = useCallback(() => {
+    try {
+      const raceName = rawData?.next_race?.name ?? rawData?.current_race?.name ?? 'upcoming race';
+
+      // 1. Back up the current team before overwriting it
+      teamStorage.saveBackupToHistory(`Pre-AI snapshot – ${raceName}`);
+
+      // 2. Map recommended drivers to full objects via driver_trends
+      const driverTrends = rawData?.driver_trends ?? [];
+      const selectedDrivers = (prediction.recommended_drivers ?? []).map(rec => {
+        const trend = driverTrends.find(d => d.driver_number === rec.driver_number) ?? {};
+        return {
+          driver_number: rec.driver_number,
+          full_name: rec.full_name ?? trend.full_name ?? rec.abbreviation,
+          abbreviation: rec.abbreviation ?? trend.abbreviation,
+          team_name: rec.team_name ?? trend.team_name,
+          team_colour: trend.team_colour ?? null,
+          price: rec.price ?? trend.price ?? 20,
+        };
+      });
+
+      const turboRec = prediction.recommended_drivers?.find(d => d.is_turbo_pick);
+      const turboDriver = turboRec
+        ? (selectedDrivers.find(d => d.driver_number === turboRec.driver_number) ?? null)
+        : null;
+
+      // 3. Map recommended constructors (price is in $M; multiply for raw storage)
+      const selectedConstructors = (prediction.recommended_constructors ?? []).map(rec => ({
+        team_name: rec.team_name,
+        price: rec.price ?? 20,
+      }));
+
+      // 4. Total in raw dollars (prices are $M in the prediction payload)
+      const totalSpent = [
+        ...selectedDrivers.map(d => (d.price ?? 0) * 1_000_000),
+        ...selectedConstructors.map(c => (c.price ?? 0) * 1_000_000),
+      ].reduce((a, b) => a + b, 0);
+
+      teamStorage.saveCurrentTeam({ selectedDrivers, selectedConstructors, turboDriver, totalSpent });
+      syncToCloud?.();
+      setApplied(true);
+    } catch (err) {
+      console.error('[predictions] Failed to apply recommendations:', err);
+    }
+  }, [prediction, rawData, syncToCloud]);
 
   return (
     <div className="container mx-auto px-4 py-6">
@@ -574,6 +684,7 @@ export default function Predictions() {
 
       {status === "success" && prediction && (
         <div className="space-y-6">
+          <ApplyRecommendationsCard prediction={prediction} rawData={rawData} onApply={applyRecommendations} applied={applied} />
           <TransferWarning prediction={prediction} rawData={rawData} />
           <TeamAssessmentCard prediction={prediction} />
 

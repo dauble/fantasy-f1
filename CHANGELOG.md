@@ -33,6 +33,14 @@ All notable changes to Fantasy F1 are documented here.
 - Fixed driver name resolution in `buildUserMessage`: current team is stored as `selectedDrivers` / `selectedConstructors` objects, so the prompt now derives names directly from those objects (rather than assuming driver numbers) to avoid `undefined` entries
 - Claude prompt updated: transfer rule included in `SCORING_RULES` and `SYSTEM_PROMPT` so analysis commentary can flag whether keeping current picks is worth it vs. paying the penalty
 
+### UI — Apply & Save Team (`Predictions.jsx`)
+
+- New **Apply & Save Team** button appears at the top of the results view once a prediction completes
+- One click: backs up the current team to Team History (GUID key via `crypto.randomUUID()`) then replaces the active team with the AI recommendation
+- Backup label includes the race name (e.g. _"Pre-AI snapshot – Australian GP"_) so old lineups are easy to identify in Team History and can be restored at any time
+- After applying, the button is replaced with a green confirmation banner linking directly to Team History
+- `teamStorage.saveBackupToHistory(label)` helper added to `teamStorage.js` — saves the current team as a history entry with a unique UUID and `source: 'ai_backup'` tag, trimming history to the last 20 entries
+
 ### UI — Team Assessment Card (`Predictions.jsx`)
 
 - New `TeamAssessmentCard` component renders below the transfer warning banner when a current team is saved
