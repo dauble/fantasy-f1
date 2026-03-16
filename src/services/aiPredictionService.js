@@ -152,13 +152,61 @@ function driverScore(d) {
 function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiConstructorMap = {}, currentTeam = null) {
   const BUDGET = 100;
 
-  // Build lookup sets from the current saved team for transfer-penalty calculation
-  const currentDriverNums = currentTeam?.drivers
-    ? new Set(currentTeam.drivers.map(n => Number(n)))
-    : null;
-  const currentConstructorNames = currentTeam?.constructors
-    ? new Set(currentTeam.constructors.map(n => String(n).toLowerCase().trim()))
-    : null;
+  // Build lookup sets from the current saved team for transfer-penalty calculation.
+  // Support both legacy shape { drivers: [driverNumbers], constructors: [teamNames] }
+  // and stored shape { selectedDrivers: [driver objects], selectedConstructors: [constructor objects], ... }.
+  let currentDriverNums = null;
+  let currentConstructorNames = null;
+
+  if (currentTeam) {
+    // Normalize drivers → driver numbers
+    let driverNums = [];
+
+    if (Array.isArray(currentTeam.drivers) && currentTeam.drivers.length > 0) {
+      // Legacy shape: drivers may already be numbers or driver-like objects
+      driverNums = currentTeam.drivers.map(d =>
+        Number(d && typeof d === "object" && "driver_number" in d ? d.driver_number : d)
+      );
+    } else if (Array.isArray(currentTeam.selectedDrivers) && currentTeam.selectedDrivers.length > 0) {
+      // Stored shape: full driver objects
+      driverNums = currentTeam.selectedDrivers.map(d => Number(d && d.driver_number));
+    }
+
+    driverNums = driverNums.filter(n => Number.isFinite(n));
+    if (driverNums.length > 0) {
+      currentDriverNums = new Set(driverNums);
+    }
+
+    // Normalize constructors → lowercase team names
+    let constructorNames = [];
+
+    const normalizeConstructorName = (c) => {
+      if (!c) return null;
+      if (typeof c === "string" || typeof c === "number") {
+        return String(c).toLowerCase().trim();
+      }
+      if (typeof c === "object") {
+        const raw =
+          (c.team_name != null && c.team_name) ||
+          (c.name != null && c.name);
+        if (raw != null) {
+          return String(raw).toLowerCase().trim();
+        }
+      }
+      return null;
+    };
+
+    if (Array.isArray(currentTeam.constructors) && currentTeam.constructors.length > 0) {
+      constructorNames = currentTeam.constructors.map(normalizeConstructorName);
+    } else if (Array.isArray(currentTeam.selectedConstructors) && currentTeam.selectedConstructors.length > 0) {
+      constructorNames = currentTeam.selectedConstructors.map(normalizeConstructorName);
+    }
+
+    constructorNames = constructorNames.filter(name => typeof name === "string" && name.length > 0);
+    if (constructorNames.length > 0) {
+      currentConstructorNames = new Set(constructorNames);
+    }
+  }
 
   const drivers = driverTrends
     .filter(d => typeof d.price === 'number' && d.price > 0)
