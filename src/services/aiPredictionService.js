@@ -23,8 +23,9 @@ const PROXY_URL = "/api/predict";
 const MODEL = "claude-sonnet-4-20250514";
 
 // Points penalty applied per driver or constructor change in the official game
+const TRANSFER_PENALTY_PTS = TRANSFER_PENALTY;
+
 const SCORING_RULES = `
-FANTASY F1 SCORING:
 FANTASY F1 SCORING:
 Race finishing: 1st=25, 2nd=18, 3rd=15, 4th=12, 5th=10, 6th=8, 7th=6, 8th=4, 9th=2, 10th=1
 Qualifying: P1=10, P2=9, P3=8, P4=7, P5=6, P6=5, P7=4, P8=3, P9=2, P10=1
