@@ -18,6 +18,7 @@ import { generatePredictions } from "../services/aiPredictionService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { useAuth } from "../context/AuthContext";
 import teamStorage from "../utils/teamStorage";
+import { Link } from "react-router-dom";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -220,7 +221,7 @@ function ApplyRecommendationsCard({ prediction, onApply, applied }) {
               <p className="font-semibold text-emerald-700 dark:text-emerald-300">Team updated and saved!</p>
               <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">
                 AI recommendation is now your active team. Your previous team was backed up to{' '}
-                <a href="#/history" className="underline font-medium">Team History</a>{' '}
+                <Link to="/history" className="underline font-medium">Team History</Link>{' '}
                 and can be restored at any time.
               </p>
             </div>
