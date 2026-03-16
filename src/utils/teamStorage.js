@@ -3,6 +3,25 @@
 const TEAM_STORAGE_KEY = 'fantasy_f1_current_team';
 const TEAMS_HISTORY_KEY = 'fantasy_f1_teams_history';
 
+// Generate an ID for backup entries. Prefer crypto.randomUUID when available,
+// but fall back to a timestamp+random-based ID for environments where it isn't.
+const generateBackupId = () => {
+  try {
+    const globalObj = typeof globalThis !== 'undefined' ? globalThis : window;
+    const cryptoObj = globalObj && globalObj.crypto ? globalObj.crypto : null;
+
+    if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+      return cryptoObj.randomUUID();
+    }
+  } catch (e) {
+    // Ignore and fall through to fallback
+  }
+
+  const timePart = Date.now().toString(16);
+  const randomPart = Math.random().toString(16).slice(2);
+  return `${timePart}-${randomPart}`;
+};
+
 export const teamStorage = {
   // Save current team
   saveCurrentTeam(teamData) {
@@ -131,7 +150,7 @@ export const teamStorage = {
       const history = this.getTeamHistory();
       const entry = {
         ...current,
-        id: crypto.randomUUID(),
+        id: generateBackupId(),
         week: label,
         source: 'ai_backup',
         savedAt: new Date().toISOString(),
