@@ -3,6 +3,25 @@
 const TEAM_STORAGE_KEY = 'fantasy_f1_current_team';
 const TEAMS_HISTORY_KEY = 'fantasy_f1_teams_history';
 
+// Generate an ID for backup entries. Prefer crypto.randomUUID when available,
+// but fall back to a timestamp+random-based ID for environments where it isn't.
+const generateBackupId = () => {
+  try {
+    const globalObj = typeof globalThis !== 'undefined' ? globalThis : window;
+    const cryptoObj = globalObj && globalObj.crypto ? globalObj.crypto : null;
+
+    if (cryptoObj && typeof cryptoObj.randomUUID === 'function') {
+      return cryptoObj.randomUUID();
+    }
+  } catch (e) {
+    // Ignore and fall through to fallback
+  }
+
+  const timePart = Date.now().toString(16);
+  const randomPart = Math.random().toString(16).slice(2);
+  return `${timePart}-${randomPart}`;
+};
+
 export const teamStorage = {
   // Save current team
   saveCurrentTeam(teamData) {
@@ -118,6 +137,30 @@ export const teamStorage = {
       return true;
     } catch (error) {
       console.error('Error deleting team from history:', error);
+      return false;
+    }
+  },
+
+  // Save the current active team as a backup entry in history with a GUID id.
+  // Useful for preserving the team before applying AI recommendations.
+  saveBackupToHistory(label) {
+    try {
+      const current = this.loadCurrentTeam();
+      if (!current) return false; // nothing to back up
+      const history = this.getTeamHistory();
+      const entry = {
+        ...current,
+        id: generateBackupId(),
+        week: label,
+        source: 'ai_backup',
+        savedAt: new Date().toISOString(),
+      };
+      history.unshift(entry);
+      localStorage.setItem(TEAMS_HISTORY_KEY, JSON.stringify(history.slice(0, 20)));
+      console.log('Team backed up to history:', label);
+      return true;
+    } catch (error) {
+      console.error('Error saving backup to history:', error);
       return false;
     }
   },
