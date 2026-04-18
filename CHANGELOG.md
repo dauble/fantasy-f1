@@ -4,6 +4,40 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.9.0 - 2026-04-18 - One-Click Team Application & Security Updates
+
+> Commit `fc68cb5` — working branch `feat/create-team`
+
+### UI — One-Click Team Update from Prediction
+
+- New one-click workflow to apply the AI-recommended team directly from the Predictions page
+- Automatically backs up the current team to Team History before replacing it with the AI pick
+- Confirmation banner replaces the apply button after the team is saved, linking to Team History for easy review or rollback
+
+### Security
+
+- Resolved 7 dependency vulnerabilities (3 moderate, 4 high) via `npm audit fix`:
+  - `axios`: NO_PROXY hostname normalisation bypass and cloud metadata exfiltration via header injection
+  - `brace-expansion`: zero-step sequence causing process hang and memory exhaustion
+  - `flatted`: prototype pollution via `parse()` in Node.js
+  - `follow-redirects`: custom authentication headers leaked to cross-domain redirect targets
+  - `path-to-regexp`: ReDoS via sequential optional groups and multiple wildcards
+  - `picomatch`: method injection in POSIX character classes and ReDoS via extglob quantifiers
+  - `vite`: path traversal in optimised deps `.map` handling, `server.fs.deny` bypass, and arbitrary file read via dev server WebSocket
+
+---
+
+## Version 0.8.1 - 2026-04-18 - Hotfix: Env Var & AI Prediction
+
+> Commit `6f36187` — merged from `hotfix/env-var` (PR #9)
+
+### Bug Fixes
+
+- Fixed pull request environment variable misconfiguration causing lookup failures
+- Fixed AI prediction service returning incorrect or no results in certain conditions
+
+---
+
 ## Version 0.8.0 - 2026-03-15 - Smart Sync, Transfer Penalties, Team Assessment & Documentation Refresh
 
 > Commit `HEAD` — working branch `feat/ai-enhancements`
