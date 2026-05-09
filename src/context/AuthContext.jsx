@@ -14,6 +14,8 @@ const LS_KEYS = {
   syncMeta: 'fantasy_f1_sync_meta',
 };
 
+const getSyncStatusForFailure = () => (typeof navigator !== 'undefined' && navigator.onLine ? 'error' : 'idle');
+
 export function AuthProvider({ children }) {
   const [supabase, setSupabase] = useState(null);
   const [user, setUser] = useState(null);
@@ -116,16 +118,16 @@ export function AuthProvider({ children }) {
 
       setSyncStatus('synced');
     } catch (err) {
-      console.error('Error pulling from cloud:', err);
-      setSyncStatus('error');
+      console.error('[pullFromCloud] Error (continuing offline):', err);
+      setSyncStatus(getSyncStatusForFailure());
     }
   }, []);
 
   // Push localStorage data up to Supabase.
   // Records lastSyncedAt after a successful push so smartSync can compare
   // against the cloud's updated_at on the next cycle.
-  const syncToCloud = useCallback(async () => {
-    if (!supabase || !user) return;
+  const syncToCloudForUser = useCallback(async (targetUserId) => {
+    if (!supabase || !targetUserId) return;
     setSyncStatus('syncing');
     try {
       const parse = (key) => {
@@ -135,7 +137,7 @@ export function AuthProvider({ children }) {
 
       const now = new Date().toISOString();
       const { error } = await supabase.from('user_data').upsert({
-        id: user.id,
+        id: targetUserId,
         current_team: parse(LS_KEYS.currentTeam),
         custom_prices: parse(LS_KEYS.customPrices),
         team_history: parse(LS_KEYS.teamHistory),
@@ -147,11 +149,18 @@ export function AuthProvider({ children }) {
       if (error) throw error;
       localStorage.setItem(LS_KEYS.syncMeta, JSON.stringify({ lastSyncedAt: now }));
       setSyncStatus('synced');
+      return true;
     } catch (err) {
-      console.error('Error syncing to cloud:', err);
-      setSyncStatus('error');
+      console.error('[syncToCloud] Error (continuing offline):', err);
+      setSyncStatus(getSyncStatusForFailure());
+      return false;
     }
-  }, [supabase, user]);
+  }, [supabase]);
+
+  const syncToCloud = useCallback(async () => {
+    if (!user) return;
+    await syncToCloudForUser(user.id);
+  }, [user, syncToCloudForUser]);
 
   // Compare the cloud's updated_at against the timestamp of our last push/pull.
   // If the cloud is newer → pull (another device made changes).
@@ -180,18 +189,19 @@ export function AuthProvider({ children }) {
         await syncToCloud();
       }
     } catch (err) {
-      console.error('[sync] smartSync failed:', err);
-      setSyncStatus('error');
+      console.error('[smartSync] Error (continuing offline):', err);
+      setSyncStatus(getSyncStatusForFailure());
     }
   }, [supabase, user, pullFromCloud, syncToCloud]);
 
-  // On login: pull from cloud (trust cloud on fresh login).
+  // On login: smartSync to compare local and cloud data (preserve newer version).
   // Every 60s: smartSync (compare timestamps, pull or push accordingly).
   // On tab refocus after 5+ min: smartSync (another device may have made changes).
   useEffect(() => {
     if (!supabase || !user) return;
 
-    pullFromCloud(supabase, user.id);
+    // Use smartSync on login to preserve local changes if they're newer
+    smartSync();
 
     const syncInterval = setInterval(smartSync, 60_000);
 
@@ -209,7 +219,7 @@ export function AuthProvider({ children }) {
       clearInterval(syncInterval);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [supabase, user, pullFromCloud, smartSync]);
+  }, [supabase, user, smartSync]);
 
   const signIn = useCallback(async (email, password) => {
     if (!supabase) return { error: { message: 'Auth not available' } };
@@ -222,8 +232,18 @@ export function AuthProvider({ children }) {
     const { data, error } = await supabase.auth.signUp({ email, password });
     // needsEmailConfirmation is true when Supabase hasn't auto-confirmed the user
     const needsEmailConfirmation = !error && !data.session;
+
+    // If signup succeeded and user is logged in, push existing localStorage data to database
+    if (!error && data.user && data.session) {
+      console.log('[signUp] New user created, syncing localStorage to cloud');
+      const didSync = await syncToCloudForUser(data.session.user.id);
+      if (!didSync) {
+        console.warn('[signUp] Account created, cloud sync failed, continuing in local mode');
+      }
+    }
+
     return { error, needsEmailConfirmation };
-  }, [supabase]);
+  }, [supabase, syncToCloudForUser]);
 
   const resetPassword = useCallback(async (email) => {
     if (!supabase) return { error: { message: 'Auth not available' } };
