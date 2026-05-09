@@ -14,7 +14,7 @@ const LS_KEYS = {
   syncMeta: 'fantasy_f1_sync_meta',
 };
 
-const getSyncFailureStatus = () => (typeof navigator !== 'undefined' && navigator.onLine ? 'error' : 'idle');
+const getSyncStatusForFailure = () => (typeof navigator !== 'undefined' && navigator.onLine ? 'error' : 'idle');
 
 export function AuthProvider({ children }) {
   const [supabase, setSupabase] = useState(null);
@@ -119,15 +119,14 @@ export function AuthProvider({ children }) {
       setSyncStatus('synced');
     } catch (err) {
       console.error('[pullFromCloud] Error (continuing offline):', err);
-      setSyncStatus(getSyncFailureStatus());
+      setSyncStatus(getSyncStatusForFailure());
     }
   }, []);
 
   // Push localStorage data up to Supabase.
   // Records lastSyncedAt after a successful push so smartSync can compare
   // against the cloud's updated_at on the next cycle.
-  const syncToCloud = useCallback(async (userId) => {
-    const targetUserId = userId ?? user?.id;
+  const syncToCloudForUser = useCallback(async (targetUserId) => {
     if (!supabase || !targetUserId) return;
     setSyncStatus('syncing');
     try {
@@ -150,11 +149,18 @@ export function AuthProvider({ children }) {
       if (error) throw error;
       localStorage.setItem(LS_KEYS.syncMeta, JSON.stringify({ lastSyncedAt: now }));
       setSyncStatus('synced');
+      return true;
     } catch (err) {
       console.error('[syncToCloud] Error (continuing offline):', err);
-      setSyncStatus(getSyncFailureStatus());
+      setSyncStatus(getSyncStatusForFailure());
+      return false;
     }
-  }, [supabase, user]);
+  }, [supabase]);
+
+  const syncToCloud = useCallback(async () => {
+    if (!user) return;
+    await syncToCloudForUser(user.id);
+  }, [user, syncToCloudForUser]);
 
   // Compare the cloud's updated_at against the timestamp of our last push/pull.
   // If the cloud is newer → pull (another device made changes).
@@ -184,7 +190,7 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       console.error('[smartSync] Error (continuing offline):', err);
-      setSyncStatus(getSyncFailureStatus());
+      setSyncStatus(getSyncStatusForFailure());
     }
   }, [supabase, user, pullFromCloud, syncToCloud]);
 
@@ -230,11 +236,14 @@ export function AuthProvider({ children }) {
     // If signup succeeded and user is logged in, push existing localStorage data to database
     if (!error && data.user && data.session) {
       console.log('[signUp] New user created, syncing localStorage to cloud');
-      await syncToCloud(data.session.user.id);
+      const didSync = await syncToCloudForUser(data.session.user.id);
+      if (!didSync) {
+        console.warn('[signUp] Account created, cloud sync failed, continuing in local mode');
+      }
     }
 
     return { error, needsEmailConfirmation };
-  }, [supabase, syncToCloud]);
+  }, [supabase, syncToCloudForUser]);
 
   const resetPassword = useCallback(async (email) => {
     if (!supabase) return { error: { message: 'Auth not available' } };
