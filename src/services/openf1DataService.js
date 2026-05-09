@@ -104,6 +104,12 @@ async function fetchWithCache(url, retryCount = 0) {
         console.warn(`API error ${res.status} — using stale cache for: ${url}`);
         return expiredCache;
       }
+      // 404 is a soft failure - data not available yet (expected for some sessions)
+      if (res.status === 404) {
+        const error = new Error(`OpenF1 API error: ${res.status} ${url}`);
+        error.isSoftFailure = true;
+        throw error;
+      }
       throw new Error(`OpenF1 API error: ${res.status} ${url}`);
     }
 
@@ -303,7 +309,12 @@ export async function getDriversForSession(sessionKey) {
     const url = `${BASE_URL}/drivers?session_key=${sessionKey}`;
     return await fetchWithCache(url);
   } catch (error) {
-    console.error(`Error fetching drivers for session ${sessionKey}:`, error);
+    // 404s are expected for sessions without driver data (soft failure)
+    if (error.isSoftFailure) {
+      console.warn(`No driver data available for session ${sessionKey} (expected for some sessions)`);
+    } else {
+      console.error(`Error fetching drivers for session ${sessionKey}:`, error);
+    }
     return [];
   }
 }
@@ -330,7 +341,12 @@ export async function getPositionsForSession(sessionKey) {
       (a, b) => a.position - b.position
     );
   } catch (error) {
-    console.error(`Error fetching positions for session ${sessionKey}:`, error);
+    // 404s are expected for sessions without position data (soft failure)
+    if (error.isSoftFailure) {
+      console.warn(`No position data available for session ${sessionKey} (expected for some sessions)`);
+    } else {
+      console.error(`Error fetching positions for session ${sessionKey}:`, error);
+    }
     return [];
   }
 }
@@ -341,7 +357,12 @@ export async function getLapsForSession(sessionKey) {
     const url = `${BASE_URL}/laps?session_key=${sessionKey}`;
     return await fetchWithCache(url);
   } catch (error) {
-    console.error(`Error fetching laps for session ${sessionKey}:`, error);
+    // 404s are expected for sessions without lap data (soft failure)
+    if (error.isSoftFailure) {
+      console.warn(`No lap data available for session ${sessionKey} (expected for some sessions)`);
+    } else {
+      console.error(`Error fetching laps for session ${sessionKey}:`, error);
+    }
     return [];
   }
 }
@@ -351,9 +372,9 @@ export async function getQualifyingPositions(sessionKey) {
   try {
     const url = `${BASE_URL}/position?session_key=${sessionKey}`;
     const positions = await fetchWithCache(url);
-    
+
     if (!positions || positions.length === 0) return [];
-    
+
     const finalPositions = {};
     for (const p of positions) {
       if (
@@ -367,7 +388,12 @@ export async function getQualifyingPositions(sessionKey) {
       (a, b) => a.position - b.position
     );
   } catch (error) {
-    console.error(`Error fetching qualifying positions for session ${sessionKey}:`, error);
+    // 404s are expected for sessions without qualifying position data (soft failure)
+    if (error.isSoftFailure) {
+      console.warn(`No qualifying position data available for session ${sessionKey} (expected for some sessions)`);
+    } else {
+      console.error(`Error fetching qualifying positions for session ${sessionKey}:`, error);
+    }
     return [];
   }
 }
@@ -378,7 +404,12 @@ export async function getPitStopsForSession(sessionKey) {
     const url = `${BASE_URL}/pit?session_key=${sessionKey}`;
     return await fetchWithCache(url);
   } catch (error) {
-    console.error(`Error fetching pit stops for session ${sessionKey}:`, error);
+    // 404s are expected for sessions without pit stop data (soft failure)
+    if (error.isSoftFailure) {
+      console.warn(`No pit stop data available for session ${sessionKey} (expected for some sessions)`);
+    } else {
+      console.error(`Error fetching pit stops for session ${sessionKey}:`, error);
+    }
     return [];
   }
 }
@@ -389,7 +420,12 @@ export async function getIntervalsForSession(sessionKey) {
     const url = `${BASE_URL}/intervals?session_key=${sessionKey}&interval<5`;
     return await fetchWithCache(url);
   } catch (error) {
-    console.error(`Error fetching intervals for session ${sessionKey}:`, error);
+    // 404s are expected for sessions without interval data (soft failure)
+    if (error.isSoftFailure) {
+      console.warn(`No interval data available for session ${sessionKey} (expected for some sessions)`);
+    } else {
+      console.error(`Error fetching intervals for session ${sessionKey}:`, error);
+    }
     return [];
   }
 }
