@@ -11,7 +11,7 @@ All notable changes to Fantasy F1 are documented here.
 - Added official F1 logo (fetched from Wikimedia Commons) as the site favicon — served as an SVG for modern browsers with a 192×192 PNG fallback and a 180×180 apple-touch-icon for iOS home screens
 - Generated a 1200×630 OG image (F1 logo on dark `#15151E` background) for social share cards
 - Added full Open Graph meta tags (`og:type`, `og:title`, `og:description`, `og:url`, `og:image`, `og:locale`) for rich previews on Facebook, LinkedIn, Slack, and other platforms
-- Added Twitter/X Card tags (`twitter:card: summary_large_image`) for expanded tweet previews
+- Added Twitter/X Card tags (`name="twitter:card"` with `content="summary_large_image"`) for expanded tweet previews
 - Added Schema.org JSON-LD `WebApplication` markup with `SportsOrganization` context, feature list, and free-offer pricing — improves search engine understanding and Google rich results eligibility
 - Added `<meta name="description">`, `keywords`, `author`, `robots`, and `<link rel="canonical">` tags
 
