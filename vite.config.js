@@ -4,9 +4,19 @@
 
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { createHtmlPlugin } from "vite-plugin-html";
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    createHtmlPlugin({
+      inject: {
+        data: {
+          VITE_PUBLIC_URL: process.env.VITE_PUBLIC_URL || "https://fantasy-f1-hn8mhg.fly.dev",
+        },
+      },
+    }),
+  ],
   server: {
     port: 5173,
     proxy: {
