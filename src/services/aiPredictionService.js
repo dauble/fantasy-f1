@@ -322,9 +322,24 @@ export async function generatePredictions(dataPayload, onProgress) {
 
   // Fetch real-time news context (non-blocking — a failure won't abort predictions)
   let newsContext = "";
+  let newsError = null;
   try {
     onProgress?.("📰 Fetching latest F1 news & community updates…");
     const newsData = await fetchF1News();
+
+    // Check if news fetch had errors
+    if (newsData.error || (newsData.sources_failed && newsData.sources_failed.length > 0)) {
+      newsError = {
+        url: '/api/news',
+        statusCode: newsData.error ? 502 : 200,
+        errorMessage: newsData.error || `Failed sources: ${newsData.sources_failed.map(s => s.name).join(', ')}`,
+        context: {
+          sources_failed: newsData.sources_failed,
+          partial_success: newsData.sources_succeeded && newsData.sources_succeeded.length > 0,
+        },
+      };
+    }
+
     newsContext = buildNewsContext(newsData);
     if (newsContext) {
       const count = newsData.articles?.length ?? 0;
@@ -337,6 +352,12 @@ export async function generatePredictions(dataPayload, onProgress) {
   } catch (newsErr) {
     console.warn("[predictions] News fetch failed (continuing without):", newsErr.message);
     onProgress?.("📰 News unavailable — continuing with race data only");
+    newsError = {
+      url: '/api/news',
+      statusCode: 0,
+      errorMessage: newsErr.message,
+      context: { networkError: true },
+    };
   }
 
   onProgress?.("🤖 Asking Claude AI to rank all drivers & constructors…");
@@ -377,7 +398,16 @@ export async function generatePredictions(dataPayload, onProgress) {
       .join("");
 
     onProgress?.("💰 Optimizing team selection within $100M budget…");
-    return parsePredictionJSON(rawText, dataPayload, allConstructors);
+    const result = parsePredictionJSON(rawText, dataPayload, allConstructors);
+
+    // Add news error to api_errors if present
+    if (newsError) {
+      result.raw_data = result.raw_data || dataPayload;
+      result.raw_data.api_errors = result.raw_data.api_errors || [];
+      result.raw_data.api_errors.push(newsError);
+    }
+
+    return result;
   } catch (error) {
     if (error.message.includes("Failed to fetch")) {
       throw new Error(

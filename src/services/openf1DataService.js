@@ -38,6 +38,29 @@ const INTER_MEETING_DELAY_MS  =  700; // Between getSessions calls during discov
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// ─── API Error tracking ───────────────────────────────────────────────────────
+// Tracks all API failures during a data fetch session so we can show users
+// exactly what failed and why.
+let apiErrors = [];
+
+function recordAPIError(url, statusCode, errorMessage, context = {}) {
+  apiErrors.push({
+    url,
+    statusCode,
+    errorMessage,
+    timestamp: new Date().toISOString(),
+    context,
+  });
+}
+
+function getAPIErrors() {
+  return [...apiErrors];
+}
+
+function clearAPIErrors() {
+  apiErrors = [];
+}
+
 // ─── Cache helpers (reuses your existing pattern) ───────────────────────────
 
 function getCached(key, ignoreExpiry = false, ttl = CACHE_TTL_MS) {
@@ -76,6 +99,9 @@ async function fetchWithCache(url, retryCount = 0) {
     const res = await fetch(url);
 
     if (res.status === 429) {
+      // Record rate limit error
+      recordAPIError(url, 429, 'Rate limit exceeded', { retryCount });
+
       // Prefer expired cache over any retry attempt
       const expiredCache = getCached(url, true);
       if (expiredCache) {
@@ -102,14 +128,19 @@ async function fetchWithCache(url, retryCount = 0) {
       const expiredCache = getCached(url, true);
       if (expiredCache) {
         console.warn(`API error ${res.status} — using stale cache for: ${url}`);
+        // Still record the error even if we have fallback data
+        recordAPIError(url, res.status, `HTTP ${res.status}`, { hadStaleCache: true });
         return expiredCache;
       }
       // 404 is a soft failure - data not available yet (expected for some sessions)
       if (res.status === 404) {
+        recordAPIError(url, 404, 'Data not found (session not available yet)', { isSoftFailure: true });
         const error = new Error(`OpenF1 API error: ${res.status} ${url}`);
         error.isSoftFailure = true;
         throw error;
       }
+      // Record hard failure
+      recordAPIError(url, res.status, `HTTP ${res.status} error`, { isSoftFailure: false });
       throw new Error(`OpenF1 API error: ${res.status} ${url}`);
     }
 
@@ -121,7 +152,12 @@ async function fetchWithCache(url, retryCount = 0) {
     const expiredCache = getCached(url, true);
     if (expiredCache) {
       console.warn(`Network error — using stale cache for: ${url}`);
+      recordAPIError(url, 0, error.message, { hadStaleCache: true, networkError: true });
       return expiredCache;
+    }
+    // Record network error if not already recorded
+    if (!error.isSoftFailure && !apiErrors.some(e => e.url === url && e.timestamp === error.timestamp)) {
+      recordAPIError(url, 0, error.message, { networkError: true });
     }
     throw error;
   }
@@ -671,6 +707,11 @@ export async function buildSessionStats(session) {
 export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadCache = false) {
   const payloadCacheKey = `${PAYLOAD_CACHE_KEY}${recentRaceCount}`;
 
+  // Clear previous errors before starting a fresh fetch
+  if (bypassPayloadCache) {
+    clearAPIErrors();
+  }
+
   // ── Layer 4 cache: full prediction payload (4-hour TTL) ───────────────────
   // Always re-read user_context from localStorage so that price/team changes
   // made since the last fetch are always reflected even when using cached data.
@@ -826,6 +867,7 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
       user_context: userContext,
       data_window: `Last ${recentRaceStats.length} races`,
       generated_at: new Date().toISOString(),
+      api_errors: getAPIErrors(), // Include all API errors encountered during this fetch
     };
 
     // Save the payload so the next call (within 4 hours) costs 0 API requests
@@ -844,6 +886,7 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
         user_context: gatherUserContext(),
         _stale: true,
         _stale_reason: error.message,
+        api_errors: getAPIErrors(), // Include errors even when serving stale data
       };
     }
 
