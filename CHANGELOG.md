@@ -14,12 +14,14 @@ All notable changes to Fantasy F1 are documented here.
 - Added Twitter/X Card tags (`name="twitter:card"` with `content="summary_large_image"`) for expanded tweet previews
 - Added Schema.org JSON-LD `WebApplication` markup with `SportsOrganization` context, feature list, and free-offer pricing — improves search engine understanding and Google rich results eligibility
 - Added `<meta name="description">`, `keywords`, `author`, `robots`, and `<link rel="canonical">` tags
+- Parameterized all canonical/OG/JSON-LD URLs via `VITE_PUBLIC_URL` environment variable — prevents incorrect metadata when deployed to different environments or custom domains
 
 ### Housekeeping
 
 - Removed Vite scaffold placeholder files (`public/vite.svg`, `src/assets/react.svg`) — neither was referenced anywhere in the app
 - Removed empty directories (`src/components/prediction/`, `src/assets/img/`)
 - Removed leftover `.vscode/settings.json` containing stale scaffold tool-approval entries (file was already gitignored)
+- Bumped `package.json` version to `0.9.1` to match changelog releases
 
 ### Security — Dependency Updates (PRs #12–18, Dependabot)
 
