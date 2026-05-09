@@ -4,6 +4,36 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.9.1 - 2026-05-09 - SEO, Social Sharing & Security Updates
+
+### SEO & Social Sharing
+
+- Added official F1 logo (fetched from Wikimedia Commons) as the site favicon — served as an SVG for modern browsers with a 192×192 PNG fallback and a 180×180 apple-touch-icon for iOS home screens
+- Generated a 1200×630 OG image (F1 logo on dark `#15151E` background) for social share cards
+- Added full Open Graph meta tags (`og:type`, `og:title`, `og:description`, `og:url`, `og:image`, `og:locale`) for rich previews on Facebook, LinkedIn, Slack, and other platforms
+- Added Twitter/X Card tags (`twitter:card: summary_large_image`) for expanded tweet previews
+- Added Schema.org JSON-LD `WebApplication` markup with `SportsOrganization` context, feature list, and free-offer pricing — improves search engine understanding and Google rich results eligibility
+- Added `<meta name="description">`, `keywords`, `author`, `robots`, and `<link rel="canonical">` tags
+
+### Housekeeping
+
+- Removed Vite scaffold placeholder files (`public/vite.svg`, `src/assets/react.svg`) — neither was referenced anywhere in the app
+- Removed empty directories (`src/components/prediction/`, `src/assets/img/`)
+- Removed leftover `.vscode/settings.json` containing stale scaffold tool-approval entries (file was already gitignored)
+
+### Security — Dependency Updates (PRs #12–18, Dependabot)
+
+- `flatted` 3.4.0 → 3.4.2 — fixes prototype pollution via `parse()` in Node.js (PR #12)
+- `picomatch` 4.0.3 → 4.0.4 and 2.3.1 → 2.3.2 — fixes ReDoS via extglob quantifiers and POSIX character class method injection (PR #13)
+- `axios` 1.13.6 → 1.15.0 — patches NO_PROXY hostname normalisation bypass and cloud metadata exfiltration via header injection (PR #15)
+- `vite` 7.3.1 → 7.3.2 — patches path traversal in optimised deps `.map` handling and `server.fs.deny` bypass (PR #15)
+- `follow-redirects` 1.15.11 → 1.16.0 — fixes custom authentication headers leaked to cross-domain redirect targets (PR #15)
+- `path-to-regexp` 8.3.0 → 8.4.2 — fixes ReDoS via sequential optional groups and multiple wildcards (PR #15)
+- `axios` 1.15.0 → 1.15.2 — follow-up patch release (PR #17)
+- `postcss` 8.5.8 → 8.5.14 — security patch release (PR #18)
+
+---
+
 ## Version 0.9.0 - 2026-04-18 - One-Click Team Application & Security Updates
 
 > Commit `fc68cb5` — working branch `feat/create-team`
