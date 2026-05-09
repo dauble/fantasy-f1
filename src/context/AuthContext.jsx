@@ -126,8 +126,9 @@ export function AuthProvider({ children }) {
   // Push localStorage data up to Supabase.
   // Records lastSyncedAt after a successful push so smartSync can compare
   // against the cloud's updated_at on the next cycle.
-  const syncToCloud = useCallback(async (userId = user?.id) => {
-    if (!supabase || !userId) return;
+  const syncToCloud = useCallback(async (userId) => {
+    const targetUserId = userId ?? user?.id;
+    if (!supabase || !targetUserId) return;
     setSyncStatus('syncing');
     try {
       const parse = (key) => {
@@ -137,7 +138,7 @@ export function AuthProvider({ children }) {
 
       const now = new Date().toISOString();
       const { error } = await supabase.from('user_data').upsert({
-        id: userId,
+        id: targetUserId,
         current_team: parse(LS_KEYS.currentTeam),
         custom_prices: parse(LS_KEYS.customPrices),
         team_history: parse(LS_KEYS.teamHistory),
@@ -153,7 +154,7 @@ export function AuthProvider({ children }) {
       console.error('[syncToCloud] Error (continuing offline):', err);
       setSyncStatus(getSyncFailureStatus());
     }
-  }, [supabase, user?.id]);
+  }, [supabase, user]);
 
   // Compare the cloud's updated_at against the timestamp of our last push/pull.
   // If the cloud is newer → pull (another device made changes).
