@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
@@ -18,6 +18,20 @@ const SYNC_COLORS = {
 
 export default function AuthButton() {
   const { user, authLoading, syncStatus, signOut, syncBidirectional, supabaseReady } = useAuth();
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   if (!supabaseReady) return null;
 
@@ -27,12 +41,20 @@ export default function AuthButton() {
 
   if (!user) {
     return (
-      <Link
-        to="/login"
-        className="block w-full text-center px-4 py-2.5 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-all text-white text-sm font-medium"
-      >
-        Sign in / Create account
-      </Link>
+      <div className="space-y-2">
+        {!isOnline && (
+          <div className="text-xs text-yellow-300 px-1 flex items-center gap-1">
+            <span>⚠️</span>
+            <span>Offline mode</span>
+          </div>
+        )}
+        <Link
+          to="/login"
+          className="block w-full text-center px-4 py-2.5 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-all text-white text-sm font-medium"
+        >
+          Sign in / Create account
+        </Link>
+      </div>
     );
   }
 
@@ -51,6 +73,13 @@ export default function AuthButton() {
         </span>
       </div>
 
+      {!isOnline && (
+        <p className="text-xs text-yellow-300 px-1 flex items-center gap-1">
+          <span>⚠️</span>
+          <span>Working offline</span>
+        </p>
+      )}
+
       {syncLabel && (
         <p className={`text-xs px-1 ${syncColor}`}>{syncLabel}</p>
       )}
@@ -58,8 +87,8 @@ export default function AuthButton() {
       <div className="flex gap-2">
         <button
           onClick={syncBidirectional}
-          disabled={syncStatus === 'syncing'}
-          title="Pull latest data from cloud, then push local changes up"
+          disabled={syncStatus === 'syncing' || !isOnline}
+          title={!isOnline ? 'Cannot sync while offline' : 'Pull latest data from cloud, then push local changes up'}
           className="flex-1 px-3 py-2 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-all text-white text-xs font-medium disabled:opacity-50"
         >
           {syncStatus === 'syncing' ? 'Syncing…' : 'Sync ⇅'}
