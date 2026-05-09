@@ -14,6 +14,8 @@ const LS_KEYS = {
   syncMeta: 'fantasy_f1_sync_meta',
 };
 
+const getSyncFailureStatus = () => (typeof navigator !== 'undefined' && navigator.onLine ? 'error' : 'idle');
+
 export function AuthProvider({ children }) {
   const [supabase, setSupabase] = useState(null);
   const [user, setUser] = useState(null);
@@ -117,16 +119,15 @@ export function AuthProvider({ children }) {
       setSyncStatus('synced');
     } catch (err) {
       console.error('[pullFromCloud] Error (continuing offline):', err);
-      // Gracefully continue offline - don't throw, just set idle status
-      setSyncStatus('idle');
+      setSyncStatus(getSyncFailureStatus());
     }
   }, []);
 
   // Push localStorage data up to Supabase.
   // Records lastSyncedAt after a successful push so smartSync can compare
   // against the cloud's updated_at on the next cycle.
-  const syncToCloud = useCallback(async () => {
-    if (!supabase || !user) return;
+  const syncToCloud = useCallback(async (userId = user?.id) => {
+    if (!supabase || !userId) return;
     setSyncStatus('syncing');
     try {
       const parse = (key) => {
@@ -136,7 +137,7 @@ export function AuthProvider({ children }) {
 
       const now = new Date().toISOString();
       const { error } = await supabase.from('user_data').upsert({
-        id: user.id,
+        id: userId,
         current_team: parse(LS_KEYS.currentTeam),
         custom_prices: parse(LS_KEYS.customPrices),
         team_history: parse(LS_KEYS.teamHistory),
@@ -150,10 +151,9 @@ export function AuthProvider({ children }) {
       setSyncStatus('synced');
     } catch (err) {
       console.error('[syncToCloud] Error (continuing offline):', err);
-      // Gracefully continue offline - don't throw, just set idle status
-      setSyncStatus('idle');
+      setSyncStatus(getSyncFailureStatus());
     }
-  }, [supabase, user]);
+  }, [supabase, user?.id]);
 
   // Compare the cloud's updated_at against the timestamp of our last push/pull.
   // If the cloud is newer → pull (another device made changes).
@@ -183,8 +183,7 @@ export function AuthProvider({ children }) {
       }
     } catch (err) {
       console.error('[smartSync] Error (continuing offline):', err);
-      // Gracefully continue offline - don't throw, just set idle status
-      setSyncStatus('idle');
+      setSyncStatus(getSyncFailureStatus());
     }
   }, [supabase, user, pullFromCloud, syncToCloud]);
 
@@ -230,8 +229,7 @@ export function AuthProvider({ children }) {
     // If signup succeeded and user is logged in, push existing localStorage data to database
     if (!error && data.user && data.session) {
       console.log('[signUp] New user created, syncing localStorage to cloud');
-      // Use setTimeout to ensure the user state is updated before syncing
-      setTimeout(() => syncToCloud(), 100);
+      await syncToCloud(data.session.user.id);
     }
 
     return { error, needsEmailConfirmation };
