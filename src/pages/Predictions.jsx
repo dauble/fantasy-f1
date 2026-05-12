@@ -392,6 +392,173 @@ function TransferWarning({ prediction, rawData }) {
   );
 }
 
+function APIErrorsSummary({ rawData }) {
+  const apiErrors = rawData?.api_errors || [];
+  if (!apiErrors || apiErrors.length === 0) return null;
+
+  // Group errors by type and extract useful information
+  const errorsByType = {
+    rateLimit: [],
+    notFound: [],
+    serverError: [],
+    networkError: [],
+  };
+
+  const sessionKeyPattern = /session_key=(\d+)/;
+  const yearPattern = /year=(\d+)/;
+
+  apiErrors.forEach(error => {
+    const { url, statusCode, errorMessage, context } = error;
+
+    // Extract session key or year from URL
+    const sessionMatch = url.match(sessionKeyPattern);
+    const yearMatch = url.match(yearPattern);
+    const endpoint = url.split('?')[0].split('/').pop();
+
+    const errorInfo = {
+      url,
+      statusCode,
+      errorMessage,
+      endpoint,
+      sessionKey: sessionMatch ? sessionMatch[1] : null,
+      year: yearMatch ? yearMatch[1] : null,
+      hadStaleCache: context?.hadStaleCache || false,
+    };
+
+    if (statusCode === 429) {
+      errorsByType.rateLimit.push(errorInfo);
+    } else if (statusCode === 404) {
+      errorsByType.notFound.push(errorInfo);
+    } else if (statusCode >= 500) {
+      errorsByType.serverError.push(errorInfo);
+    } else if (context?.networkError || statusCode === 0) {
+      errorsByType.networkError.push(errorInfo);
+    } else if (statusCode === 206 || context?.isPartialFailure) {
+      // 206 = partial content (e.g. some news sources failed)
+      errorsByType.serverError.push(errorInfo);
+    }
+  });
+
+  // Count how many had stale cache fallback
+  const recoveredCount = apiErrors.filter(e => e.context?.hadStaleCache).length;
+  const totalErrors = apiErrors.length;
+
+  // Find unique session keys and years that failed
+  const failedSessions = new Set();
+  const failedYears = new Set();
+
+  [...errorsByType.notFound, ...errorsByType.serverError, ...errorsByType.rateLimit].forEach(err => {
+    if (err.sessionKey) failedSessions.add(err.sessionKey);
+    if (err.year) failedYears.add(err.year);
+  });
+
+  return (
+    <div className="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-lg p-4 text-sm">
+      <div className="flex items-start gap-2 mb-3">
+        <span className="text-blue-600 dark:text-blue-400 text-lg">ℹ️</span>
+        <div className="flex-1">
+          <p className="font-semibold text-blue-800 dark:text-blue-300 mb-1">
+            Not all data was fetched successfully
+          </p>
+          <p className="text-blue-700 dark:text-blue-400">
+            Predictions may be less accurate. {recoveredCount > 0 && `${recoveredCount} of ${totalErrors} failed requests used cached data as fallback.`}
+          </p>
+        </div>
+      </div>
+
+      {/* Year errors */}
+      {failedYears.size > 0 && (
+        <div className="mb-2 pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            📅 Unavailable year data:
+          </p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-400 space-y-0.5">
+            {Array.from(failedYears).map(year => (
+              <li key={year}>
+                Year {year} {errorsByType.rateLimit.some(e => e.year === year)
+                  ? '(rate limited - too many requests)'
+                  : '(data not yet available in OpenF1)'}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Session errors */}
+      {failedSessions.size > 0 && (
+        <div className="mb-2 pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            🏁 Unavailable session data:
+          </p>
+          <p className="text-blue-700 dark:text-blue-400 mb-1">
+            The following session keys failed to load data (likely race weekends not yet completed):
+          </p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-400 space-y-0.5">
+            {Array.from(failedSessions).slice(0, 5).map(sessionKey => {
+              const failedEndpoints = [...errorsByType.notFound, ...errorsByType.serverError]
+                .filter(e => e.sessionKey === sessionKey)
+                .map(e => e.endpoint);
+              return (
+                <li key={sessionKey}>
+                  Session {sessionKey}: {[...new Set(failedEndpoints)].join(', ')}
+                </li>
+              );
+            })}
+            {failedSessions.size > 5 && (
+              <li className="text-blue-600 dark:text-blue-500 italic">
+                ...and {failedSessions.size - 5} more sessions
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      {/* Rate limit info */}
+      {errorsByType.rateLimit.length > 0 && (
+        <div className="pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            ⏱️ Rate limits encountered:
+          </p>
+          <p className="text-blue-700 dark:text-blue-400">
+            {errorsByType.rateLimit.length} request{errorsByType.rateLimit.length !== 1 ? 's' : ''} hit rate limits.
+            {errorsByType.rateLimit.some(e => e.hadStaleCache) ? ' Cached data was used where available.' : ' Try again in a few minutes.'}
+          </p>
+        </div>
+      )}
+
+      {/* Server errors */}
+      {errorsByType.serverError.length > 0 && (
+        <div className="mt-2 pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            ⚠️ Server errors:
+          </p>
+          <p className="text-blue-700 dark:text-blue-400">
+            {errorsByType.serverError.length} request{errorsByType.serverError.length !== 1 ? 's' : ''} failed due to server issues.
+            These may be temporary OpenF1 API problems.
+          </p>
+        </div>
+      )}
+
+      {/* Network / connectivity errors */}
+      {errorsByType.networkError.length > 0 && (
+        <div className="mt-2 pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            🌐 Network errors:
+          </p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-400 space-y-0.5">
+            {errorsByType.networkError.map((err, i) => (
+              <li key={i}>
+                {err.url}{err.errorMessage ? ` — ${err.errorMessage}` : ''}
+                {err.hadStaleCache ? ' (cached data used as fallback)' : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function EmptyState({ onGenerate, loading }) {
   return (
     <Card className="max-w-xl mx-auto">
@@ -691,6 +858,7 @@ export default function Predictions() {
       {status === "success" && prediction && (
         <div className="space-y-6">
           <ApplyRecommendationsCard prediction={prediction} rawData={rawData} onApply={applyRecommendations} applied={applied} />
+          <APIErrorsSummary rawData={rawData} />
           <TransferWarning prediction={prediction} rawData={rawData} />
           <TeamAssessmentCard prediction={prediction} />
 

@@ -38,6 +38,41 @@ const INTER_MEETING_DELAY_MS  =  700; // Between getSessions calls during discov
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// ─── API Error tracking ───────────────────────────────────────────────────────
+// Tracks all API failures during a data fetch session so we can show users
+// exactly what failed and why.
+let apiErrors = [];
+
+function recordAPIError(url, statusCode, errorMessage, context = {}) {
+  apiErrors.push({
+    url,
+    statusCode,
+    errorMessage,
+    timestamp: new Date().toISOString(),
+    context,
+  });
+}
+
+/**
+ * Records a discovery-phase error (getMeetings / getSessions via openF1API / axios).
+ * Extracts the HTTP status code and maps to the same context shape used by fetchWithCache.
+ */
+function recordDiscoveryError(url, err) {
+  const statusCode = err.response?.status || 0;
+  const context = statusCode === 429
+    ? { retryCount: 2 }            // retries exhausted inside openF1API
+    : { networkError: statusCode === 0 };
+  recordAPIError(url, statusCode, err.message, context);
+}
+
+function getAPIErrors() {
+  return [...apiErrors];
+}
+
+function clearAPIErrors() {
+  apiErrors = [];
+}
+
 // ─── Cache helpers (reuses your existing pattern) ───────────────────────────
 
 function getCached(key, ignoreExpiry = false, ttl = CACHE_TTL_MS) {
@@ -76,6 +111,9 @@ async function fetchWithCache(url, retryCount = 0) {
     const res = await fetch(url);
 
     if (res.status === 429) {
+      // Record rate limit error
+      recordAPIError(url, 429, 'Rate limit exceeded', { retryCount });
+
       // Prefer expired cache over any retry attempt
       const expiredCache = getCached(url, true);
       if (expiredCache) {
@@ -102,15 +140,23 @@ async function fetchWithCache(url, retryCount = 0) {
       const expiredCache = getCached(url, true);
       if (expiredCache) {
         console.warn(`API error ${res.status} — using stale cache for: ${url}`);
+        // Still record the error even if we have fallback data
+        recordAPIError(url, res.status, `HTTP ${res.status}`, { hadStaleCache: true });
         return expiredCache;
       }
       // 404 is a soft failure - data not available yet (expected for some sessions)
       if (res.status === 404) {
+        recordAPIError(url, 404, 'Data not found (session not available yet)', { isSoftFailure: true });
         const error = new Error(`OpenF1 API error: ${res.status} ${url}`);
         error.isSoftFailure = true;
+        error._apiErrorRecorded = true;
         throw error;
       }
-      throw new Error(`OpenF1 API error: ${res.status} ${url}`);
+      // Record hard failure
+      recordAPIError(url, res.status, `HTTP ${res.status} error`, { isSoftFailure: false });
+      const httpError = new Error(`OpenF1 API error: ${res.status} ${url}`);
+      httpError._apiErrorRecorded = true;
+      throw httpError;
     }
 
     const data = await res.json();
@@ -121,7 +167,13 @@ async function fetchWithCache(url, retryCount = 0) {
     const expiredCache = getCached(url, true);
     if (expiredCache) {
       console.warn(`Network error — using stale cache for: ${url}`);
+      recordAPIError(url, 0, error.message, { hadStaleCache: true, networkError: true });
       return expiredCache;
+    }
+    // Only record as a network error if this error wasn't already recorded
+    // (HTTP errors thrown above set error._apiErrorRecorded = true)
+    if (!error._apiErrorRecorded) {
+      recordAPIError(url, 0, error.message, { networkError: true });
     }
     throw error;
   }
@@ -151,6 +203,7 @@ export async function getRecentRaceSessions(limit = 5) {
         meetings = await openF1API.getMeetings(year);
       } catch (err) {
         console.warn(`Could not fetch meetings for ${year}:`, err);
+        recordDiscoveryError(`${BASE_URL}/meetings?year=${year}`, err);
         continue;
       }
       if (!meetings || meetings.length === 0) continue;
@@ -171,6 +224,7 @@ export async function getRecentRaceSessions(limit = 5) {
           if (raceSession) raceSessions.push(raceSession);
         } catch (err) {
           console.warn(`Could not fetch sessions for meeting ${meeting.meeting_key}:`, err);
+          recordDiscoveryError(`${BASE_URL}/sessions?meeting_key=${meeting.meeting_key}`, err);
         }
         if (raceSessions.length >= limit) break;
         await delay(INTER_MEETING_DELAY_MS);
@@ -682,6 +736,9 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
     }
   }
 
+  // Clear errors now that we know we're performing a fresh fetch (cache miss or bypass)
+  clearAPIErrors();
+
   try {
     const [recentSessions, nextSession, currentSession] = await Promise.all([
       getRecentRaceSessions(recentRaceCount),
@@ -826,6 +883,7 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
       user_context: userContext,
       data_window: `Last ${recentRaceStats.length} races`,
       generated_at: new Date().toISOString(),
+      api_errors: getAPIErrors(), // Include all API errors encountered during this fetch
     };
 
     // Save the payload so the next call (within 4 hours) costs 0 API requests
@@ -844,6 +902,7 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
         user_context: gatherUserContext(),
         _stale: true,
         _stale_reason: error.message,
+        api_errors: getAPIErrors(), // Include errors even when serving stale data
       };
     }
 
