@@ -431,8 +431,11 @@ function APIErrorsSummary({ rawData }) {
       errorsByType.notFound.push(errorInfo);
     } else if (statusCode >= 500) {
       errorsByType.serverError.push(errorInfo);
-    } else if (context?.networkError) {
+    } else if (context?.networkError || statusCode === 0) {
       errorsByType.networkError.push(errorInfo);
+    } else if (statusCode === 206 || context?.isPartialFailure) {
+      // 206 = partial content (e.g. some news sources failed)
+      errorsByType.serverError.push(errorInfo);
     }
   });
 
@@ -444,7 +447,7 @@ function APIErrorsSummary({ rawData }) {
   const failedSessions = new Set();
   const failedYears = new Set();
 
-  [...errorsByType.notFound, ...errorsByType.serverError].forEach(err => {
+  [...errorsByType.notFound, ...errorsByType.serverError, ...errorsByType.rateLimit].forEach(err => {
     if (err.sessionKey) failedSessions.add(err.sessionKey);
     if (err.year) failedYears.add(err.year);
   });
@@ -533,6 +536,23 @@ function APIErrorsSummary({ rawData }) {
             {errorsByType.serverError.length} request{errorsByType.serverError.length !== 1 ? 's' : ''} failed due to server issues.
             These may be temporary OpenF1 API problems.
           </p>
+        </div>
+      )}
+
+      {/* Network / connectivity errors */}
+      {errorsByType.networkError.length > 0 && (
+        <div className="mt-2 pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            🌐 Network errors:
+          </p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-400 space-y-0.5">
+            {errorsByType.networkError.map((err, i) => (
+              <li key={i}>
+                {err.url}{err.errorMessage ? ` — ${err.errorMessage}` : ''}
+                {err.hadStaleCache ? ' (cached data used as fallback)' : ''}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>

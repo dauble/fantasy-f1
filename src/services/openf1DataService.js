@@ -53,6 +53,18 @@ function recordAPIError(url, statusCode, errorMessage, context = {}) {
   });
 }
 
+/**
+ * Records a discovery-phase error (getMeetings / getSessions via openF1API / axios).
+ * Extracts the HTTP status code and maps to the same context shape used by fetchWithCache.
+ */
+function recordDiscoveryError(url, err) {
+  const statusCode = err.response?.status || 0;
+  const context = statusCode === 429
+    ? { retryCount: 2 }            // retries exhausted inside openF1API
+    : { networkError: statusCode === 0 };
+  recordAPIError(url, statusCode, err.message, context);
+}
+
 function getAPIErrors() {
   return [...apiErrors];
 }
@@ -137,11 +149,14 @@ async function fetchWithCache(url, retryCount = 0) {
         recordAPIError(url, 404, 'Data not found (session not available yet)', { isSoftFailure: true });
         const error = new Error(`OpenF1 API error: ${res.status} ${url}`);
         error.isSoftFailure = true;
+        error._apiErrorRecorded = true;
         throw error;
       }
       // Record hard failure
       recordAPIError(url, res.status, `HTTP ${res.status} error`, { isSoftFailure: false });
-      throw new Error(`OpenF1 API error: ${res.status} ${url}`);
+      const httpError = new Error(`OpenF1 API error: ${res.status} ${url}`);
+      httpError._apiErrorRecorded = true;
+      throw httpError;
     }
 
     const data = await res.json();
@@ -155,8 +170,9 @@ async function fetchWithCache(url, retryCount = 0) {
       recordAPIError(url, 0, error.message, { hadStaleCache: true, networkError: true });
       return expiredCache;
     }
-    // Record network error if not already recorded
-    if (!error.isSoftFailure && !apiErrors.some(e => e.url === url && e.timestamp === error.timestamp)) {
+    // Only record as a network error if this error wasn't already recorded
+    // (HTTP errors thrown above set error._apiErrorRecorded = true)
+    if (!error._apiErrorRecorded) {
       recordAPIError(url, 0, error.message, { networkError: true });
     }
     throw error;
@@ -187,6 +203,7 @@ export async function getRecentRaceSessions(limit = 5) {
         meetings = await openF1API.getMeetings(year);
       } catch (err) {
         console.warn(`Could not fetch meetings for ${year}:`, err);
+        recordDiscoveryError(`${BASE_URL}/meetings?year=${year}`, err);
         continue;
       }
       if (!meetings || meetings.length === 0) continue;
@@ -207,6 +224,7 @@ export async function getRecentRaceSessions(limit = 5) {
           if (raceSession) raceSessions.push(raceSession);
         } catch (err) {
           console.warn(`Could not fetch sessions for meeting ${meeting.meeting_key}:`, err);
+          recordDiscoveryError(`${BASE_URL}/sessions?meeting_key=${meeting.meeting_key}`, err);
         }
         if (raceSessions.length >= limit) break;
         await delay(INTER_MEETING_DELAY_MS);
@@ -707,11 +725,6 @@ export async function buildSessionStats(session) {
 export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadCache = false) {
   const payloadCacheKey = `${PAYLOAD_CACHE_KEY}${recentRaceCount}`;
 
-  // Clear previous errors before starting a fresh fetch
-  if (bypassPayloadCache) {
-    clearAPIErrors();
-  }
-
   // ── Layer 4 cache: full prediction payload (4-hour TTL) ───────────────────
   // Always re-read user_context from localStorage so that price/team changes
   // made since the last fetch are always reflected even when using cached data.
@@ -722,6 +735,9 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
       return { ...cachedPayload, user_context: gatherUserContext() };
     }
   }
+
+  // Clear errors now that we know we're performing a fresh fetch (cache miss or bypass)
+  clearAPIErrors();
 
   try {
     const [recentSessions, nextSession, currentSession] = await Promise.all([

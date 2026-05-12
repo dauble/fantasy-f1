@@ -331,11 +331,12 @@ export async function generatePredictions(dataPayload, onProgress) {
     if (newsData.error || (newsData.sources_failed && newsData.sources_failed.length > 0)) {
       newsError = {
         url: '/api/news',
-        statusCode: newsData.error ? 502 : 200,
+        statusCode: newsData.error ? 502 : 206,
         errorMessage: newsData.error || `Failed sources: ${newsData.sources_failed.map(s => s.name).join(', ')}`,
         context: {
           sources_failed: newsData.sources_failed,
           partial_success: newsData.sources_succeeded && newsData.sources_succeeded.length > 0,
+          isPartialFailure: !newsData.error,
         },
       };
     }
