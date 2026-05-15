@@ -100,7 +100,7 @@ This application uses the [OpenF1 API](https://openf1.org/) as its primary data 
 
 ### Fallback: Ergast F1 API
 
-When OpenF1 is unavailable (rate limits, server errors, or network issues), the app automatically falls back to the Ergast F1 API:
+When OpenF1 is unavailable or returns incomplete race-session data (for example discovery failures, missing position data, rate limits, server errors, or network issues), the app automatically falls back to the Ergast F1 API:
 
 - Historical F1 data from 1950 to present
 - Race results and qualifying data

@@ -10,6 +10,7 @@
 import axios from 'axios';
 
 const ERGAST_BASE_URL = 'https://ergast.com/api/f1';
+const SEASON_FETCH_LIMIT = 100;
 
 // Simple cache for Ergast API responses
 const ergastCache = new Map();
@@ -53,7 +54,8 @@ async function ergastRequest(endpoint, retryCount = 0) {
   }
 
   try {
-    const url = `${ERGAST_BASE_URL}/${endpoint}.json`;
+    const [path, query = ''] = endpoint.split('?');
+    const url = `${ERGAST_BASE_URL}/${path}.json${query ? `?${query}` : ''}`;
     console.log(`[Ergast] Fetching: ${url}`);
     const response = await axios.get(url, { timeout: 10000 });
     const data = response.data;
@@ -77,7 +79,7 @@ async function ergastRequest(endpoint, retryCount = 0) {
  */
 export async function getSeasonResults(year) {
   try {
-    const data = await ergastRequest(`${year}/results`);
+    const data = await ergastRequest(`${year}/results?limit=${SEASON_FETCH_LIMIT}`);
     const races = data?.MRData?.RaceTable?.Races || [];
     return races;
   } catch (error) {
@@ -124,7 +126,7 @@ export async function getCurrentSeason() {
     const data = await ergastRequest('current');
     const season = data?.MRData?.RaceTable?.season;
     return season ? parseInt(season, 10) : new Date().getFullYear();
-  } catch (error) {
+  } catch {
     return new Date().getFullYear();
   }
 }
@@ -209,7 +211,7 @@ export async function getNextRaceFromErgast() {
 
     // Try current year first, then next year
     for (const year of [currentYear, currentYear + 1]) {
-      const data = await ergastRequest(`${year}`);
+      const data = await ergastRequest(`${year}?limit=${SEASON_FETCH_LIMIT}`);
       const races = data?.MRData?.RaceTable?.Races || [];
 
       const now = new Date();
@@ -238,6 +240,44 @@ export async function getNextRaceFromErgast() {
 }
 
 /**
+ * Find a race result from Ergast by OpenF1 session date.
+ * Useful as fallback when OpenF1 session-level stats fail.
+ */
+export async function getRaceForSessionDate(dateStart, { country, circuit } = {}) {
+  if (!dateStart) return null;
+
+  try {
+    const targetDate = new Date(dateStart);
+    if (Number.isNaN(targetDate.getTime())) return null;
+
+    const year = targetDate.getUTCFullYear();
+    const targetDateOnly = targetDate.toISOString().slice(0, 10);
+    const races = await getSeasonResults(year);
+    if (!races.length) return null;
+
+    const normalizedCountry = country?.toLowerCase();
+    const normalizedCircuit = circuit?.toLowerCase();
+
+    const exactDateMatches = races.filter((race) => race.date === targetDateOnly);
+    const candidates = exactDateMatches.length ? exactDateMatches : races;
+
+    const bestMatch = candidates.find((race) => {
+      const raceCountry = race.Circuit?.Location?.country?.toLowerCase();
+      const raceCircuit = race.Circuit?.circuitName?.toLowerCase();
+
+      if (normalizedCountry && raceCountry && raceCountry !== normalizedCountry) return false;
+      if (normalizedCircuit && raceCircuit && !raceCircuit.includes(normalizedCircuit)) return false;
+      return race.Results?.length > 0;
+    }) || (exactDateMatches.find((race) => race.Results?.length > 0)) || null;
+
+    return bestMatch ? convertErgastToOpenF1Format(bestMatch) : null;
+  } catch (error) {
+    console.error('[Ergast] Failed to match race by session date:', error);
+    return null;
+  }
+}
+
+/**
  * Clear the Ergast cache
  */
 export function clearErgastCache() {
@@ -252,6 +292,7 @@ export default {
   getCurrentSeason,
   getRecentRacesFromErgast,
   getNextRaceFromErgast,
+  getRaceForSessionDate,
   convertErgastToOpenF1Format,
   clearErgastCache,
 };

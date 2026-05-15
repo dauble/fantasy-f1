@@ -394,7 +394,6 @@ function TransferWarning({ prediction, rawData }) {
 
 function APIErrorsSummary({ rawData }) {
   const apiErrors = rawData?.api_errors || [];
-  const fallbackUsed = rawData?.fallback_used || false;
 
   if (!apiErrors || apiErrors.length === 0) return null;
 

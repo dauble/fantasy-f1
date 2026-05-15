@@ -25,10 +25,10 @@ The Fantasy F1 application uses a multi-layered data fetching strategy to ensure
 
 The Ergast API fallback automatically activates when:
 
-- **OpenF1 rate limits are exceeded** (HTTP 429) and no cached data is available
-- **OpenF1 returns server errors** (HTTP 5xx) repeatedly
-- **OpenF1 network requests timeout or fail**
-- **No recent race data is available** from OpenF1
+- **Recent race session discovery returns no usable OpenF1 race sessions**
+- **OpenF1 rate limits are exceeded** (HTTP 429) and no stale cache is available
+- **OpenF1 returns server errors** (HTTP 5xx) or network failures during discovery/stat fetches
+- **A discovered OpenF1 race session has no position data**, so Ergast race results are used for that session
 
 ## Implementation Details
 
@@ -52,6 +52,9 @@ getRecentRacesFromErgast(limit = 5)
 // Get next upcoming race
 getNextRaceFromErgast()
 
+// Match a race by OpenF1 session date
+getRaceForSessionDate(dateStart, { country, circuit })
+
 // Get results for specific race
 getRaceResults(year, round)
 
@@ -65,7 +68,7 @@ convertErgastToOpenF1Format(ergastRace)
 - New `recordFallbackUsed()` function to log when fallback is used
 - Updated `getRecentRaceSessions()` to try Ergast on OpenF1 failure
 - Updated `getNextRaceSession()` to try Ergast on OpenF1 failure
-- Updated `buildSessionStats()` to handle Ergast-sourced data
+- Updated `buildSessionStats()` to use Ergast when OpenF1 session stats are unavailable
 - Payload now includes `fallback_used` boolean field
 
 ## Data Quality Differences
