@@ -10,6 +10,7 @@
 import axios from 'axios';
 
 const ERGAST_BASE_URL = 'https://ergast.com/api/f1';
+// Ergast seasons are currently far below 100 races; this avoids pagination truncation.
 const SEASON_FETCH_LIMIT = 100;
 const COUNTRY_ALIASES = {
   uae: 'united arab emirates',
@@ -285,6 +286,8 @@ export async function getRaceForSessionDate(dateStart, { country, circuit } = {}
       const raceCircuit = normalizeText(race.Circuit?.circuitName);
 
       if (normalizedCountry && raceCountry && raceCountry !== normalizedCountry) return false;
+      // Circuit names often differ slightly between APIs (e.g. "Autodromo" vs full venue name),
+      // so circuit matching intentionally uses substring checks instead of exact equality.
       if (normalizedCircuit && raceCircuit && !raceCircuit.includes(normalizedCircuit)) return false;
       return race.Results?.length > 0;
     }) || (exactDateMatches.find((race) => race.Results?.length > 0)) || null;
