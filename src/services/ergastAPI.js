@@ -274,6 +274,8 @@ export async function getRaceForSessionDate(dateStart, { country, circuit } = {}
       if (
         normalizedCountry &&
         raceCountry &&
+        // Check both directions so abbreviated names (e.g. "UAE")
+        // can still match full names (e.g. "United Arab Emirates").
         !raceCountry.includes(normalizedCountry) &&
         !normalizedCountry.includes(raceCountry)
       ) return false;
