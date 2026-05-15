@@ -255,17 +255,28 @@ export async function getRaceForSessionDate(dateStart, { country, circuit } = {}
     const races = await getSeasonResults(year);
     if (!races.length) return null;
 
-    const normalizedCountry = country?.toLowerCase();
-    const normalizedCircuit = circuit?.toLowerCase();
+    const normalizeText = (value) => value
+      ?.toLowerCase()
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const normalizedCountry = normalizeText(country);
+    const normalizedCircuit = normalizeText(circuit);
 
     const exactDateMatches = races.filter((race) => race.date === targetDateOnly);
     const candidates = exactDateMatches.length ? exactDateMatches : races;
 
     const bestMatch = candidates.find((race) => {
-      const raceCountry = race.Circuit?.Location?.country?.toLowerCase();
-      const raceCircuit = race.Circuit?.circuitName?.toLowerCase();
+      const raceCountry = normalizeText(race.Circuit?.Location?.country);
+      const raceCircuit = normalizeText(race.Circuit?.circuitName);
 
-      if (normalizedCountry && raceCountry && raceCountry !== normalizedCountry) return false;
+      if (
+        normalizedCountry &&
+        raceCountry &&
+        !raceCountry.includes(normalizedCountry) &&
+        !normalizedCountry.includes(raceCountry)
+      ) return false;
       if (normalizedCircuit && raceCircuit && !raceCircuit.includes(normalizedCircuit)) return false;
       return race.Results?.length > 0;
     }) || (exactDateMatches.find((race) => race.Results?.length > 0)) || null;

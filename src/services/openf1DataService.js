@@ -161,7 +161,7 @@ async function buildSessionStatsFromErgast(session, reason) {
     full_name: driver.full_name,
     abbreviation: driver.abbreviation,
     team_name: driver.team_name,
-    team_colour: driver.team_colour || "888888",
+    team_colour: driver.team_colour || "#888888",
     finish_position: driver.finish_position,
     fastest_lap_ms: parseErgastLapTimeToMs(driver.fastest_lap_time),
     avg_lap_ms: null,
@@ -295,6 +295,8 @@ export async function getRecentRaceSessions(limit = 5) {
   const cachedList = getCached(listCacheKey, false, SESSIONS_LIST_TTL_MS);
   if (cachedList) {
     if (cachedList.some((session) => session._from_ergast)) {
+      // Ergast-discovered sessions are intentionally not reused for this cache key:
+      // we always retry OpenF1 discovery first to avoid staying on lower-fidelity data.
       localStorage.removeItem(listCacheKey);
       console.log('Discarding cached fallback sessions; retrying OpenF1 discovery');
     } else {
