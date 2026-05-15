@@ -11,6 +11,12 @@ import axios from 'axios';
 
 const ERGAST_BASE_URL = 'https://ergast.com/api/f1';
 const SEASON_FETCH_LIMIT = 100;
+const COUNTRY_ALIASES = {
+  uae: 'united arab emirates',
+  usa: 'united states',
+  us: 'united states',
+  uk: 'united kingdom',
+};
 
 // Simple cache for Ergast API responses
 const ergastCache = new Map();
@@ -40,6 +46,19 @@ function setCachedData(key, data) {
     data,
     timestamp: Date.now()
   });
+}
+
+function normalizeText(value) {
+  return value
+    ?.toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function normalizeCountry(value) {
+  const normalized = normalizeText(value);
+  return normalized ? (COUNTRY_ALIASES[normalized] || normalized) : normalized;
 }
 
 /**
@@ -255,30 +274,17 @@ export async function getRaceForSessionDate(dateStart, { country, circuit } = {}
     const races = await getSeasonResults(year);
     if (!races.length) return null;
 
-    const normalizeText = (value) => value
-      ?.toLowerCase()
-      .replace(/[^a-z0-9\s]/g, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-
-    const normalizedCountry = normalizeText(country);
+    const normalizedCountry = normalizeCountry(country);
     const normalizedCircuit = normalizeText(circuit);
 
     const exactDateMatches = races.filter((race) => race.date === targetDateOnly);
     const candidates = exactDateMatches.length ? exactDateMatches : races;
 
     const bestMatch = candidates.find((race) => {
-      const raceCountry = normalizeText(race.Circuit?.Location?.country);
+      const raceCountry = normalizeCountry(race.Circuit?.Location?.country);
       const raceCircuit = normalizeText(race.Circuit?.circuitName);
 
-      if (
-        normalizedCountry &&
-        raceCountry &&
-        // Check both directions so abbreviated names (e.g. "UAE")
-        // can still match full names (e.g. "United Arab Emirates").
-        !raceCountry.includes(normalizedCountry) &&
-        !normalizedCountry.includes(raceCountry)
-      ) return false;
+      if (normalizedCountry && raceCountry && raceCountry !== normalizedCountry) return false;
       if (normalizedCircuit && raceCircuit && !raceCircuit.includes(normalizedCircuit)) return false;
       return race.Results?.length > 0;
     }) || (exactDateMatches.find((race) => race.Results?.length > 0)) || null;
