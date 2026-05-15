@@ -285,6 +285,8 @@ export async function getRaceForSessionDate(dateStart, { country, circuit } = {}
       const raceCountry = normalizeCountry(race.Circuit?.Location?.country);
       const raceCircuit = normalizeText(race.Circuit?.circuitName);
 
+      // Country matching is exact after alias expansion to avoid false positives
+      // (for example, "United States" accidentally matching other "United ..." countries).
       if (normalizedCountry && raceCountry && raceCountry !== normalizedCountry) return false;
       // Circuit names often differ slightly between APIs (e.g. "Autodromo" vs full venue name),
       // so circuit matching intentionally uses substring checks instead of exact equality.
