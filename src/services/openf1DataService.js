@@ -213,7 +213,7 @@ export async function getRecentRaceSessions(limit = 5) {
       const completedMeetings = meetings
         .filter(m => m.date_end && new Date(m.date_end) < now)
         .sort((a, b) => new Date(b.date_start) - new Date(a.date_start))
-        .slice(0, limit * 3);
+        .slice(0, Math.max(limit * 3, limit * 2 + 2));
 
       for (const meeting of completedMeetings) {
         try {
@@ -225,11 +225,9 @@ export async function getRecentRaceSessions(limit = 5) {
           // Verify the session actually happened by checking if it has position data
           if (raceSession) {
             const positions = await getPositionsForSession(raceSession.session_key);
-            if (positions && positions.length > 0) {
+            if (positions.length > 0) {
               raceSessions.push(raceSession);
               console.log(`✓ Verified session ${raceSession.session_key} has race data`);
-            } else {
-              console.warn(`✗ Skipping session ${raceSession.session_key} - no position data (race may have been canceled)`);
             }
           }
         } catch (err) {

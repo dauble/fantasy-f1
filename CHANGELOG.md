@@ -4,6 +4,24 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.10.0 - 2026-05-15 - Session Validation for AI Predictions
+
+### Features
+
+- Added session validation to ensure only races with actual results data are included in AI predictions
+- The AI prediction service now verifies each race session has position data before including it in the analysis
+- When requesting recent races (e.g., "last 5 races"), the system now returns 5 actual completed races with data, rather than 5 scheduled races that may have been canceled
+- Improved handling of canceled or postponed races by automatically skipping sessions without telemetry data
+
+### Technical Improvements
+
+- Enhanced `getRecentRaceSessions()` to validate position data availability before adding sessions to the recent races list
+- Increased candidate meeting pool size to ensure sufficient races are found even when some are canceled
+- Reduced log noise by removing duplicate warnings for sessions without data
+- Optimized candidate pool calculation to maintain minimum size for small limit values
+
+---
+
 ## Version 0.9.1 - 2026-05-09 - SEO, Social Sharing & Security Updates
 
 ### SEO & Social Sharing
