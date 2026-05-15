@@ -7,6 +7,9 @@
  *                  with recent performance data, fantasy prices, AND real-time
  *                  news articles from Formula1.com, PlanetF1, and Reddit.
  *                  It ranks every driver and constructor for the next Grand Prix.
+ *                  Uses extended thinking (10,000 token budget) to reason deeply
+ *                  about race strategy, driver form, and circuit characteristics
+ *                  before making predictions.
  *
  *   JavaScript   → takes the AI's full rankings and finds the best possible
  *                  5 drivers + 2 constructors within the $100M budget cap,
@@ -371,6 +374,10 @@ export async function generatePredictions(dataPayload, onProgress) {
       body: JSON.stringify({
         model: MODEL,
         max_tokens: 4000,
+        thinking: {
+          type: "enabled",
+          budget_tokens: 10000,
+        },
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],
       }),
