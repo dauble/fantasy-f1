@@ -1,87 +1,78 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  WrenchScrewdriverIcon,
+  SparklesIcon,
+  ClockIcon,
+  CurrencyDollarIcon,
+  DocumentTextIcon,
+  UserCircleIcon,
+} from '@heroicons/react/24/outline';
 import CacheStatus from '../components/ui/CacheStatus';
 import AuthButton from '../components/ui/AuthButton';
 import { useAuth } from '../context/AuthContext';
 
+const navItems = [
+  { path: '/', label: 'Team', Icon: WrenchScrewdriverIcon },
+  { path: '/predictions', label: 'AI Picks', Icon: SparklesIcon },
+  { path: '/history', label: 'History', Icon: ClockIcon },
+  { path: '/prices', label: 'Prices', Icon: CurrencyDollarIcon },
+  { path: '/rules', label: 'Rules', Icon: DocumentTextIcon },
+];
+
 const Layout = ({ children }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const location = useLocation();
-  const { theme, setTheme } = useAuth();
+  const { theme, setTheme, user, signOut, supabaseReady } = useAuth();
 
-  const toggleMenu = () => {
-    setIsMenuOpen(!isMenuOpen);
-  };
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
-  const navItems = [
-    { path: '/', label: '🏎️ Team Builder', icon: '🏎️' },
-    { path: '/predictions', label: '📊 Predictions', icon: '📊' },
-    { path: '/history', label: '📜 Team History', icon: '📜' },
-    { path: '/prices', label: '💰 Price Manager', icon: '💰' },
-    { path: '/rules', label: '📋 Rules', icon: '📋' },
-  ];
+  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 
   return (
-    <div className="flex h-screen bg-gray-100 dark:bg-gray-950">
-      {/* Sidebar */}
-      <aside className={`fixed inset-0 z-50 w-64 bg-gradient-to-b from-f1-red to-f1-red-dark text-white shadow-2xl overflow-y-auto transform ${isMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 md:relative md:w-64 transition-transform duration-300 ease-in-out`}>
-        {/* Mobile Header */}
-        <div className="p-4 flex justify-between items-center border-b border-white border-opacity-20 md:hidden">
-          <h1 className="text-xl font-bold">Fantasy F1</h1>
-          <button 
-            onClick={toggleMenu} 
-            className="text-white focus:outline-none p-2 hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors min-h-touch min-w-touch"
-            aria-label="Close menu"
-          >
-            <XMarkIcon className="h-6 w-6" />
-          </button>
+    <div className="flex h-[100dvh] bg-gray-50 dark:bg-f1-black font-f1 overflow-hidden">
+
+      {/* ── Desktop Sidebar ────────────────────────────── */}
+      <aside className="hidden md:flex flex-col w-56 bg-[#0F0F13] border-r border-f1-border flex-shrink-0">
+        {/* Logo */}
+        <div className="flex items-center gap-3 px-5 py-6 border-b border-f1-border">
+          <div className="w-[3px] h-8 bg-f1-red rounded-full flex-shrink-0" />
+          <div>
+            <h1 className="text-lg font-black text-white uppercase tracking-tight leading-none">
+              Fantasy F1
+            </h1>
+            <p className="text-[10px] text-f1-muted tracking-[0.2em] uppercase mt-0.5">
+              Team Builder
+            </p>
+          </div>
         </div>
-        
-        {/* Desktop Logo */}
-        <div className="p-6 border-b border-white border-opacity-20 hidden md:block">
-          <h1 className="text-2xl font-bold text-center">Fantasy F1</h1>
-          <p className="text-sm text-center text-white text-opacity-75 mt-1">Team Builder</p>
-        </div>
-        
+
         {/* Navigation */}
-        <nav className="p-4">
-          <ul className="space-y-1">
-            {navItems.map((item) => (
-              <li key={item.path}>
-                <Link
-                  to={item.path}
-                  className={`block px-4 py-3 rounded-lg transition-all min-h-touch ${
-                    location.pathname === item.path 
-                      ? 'bg-white text-f1-red font-semibold shadow-lg' 
-                      : 'hover:bg-white hover:bg-opacity-10'
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  {item.label}
-                </Link>
-              </li>
-            ))}
-          </ul>
+        <nav className="flex-1 p-3 space-y-0.5 overflow-y-auto">
+          {navItems.map(({ path, label, Icon }) => {
+            const active = location.pathname === path;
+            return (
+              <Link
+                key={path}
+                to={path}
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-semibold transition-all ${
+                  active
+                    ? 'bg-f1-red text-white shadow-lg shadow-f1-red/20'
+                    : 'text-f1-muted hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Icon className="w-5 h-5 flex-shrink-0" />
+                {label}
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* Footer Info */}
-        <div className="p-4 mt-auto border-t border-white border-opacity-20 space-y-4">
-          <div className="flex items-center justify-between text-sm text-white text-opacity-75">
-            <div className="space-y-1">
-              <p>Budget: $100M</p>
-              <p>5 Drivers + 2 Constructors</p>
-            </div>
-            {/* Dark / light mode toggle */}
+        {/* Sidebar footer */}
+        <div className="p-4 border-t border-f1-border space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-f1-muted">$100M · 5D + 2C</span>
             <button
               onClick={toggleTheme}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-              className="p-2 rounded-lg bg-white bg-opacity-10 hover:bg-opacity-20 transition-colors text-base leading-none"
-              aria-label="Toggle dark mode"
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-sm"
             >
               {theme === 'dark' ? '☀️' : '🌙'}
             </button>
@@ -90,36 +81,79 @@ const Layout = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* ── Right column (mobile header + content) ────── */}
+      <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+
         {/* Mobile Header */}
-        <header className="bg-gradient-to-r from-f1-red to-f1-red-dark text-white p-4 flex justify-between items-center md:hidden shadow-lg">
-          <button 
-            onClick={toggleMenu} 
-            className="focus:outline-none p-2 hover:bg-white hover:bg-opacity-10 rounded-lg transition-colors min-h-touch min-w-touch"
-            aria-label="Open menu"
-          >
-            <Bars3Icon className="h-6 w-6" />
-          </button>
-          <h1 className="text-xl font-bold">Fantasy F1</h1>
-          <div className="w-10"></div>
+        <header className="md:hidden flex items-center h-14 px-4 gap-3 bg-[#0F0F13] border-b border-f1-border flex-shrink-0">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-[3px] h-6 bg-f1-red rounded-full flex-shrink-0" />
+            <span className="text-white font-black text-base uppercase tracking-tight truncate">
+              Fantasy F1
+            </span>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={toggleTheme}
+              className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/5 text-sm"
+              title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+            {supabaseReady && (
+              user ? (
+                <button
+                  onClick={signOut}
+                  className="w-8 h-8 rounded-full bg-f1-red flex items-center justify-center text-white font-black text-xs"
+                  title={`Signed in as ${user.email} – tap to sign out`}
+                >
+                  {(user.email?.[0] ?? '?').toUpperCase()}
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-white/5 text-f1-muted hover:text-white transition-colors"
+                  title="Sign in"
+                >
+                  <UserCircleIcon className="w-5 h-5" />
+                </Link>
+              )
+            )}
+          </div>
         </header>
-        
-        {/* Main Content */}
-        <main className="flex-1 overflow-y-auto bg-gray-100 dark:bg-gray-900">
+
+        {/* Scrollable page content — pb-16 clears the mobile bottom nav */}
+        <main className="flex-1 overflow-y-auto pb-16 md:pb-0">
           {children}
         </main>
+
       </div>
 
-      {/* Mobile Overlay */}
-      {isMenuOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
-          onClick={toggleMenu}
-        ></div>
-      )}
-      
-      {/* Cache Status Widget */}
+      {/* ── Mobile Bottom Tab Bar ──────────────────────── */}
+      <nav
+        className="md:hidden fixed bottom-0 inset-x-0 z-50 bg-[#0F0F13] border-t border-f1-border flex"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      >
+        {navItems.map(({ path, label, Icon }) => {
+          const active = location.pathname === path;
+          return (
+            <Link
+              key={path}
+              to={path}
+              className={`relative flex-1 flex flex-col items-center justify-center py-2 gap-0.5 transition-colors min-h-touch ${
+                active ? 'text-f1-red' : 'text-f1-muted'
+              }`}
+            >
+              {active && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-f1-red rounded-b-full" />
+              )}
+              <Icon className="w-5 h-5" />
+              <span className="text-[9px] font-bold uppercase tracking-wide">{label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
       <CacheStatus />
     </div>
   );

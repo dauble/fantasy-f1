@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
 import LoadingSkeleton from '../components/ui/LoadingSkeleton';
-import { FANTASY_BUDGET, MAX_DRIVERS, MAX_CONSTRUCTORS, POINTS, TURBO_MULTIPLIER } from '../config/api';
+import { FANTASY_BUDGET, MAX_DRIVERS, MAX_CONSTRUCTORS, POINTS, TURBO_MULTIPLIER, FREE_TRANSFERS, TRANSFER_PENALTY } from '../config/api';
 import { formatPrice } from '../utils/pricing';
 import strategyAnalyzer, { getDriverNameByNumber } from '../utils/strategyAnalyzer';
 
@@ -27,9 +27,9 @@ const Rules = () => {
   };
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="px-4 py-5">
       <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2 dark:text-white">Fantasy F1 Rules</h1>
+        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-2 dark:text-white">Fantasy F1 Rules</h1>
         <p className="text-gray-600 dark:text-gray-300">Understanding how to play and score points</p>
       </div>
 
@@ -107,6 +107,10 @@ const Rules = () => {
                 <span className="font-bold text-green-700 dark:text-green-300">+{POINTS.fastestLap}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/30 rounded border border-green-200 dark:border-green-700">
+                <span>⭐ Driver of the Day</span>
+                <span className="font-bold text-green-700 dark:text-green-300">+{POINTS.driverOfTheDay}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-green-50 dark:bg-green-900/30 rounded border border-green-200 dark:border-green-700">
                 <span>📈 Position Gained</span>
                 <span className="font-bold text-green-700 dark:text-green-300">+{POINTS.positionGained} each</span>
               </div>
@@ -133,12 +137,52 @@ const Rules = () => {
                 <span className="font-bold text-red-700 dark:text-red-300">{POINTS.positionLost} each</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-700">
-                <span>❌ Not Classified</span>
+                <span>❌ DNF / Not Classified</span>
                 <span className="font-bold text-red-700 dark:text-red-300">{POINTS.notClassified}</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-700">
                 <span>🚫 Disqualified</span>
                 <span className="font-bold text-red-700 dark:text-red-300">{POINTS.disqualified}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="font-semibold mb-3">Sprint Race Scoring (6 rounds per season)</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
+              {Object.entries(POINTS.sprint).map(([position, points]) => (
+                <div key={position} className="flex justify-between items-center p-2 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-700">
+                  <span className="font-medium text-sm">P{position}</span>
+                  <span className="font-bold text-orange-700 dark:text-orange-300 text-sm">{points} pts</span>
+                </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex justify-between items-center p-3 bg-orange-50 dark:bg-orange-900/20 rounded border border-orange-200 dark:border-orange-700">
+                <span>🏁 Sprint Fastest Lap</span>
+                <span className="font-bold text-orange-700 dark:text-orange-300">+{POINTS.sprintFastestLap}</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/30 rounded border border-red-200 dark:border-red-700">
+                <span>❌ Sprint DNF</span>
+                <span className="font-bold text-red-700 dark:text-red-300">{POINTS.sprintDNF}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+            <h4 className="font-semibold mb-3">Constructor Bonuses</h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                <span>🔵 Both drivers reach Q3</span>
+                <span className="font-bold text-blue-700 dark:text-blue-300">+10 each</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                <span>⚡ Fastest pit stop</span>
+                <span className="font-bold text-blue-700 dark:text-blue-300">+5 bonus</span>
+              </div>
+              <div className="flex justify-between items-center p-3 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-700">
+                <span>🔧 Pit stop under 2.19s</span>
+                <span className="font-bold text-blue-700 dark:text-blue-300">+10 pts</span>
               </div>
             </div>
           </div>
@@ -151,59 +195,91 @@ const Rules = () => {
           <CardTitle>⚡ Chips & Power-ups</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
+          <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
+            The <strong>Turbo Driver</strong> is a weekly selection available every race. The 6 seasonal chips below are one-time-use power-ups — unused chips are lost at season end.
+          </p>
+          <div className="space-y-3">
             <div className="p-4 bg-yellow-50 dark:bg-yellow-900/30 border-l-4 border-yellow-400 dark:border-yellow-500 rounded">
-              <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">Turbo Driver (⚡)</h4>
-              <p className="text-yellow-800 dark:text-yellow-200">
-                Your selected Turbo Driver scores <strong>double points</strong> for the entire race weekend 
-                (qualifying + race). Choose wisely based on circuit characteristics and recent form!
+              <h4 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">Turbo Driver ⚡ — Weekly</h4>
+              <p className="text-yellow-800 dark:text-yellow-200 text-sm">
+                Pick one driver each race to score <strong>2x points</strong> for the full weekend (qualifying, race, and any sprint). Resets every race.
               </p>
             </div>
-            
+
+            <div className="p-4 bg-orange-50 dark:bg-orange-900/30 border-l-4 border-orange-400 dark:border-orange-500 rounded">
+              <h4 className="font-semibold text-orange-900 dark:text-orange-100 mb-1">3x Boost — Seasonal chip</h4>
+              <p className="text-orange-800 dark:text-orange-200 text-sm">
+                Triples one driver's entire weekend score instead of doubling. Cannot stack with the weekly 2x Turbo on the same driver.
+              </p>
+            </div>
+
             <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border-l-4 border-blue-400 dark:border-blue-500 rounded">
-              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Limitless Chip (Coming Soon)</h4>
-              <p className="text-blue-800 dark:text-blue-200">
-                Remove the budget cap for one race weekend. Build the ultimate dream team!
+              <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">Limitless — Seasonal chip</h4>
+              <p className="text-blue-800 dark:text-blue-200 text-sm">
+                Removes the $100M budget cap for one race weekend. Build any team you like — your picks revert back afterwards.
               </p>
             </div>
-            
+
+            <div className="p-4 bg-green-50 dark:bg-green-900/30 border-l-4 border-green-400 dark:border-green-500 rounded">
+              <h4 className="font-semibold text-green-900 dark:text-green-100 mb-1">No Negative — Seasonal chip</h4>
+              <p className="text-green-800 dark:text-green-200 text-sm">
+                Removes all negative scoring for one weekend. DNFs, disqualifications, and positions lost score zero instead of penalising your total.
+              </p>
+            </div>
+
             <div className="p-4 bg-purple-50 dark:bg-purple-900/30 border-l-4 border-purple-400 dark:border-purple-500 rounded">
-              <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-2">Wildcard (Coming Soon)</h4>
-              <p className="text-purple-800 dark:text-purple-200">
-                Make unlimited free transfers to completely rebuild your team.
+              <h4 className="font-semibold text-purple-900 dark:text-purple-100 mb-1">Wildcard — Seasonal chip</h4>
+              <p className="text-purple-800 dark:text-purple-200 text-sm">
+                Make unlimited free transfers in one weekend while staying within the $100M budget cap. Useful when 3+ changes are needed at once.
+              </p>
+            </div>
+
+            <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 border-l-4 border-indigo-400 dark:border-indigo-500 rounded">
+              <h4 className="font-semibold text-indigo-900 dark:text-indigo-100 mb-1">Final Fix — Seasonal chip</h4>
+              <p className="text-indigo-800 dark:text-indigo-200 text-sm">
+                Make one driver swap between the end of qualifying and the race start — no transfer penalty. Useful for reacting to unexpected grid penalties or crashes.
+              </p>
+            </div>
+
+            <div className="p-4 bg-gray-50 dark:bg-gray-700/40 border-l-4 border-gray-400 dark:border-gray-500 rounded">
+              <h4 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Autopilot — Seasonal chip</h4>
+              <p className="text-gray-700 dark:text-gray-300 text-sm">
+                The system automatically assigns your 2x Turbo boost to whichever of your drivers scores the most points that weekend. Good for unpredictable circuits.
               </p>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Transfer Penalties */}
+      {/* Transfer Rules */}
       <Card className="mb-6">
         <CardHeader>
-          <CardTitle>🔄 Transfers &amp; Penalties</CardTitle>
+          <CardTitle>🔄 Transfers</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
+            <div className="p-4 bg-green-50 dark:bg-green-900/30 border-l-4 border-green-500 rounded">
+              <h4 className="font-semibold text-green-900 dark:text-green-100 mb-2">{FREE_TRANSFERS} Free Transfers Per Race</h4>
+              <p className="text-green-800 dark:text-green-200">
+                You can make <strong>{FREE_TRANSFERS} driver or constructor changes</strong> each race weekend at no cost.
+              </p>
+            </div>
             <div className="p-4 bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 rounded">
-              <h4 className="font-semibold text-red-900 dark:text-red-100 mb-2">Transfer Penalty (-30 pts)</h4>
+              <h4 className="font-semibold text-red-900 dark:text-red-100 mb-2">Extra Transfer Penalty (-{TRANSFER_PENALTY} pts each)</h4>
               <p className="text-red-800 dark:text-red-200">
-                Each driver or constructor you change in your team incurs a <strong>-30 point penalty</strong>.
-                This is deducted from your total score for that race weekend.
+                Each change beyond your {FREE_TRANSFERS} free transfers costs <strong>-{TRANSFER_PENALTY} points</strong>, deducted from your weekend total.
               </p>
             </div>
             <div>
               <h4 className="font-semibold mb-2">Key Rules</h4>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-200">
-                <li>Each driver swap = <strong>-30 pts</strong></li>
-                <li>Each constructor swap = <strong>-30 pts</strong></li>
-                <li>A new pick must score <strong>30+ more points</strong> than the one they replace to be net-positive</li>
-                <li>Use the <strong>Wildcard</strong> chip to make unlimited transfers without penalty</li>
+                <li>Extra transfers cost <strong>-{TRANSFER_PENALTY} pts</strong> each — a new pick must score {TRANSFER_PENALTY}+ more to break even</li>
+                <li>Use the <strong>Wildcard</strong> chip to make unlimited free transfers in one weekend</li>
               </ul>
             </div>
             <div className="p-3 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded">
               <p className="text-sm text-blue-800 dark:text-blue-200">
-                <strong>💡 AI Predictions account for this:</strong> The AI team recommendation already factors in
-                your current team and transfer costs. Picks are chosen for their <em>net</em> value after penalties.
+                <strong>💡 AI Predictions account for this:</strong> The AI already factors in your free transfer allowance and only flags extra transfers as worthwhile when the expected gain exceeds the -{TRANSFER_PENALTY} pt penalty.
               </p>
             </div>
           </div>

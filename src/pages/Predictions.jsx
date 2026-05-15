@@ -251,7 +251,7 @@ function ApplyRecommendationsCard({ prediction, onApply, applied }) {
           </div>
           <button
             onClick={onApply}
-            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl text-sm transition-colors shrink-0"
+            className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black uppercase tracking-wide rounded-xl text-xs transition-colors shrink-0 shadow-lg shadow-emerald-500/20"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
@@ -764,12 +764,12 @@ export default function Predictions() {
   }, [prediction, rawData, syncToCloud]);
 
   return (
-    <div className="container mx-auto px-4 py-6">
+    <div className="px-4 py-5">
       {/* Page header */}
-      <div className="mb-6">
+      <div className="mb-5">
         <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-1 dark:text-white flex items-center gap-3">
+            <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-1 dark:text-white flex items-center gap-3">
               AI Predictions
               <span className="text-sm font-normal text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700/50 px-2.5 py-0.5 rounded-full">
                 powered by Claude
@@ -831,17 +831,17 @@ export default function Predictions() {
                 <button
                   onClick={() => runPrediction(true)}
                   disabled={status === "loading"}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-sm font-medium text-white rounded-lg transition-colors flex items-center gap-1.5"
+                  className="px-4 py-2 bg-f1-red hover:bg-f1-red-dark text-xs font-black uppercase tracking-wide text-white rounded-xl transition-colors flex items-center gap-1.5"
                   title="Fetch fresh data from OpenF1 and regenerate predictions"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
-                  Refresh Predictions
+                  Refresh
                 </button>
                 <button
                   onClick={reset}
-                  className="px-4 py-2 bg-gray-200 hover:bg-gray-300 dark:bg-gray-700 dark:hover:bg-gray-600 text-sm font-medium text-gray-700 dark:text-gray-300 rounded-lg transition-colors"
+                  className="px-4 py-2 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-xs font-black uppercase tracking-wide text-gray-700 dark:text-white rounded-xl transition-colors"
                   title="Clear predictions and start over"
                 >
                   Clear
@@ -956,8 +956,9 @@ export default function Predictions() {
           <div className="grid md:grid-cols-3 gap-6">
             {/* Drivers */}
             <div className="md:col-span-2 space-y-4">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                Recommended Drivers <span className="text-gray-500 dark:text-gray-400 font-normal text-base">(5)</span>
+              <h2 className="text-base font-black uppercase tracking-wide text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="w-1 h-5 bg-f1-red rounded-full inline-block" />
+                Recommended Drivers <span className="text-f1-muted font-bold text-sm">(5)</span>
               </h2>
               {prediction.recommended_drivers.map((d) => (
                 <DriverCard key={d.abbreviation || d.full_name} driver={d} />
@@ -966,8 +967,9 @@ export default function Predictions() {
 
             {/* Constructors + sidebar */}
             <div className="space-y-4">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
-                Constructors <span className="text-gray-500 dark:text-gray-400 font-normal text-base">(2)</span>
+              <h2 className="text-base font-black uppercase tracking-wide text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="w-1 h-5 bg-f1-red rounded-full inline-block" />
+                Constructors <span className="text-f1-muted font-bold text-sm">(2)</span>
               </h2>
               {prediction.recommended_constructors.map((c) => (
                 <ConstructorCard key={c.team_name} constructor={c} />

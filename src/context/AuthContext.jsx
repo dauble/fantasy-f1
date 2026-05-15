@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
 
   // ─── Theme ────────────────────────────────────────────────────────────────
   const [theme, setThemeState] = useState(
-    () => localStorage.getItem('fantasy_f1_theme') ?? 'light'
+    () => localStorage.getItem('fantasy_f1_theme') ?? 'dark'
   );
 
   // Apply / remove the `dark` class on <html> whenever theme changes
