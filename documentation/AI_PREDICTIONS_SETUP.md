@@ -20,6 +20,17 @@ Express Proxy Server
 Anthropic API (Claude)
 ```
 
+### Extended Thinking Mode
+
+The AI predictions feature uses Claude's **extended thinking** capability to provide more accurate and well-reasoned predictions. This allows Claude to:
+
+- Spend up to 10,000 tokens internally reasoning about the problem before responding
+- Analyze complex interactions between driver form, circuit characteristics, and team performance
+- Consider multiple strategic factors simultaneously (qualifying pace, race pace, reliability, weather impact)
+- Make more nuanced judgments about transfer decisions and value picks
+
+The extended thinking happens transparently during the prediction process (the 15-25 second generation time). You don't see the internal reasoning, but it leads to higher quality final predictions.
+
 ## Setup Instructions
 
 ### 1. Get an Anthropic API Key
@@ -139,8 +150,10 @@ This starts the Vite dev server on port 5173, which:
 **Anthropic Pricing** (as of 2024):
 
 - Claude Sonnet: ~$3 per million input tokens
-- Each prediction uses ~5,000-10,000 tokens
-- Cost per prediction: ~$0.02-0.05
+- Each prediction uses ~5,000-10,000 input tokens
+- Extended thinking adds ~3,000-10,000 additional tokens internally (for reasoning)
+- Cost per prediction: ~$0.03-0.08
+- The extended thinking tokens are counted separately but contribute to more accurate predictions
 
 **Rate Limits:**
 
