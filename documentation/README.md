@@ -77,6 +77,20 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 - Production deployment with secrets
 - Security notes and best practices
 
+### [FALLBACK_API.md](FALLBACK_API.md)
+
+**Fallback API system documentation** for resilient data fetching:
+
+- Overview of multi-source data strategy
+- Primary (OpenF1) and fallback (Ergast) API details
+- Automatic fallback activation conditions
+- Data quality differences between sources
+- UI indicators and error tracking
+- Testing and troubleshooting fallback mechanism
+- Future enhancement opportunities
+
+**Target Audience**: Developers understanding data resilience, contributors working on API integration
+
 ### [PROXY_SETUP.md](PROXY_SETUP.md)
 
 **Quick reference guide** for Express proxy server setup:
@@ -122,6 +136,7 @@ Fantasy F1 is a modern React/Vite application for building and managing Fantasy 
 | Icons              | Heroicons 2.2.0                    |
 | Auth & Cloud Sync  | Supabase (@supabase/supabase-js 2) |
 | Data Source        | OpenF1 API                         |
+| Fallback Source    | Ergast F1 API                      |
 | AI Service         | Anthropic Claude                   |
 | Proxy Server       | Express 5.2.1                      |
 | Dev Process Mgmt   | Concurrently                       |
@@ -183,10 +198,14 @@ Welcome modal on first visit encourages price updates. Optional skip, never show
 
 ```
 documentation/
-├── README.md           # This file - documentation index
-├── ARCHITECTURE.md     # Technical documentation
-├── DEPLOYMENT.md       # Deployment guide
-└── GITHUB_ACTIONS.md   # CI/CD setup guide
+├── README.md              # This file - documentation index
+├── ARCHITECTURE.md        # Technical documentation
+├── DEPLOYMENT.md          # Deployment guide
+├── GITHUB_ACTIONS.md      # CI/CD setup guide
+├── AI_PREDICTIONS_SETUP.md # AI predictions setup
+├── FALLBACK_API.md        # Fallback API documentation
+├── NEWS_INTEGRATION.md    # News aggregation system
+└── PROXY_SETUP.md         # Express proxy reference
 ```
 
 ## Contributing
