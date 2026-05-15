@@ -4,6 +4,52 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.11.0 - 2026-05-15 - Scoring Rules Accuracy & UI Polish
+
+### Scoring Rules — Corrections
+
+Several Fantasy F1 scoring values were incorrect against the official 2026 game rules. All values in `config/api.js` and the AI prompt have been corrected:
+
+| Category | Before | After |
+|---|---|---|
+| Fastest Lap | +5 pts | +10 pts |
+| DNF / Not Classified | -5 pts | -20 pts |
+| Driver of the Day | missing | +10 pts |
+| Sprint race scoring | missing | P1=8 → P8=1, fastest lap +5, DNF -10 |
+| Transfer penalty | -30 per swap (always) | 2 free per race, -10 per extra |
+
+### New Scoring Categories
+
+- **Driver of the Day** (+10 pts) added to `POINTS` config and Rules page display
+- **Sprint race scoring** (`POINTS.sprint`, `sprintFastestLap`, `sprintDNF`) added to config, AI prompt, and Rules page
+- **Constructor bonuses** (Q3 bonus, pit stop speed bonuses) now documented in Rules page and included in AI system prompt
+
+### Transfer Rule Overhaul
+
+- `TRANSFER_PENALTY` corrected from 30 to **10** pts
+- `FREE_TRANSFERS = 2` constant added to config — both the budget optimizer and the Rules page now correctly model 2 free transfers per race weekend
+- Budget optimizer updated: penalty now applied only to transfers **beyond** the 2 free allowance (`max(0, changes - 2) × 10`)
+- `budget_analysis` string updated to clearly distinguish total changes from penalised changes
+- AI system prompt and team-assessment instructions updated to reflect the free-transfer allowance
+
+### Chips & Power-ups — Rules Page
+
+- Added three previously missing seasonal chips: **No Negative**, **Final Fix**, and **Autopilot**
+- Removed "Coming Soon" labels from Limitless and Wildcard — both are live in 2026
+- Clarified that Turbo Driver is a **weekly selection** (not a one-time seasonal chip), separate from the 6 seasonal chips
+- Added 3x Boost chip description
+
+### UI — Prices Page
+
+- Items now display in a **3-column grid** on desktop (md breakpoint and above)
+- Cards enlarged: increased padding, larger colour badges, bumped font sizes (name `text-base`, team `text-sm`)
+
+### UI — Font
+
+- Replaced Titillium Web with **Barlow** across the entire app for improved readability, particularly at bold weights
+
+---
+
 ## Version 0.10.0 - 2026-05-15 - Session Validation for AI Predictions
 
 ### Features

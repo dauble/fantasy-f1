@@ -17,7 +17,7 @@ const TeamBuilder = () => {
   const [error, setError] = useState(null);
   const [turboDriver, setTurboDriver] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
-  const [saveStatus, setSaveStatus] = useState(''); // 'saving', 'saved', 'error'
+  const [saveStatus, setSaveStatus] = useState('');
   const [showCompleteBanner, setShowCompleteBanner] = useState(false);
 
   useEffect(() => {
@@ -25,15 +25,10 @@ const TeamBuilder = () => {
     loadSavedTeam();
   }, []);
 
-  // Auto-dismiss Team Complete banner after 5 seconds
   useEffect(() => {
     if (selectedDrivers.length === MAX_DRIVERS && selectedConstructors.length === MAX_CONSTRUCTORS) {
       setShowCompleteBanner(true);
-      
-      const timer = setTimeout(() => {
-        setShowCompleteBanner(false);
-      }, 5000);
-      
+      const timer = setTimeout(() => setShowCompleteBanner(false), 5000);
       return () => clearTimeout(timer);
     } else {
       setShowCompleteBanner(false);
@@ -43,32 +38,21 @@ const TeamBuilder = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      
-      // Get latest session to fetch current drivers
       const latestSession = await openF1API.getLatestSession();
-      
       if (latestSession) {
-        // Get drivers from the latest session
         const driversData = await openF1API.getDrivers();
-        
-        // Remove duplicates by driver_number
         const uniqueDrivers = Array.from(
           new Map(driversData.map(d => [d.driver_number, d])).values()
         );
-        
         setDrivers(uniqueDrivers);
-
-        // Extract unique constructors from drivers
         const uniqueConstructors = Array.from(
           new Set(uniqueDrivers.map(d => d.team_name))
         ).map(teamName => ({
           team_name: teamName,
           team_colour: uniqueDrivers.find(d => d.team_name === teamName)?.team_colour
         }));
-        
         setConstructors(uniqueConstructors);
       }
-      
       setLoading(false);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -87,7 +71,6 @@ const TeamBuilder = () => {
     }
   };
 
-  // Auto-save team whenever selections change
   useEffect(() => {
     if (selectedDrivers.length > 0 || selectedConstructors.length > 0) {
       const teamData = {
@@ -96,15 +79,11 @@ const TeamBuilder = () => {
         turboDriver,
         totalSpent: calculateTotalPrice(selectedDrivers, selectedConstructors)
       };
-      
       setSaveStatus('saving');
       const success = teamStorage.saveCurrentTeam(teamData);
-      
       if (success) {
         setSaveStatus('saved');
         setLastSaved(new Date().toISOString());
-        
-        // Clear status after 2 seconds
         setTimeout(() => setSaveStatus(''), 2000);
       } else {
         setSaveStatus('error');
@@ -114,18 +93,13 @@ const TeamBuilder = () => {
 
   const handleDriverSelect = (driver) => {
     const isSelected = selectedDrivers.some(d => d.driver_number === driver.driver_number);
-    
     if (isSelected) {
       setSelectedDrivers(selectedDrivers.filter(d => d.driver_number !== driver.driver_number));
-      if (turboDriver?.driver_number === driver.driver_number) {
-        setTurboDriver(null);
-      }
+      if (turboDriver?.driver_number === driver.driver_number) setTurboDriver(null);
     } else {
       if (selectedDrivers.length < MAX_DRIVERS) {
         const newSelection = [...selectedDrivers, driver];
-        const newTotal = calculateTotalPrice(newSelection, selectedConstructors);
-        
-        if (newTotal <= FANTASY_BUDGET) {
+        if (calculateTotalPrice(newSelection, selectedConstructors) <= FANTASY_BUDGET) {
           setSelectedDrivers(newSelection);
         } else {
           alert('This selection exceeds your budget!');
@@ -138,15 +112,12 @@ const TeamBuilder = () => {
 
   const handleConstructorSelect = (constructor) => {
     const isSelected = selectedConstructors.some(c => c.team_name === constructor.team_name);
-    
     if (isSelected) {
       setSelectedConstructors(selectedConstructors.filter(c => c.team_name !== constructor.team_name));
     } else {
       if (selectedConstructors.length < MAX_CONSTRUCTORS) {
         const newSelection = [...selectedConstructors, constructor];
-        const newTotal = calculateTotalPrice(selectedDrivers, newSelection);
-        
-        if (newTotal <= FANTASY_BUDGET) {
+        if (calculateTotalPrice(selectedDrivers, newSelection) <= FANTASY_BUDGET) {
           setSelectedConstructors(newSelection);
         } else {
           alert('This selection exceeds your budget!');
@@ -158,11 +129,7 @@ const TeamBuilder = () => {
   };
 
   const handleTurboSelect = (driver) => {
-    if (turboDriver?.driver_number === driver.driver_number) {
-      setTurboDriver(null);
-    } else {
-      setTurboDriver(driver);
-    }
+    setTurboDriver(turboDriver?.driver_number === driver.driver_number ? null : driver);
   };
 
   const handleClearTeam = () => {
@@ -179,15 +146,12 @@ const TeamBuilder = () => {
     const weekLabel = prompt('Enter a label for this team (e.g., "Race Week 5", "Monaco GP"):');
     if (weekLabel) {
       const teamData = {
-        selectedDrivers,
-        selectedConstructors,
-        turboDriver,
+        selectedDrivers, selectedConstructors, turboDriver,
         totalSpent: calculateTotalPrice(selectedDrivers, selectedConstructors)
       };
-      
       const success = teamStorage.saveToHistory(teamData, weekLabel);
       if (success) {
-        alert(`Team saved to history as "${weekLabel}"! ✅`);
+        alert(`Team saved to history as "${weekLabel}"!`);
       } else {
         alert('Failed to save team to history. Please try again.');
       }
@@ -196,38 +160,25 @@ const TeamBuilder = () => {
 
   const handleExportTeam = () => {
     const teamData = {
-      selectedDrivers,
-      selectedConstructors,
-      turboDriver,
+      selectedDrivers, selectedConstructors, turboDriver,
       totalSpent: calculateTotalPrice(selectedDrivers, selectedConstructors)
     };
-    
     const success = teamStorage.exportTeam(teamData);
-    if (success) {
-      alert('Team exported successfully! Check your downloads folder. 📦');
-    } else {
-      alert('Failed to export team. Please try again.');
-    }
+    if (!success) alert('Failed to export team. Please try again.');
   };
 
   const handleImportTeam = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
-    
     try {
       const teamData = await teamStorage.importTeam(file);
-      
-      // Validate that we still have the drivers/constructors available
       setSelectedDrivers(teamData.selectedDrivers || []);
       setSelectedConstructors(teamData.selectedConstructors || []);
       setTurboDriver(teamData.turboDriver || null);
-      
-      alert('Team imported successfully! ✅');
-    } catch (error) {
+      alert('Team imported successfully!');
+    } catch {
       alert('Failed to import team. Please check the file format.');
     }
-    
-    // Reset file input
     event.target.value = '';
   };
 
@@ -237,9 +188,9 @@ const TeamBuilder = () => {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <h1 className="text-3xl font-bold mb-6 dark:text-white">Team Builder</h1>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="px-4 py-6">
+        <h1 className="text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-white mb-6">Team Builder</h1>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           <LoadingSkeleton variant="card" count={6} />
         </div>
       </div>
@@ -248,36 +199,32 @@ const TeamBuilder = () => {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-6">
-        <Card variant="default">
+      <div className="px-4 py-6">
+        <Card>
           <CardHeader>
-            <CardTitle className="text-red-600">⚠️ Failed to Load Data</CardTitle>
+            <CardTitle className="text-f1-red">Failed to Load Data</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <p className="text-gray-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 Unable to load driver and constructor data from the OpenF1 API.
               </p>
-              
-              <div className="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                <h4 className="font-semibold text-yellow-800 mb-2">Common causes:</h4>
-                <ul className="list-disc list-inside text-sm text-yellow-700 space-y-1">
-                  <li><strong>Rate Limiting (429 Error):</strong> Too many API requests. Wait a few minutes and try again.</li>
+              <div className="bg-amber-50 dark:bg-amber-900/20 border-l-4 border-amber-400 p-4 rounded-r-lg">
+                <h4 className="font-bold text-amber-800 dark:text-amber-300 mb-2 uppercase text-sm tracking-wide">Common causes</h4>
+                <ul className="list-disc list-inside text-sm text-amber-700 dark:text-amber-400 space-y-1">
+                  <li><strong>Rate Limiting (429):</strong> Wait a few minutes and retry.</li>
                   <li><strong>Network Issues:</strong> Check your internet connection.</li>
-                  <li><strong>API Downtime:</strong> The OpenF1 API may be temporarily unavailable.</li>
-                  <li><strong>CORS Issues:</strong> Browser security may be blocking the request.</li>
+                  <li><strong>API Downtime:</strong> OpenF1 may be temporarily unavailable.</li>
                 </ul>
               </div>
-              
-              <p className="text-sm text-gray-600">
-                <strong>Error details:</strong> {error}
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                <strong>Error:</strong> {error}
               </p>
-              
-              <button 
+              <button
                 onClick={fetchData}
-                className="w-full px-4 py-3 bg-f1-red text-white rounded-lg hover:bg-f1-red-dark font-semibold transition-colors"
+                className="w-full px-4 py-3 bg-f1-red hover:bg-f1-red-dark text-white rounded-xl font-bold uppercase tracking-wide transition-colors"
               >
-                🔄 Retry Loading Data
+                Retry
               </button>
             </div>
           </CardContent>
@@ -287,155 +234,154 @@ const TeamBuilder = () => {
   }
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-4">
+    <div className="px-4 py-5">
+
+      {/* Page header */}
+      <div className="mb-5">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 dark:text-white">Build Your Fantasy F1 Team</h1>
-            <p className="text-gray-600 dark:text-gray-400">Select 5 drivers and 2 constructors within your $100M budget</p>
+            <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-gray-900 dark:text-white leading-none">
+              Build Your Team
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-f1-muted mt-1">
+              5 drivers · 2 constructors · $100M budget
+            </p>
           </div>
-          
-          {/* Save Status */}
           {lastSaved && (
-            <div className="flex items-center gap-2 text-sm">
-              {saveStatus === 'saving' && (
-                <span className="text-gray-600 dark:text-gray-400">💾 Saving...</span>
-              )}
-              {saveStatus === 'saved' && (
-                <span className="text-green-600">✅ Auto-saved</span>
-              )}
-              {saveStatus === 'error' && (
-                <span className="text-red-600">❌ Save failed</span>
-              )}
-              {!saveStatus && (
-                <span className="text-gray-500">
-                  Last saved: {new Date(lastSaved).toLocaleString()}
-                </span>
-              )}
+            <div className="text-xs text-gray-400 dark:text-f1-muted sm:text-right">
+              {saveStatus === 'saving' && <span className="text-amber-500">Saving…</span>}
+              {saveStatus === 'saved' && <span className="text-emerald-500">Saved</span>}
+              {saveStatus === 'error' && <span className="text-f1-red">Save failed</span>}
+              {!saveStatus && <span>Saved {new Date(lastSaved).toLocaleTimeString()}</span>}
             </div>
           )}
         </div>
-        
-        {/* Team Management Buttons */}
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={handleSaveToHistory}
-            disabled={selectedDrivers.length === 0 && selectedConstructors.length === 0}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            📝 Save to History
-          </button>
-          <button
-            onClick={handleExportTeam}
-            disabled={selectedDrivers.length === 0 && selectedConstructors.length === 0}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            📦 Export Team
-          </button>
-          <label className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-sm font-medium cursor-pointer transition-colors">
-            📥 Import Team
-            <input
-              type="file"
-              accept=".json"
-              onChange={handleImportTeam}
-              className="hidden"
-            />
+
+        {/* Action buttons */}
+        <div className="flex flex-wrap gap-2 mt-3">
+          {[
+            { label: 'Save to History', onClick: handleSaveToHistory, disabled: selectedDrivers.length === 0 && selectedConstructors.length === 0 },
+            { label: 'Export', onClick: handleExportTeam, disabled: selectedDrivers.length === 0 && selectedConstructors.length === 0 },
+            { label: 'Clear Team', onClick: handleClearTeam, disabled: selectedDrivers.length === 0 && selectedConstructors.length === 0, danger: true },
+          ].map(({ label, onClick, disabled, danger }) => (
+            <button
+              key={label}
+              onClick={onClick}
+              disabled={disabled}
+              className={`px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide transition-colors disabled:opacity-40 disabled:cursor-not-allowed min-h-touch ${
+                danger
+                  ? 'bg-red-100 dark:bg-red-900/30 text-f1-red hover:bg-red-200 dark:hover:bg-red-900/50'
+                  : 'bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+          <label className="px-3 py-2 rounded-lg text-xs font-bold uppercase tracking-wide bg-gray-100 dark:bg-white/10 text-gray-700 dark:text-white hover:bg-gray-200 dark:hover:bg-white/20 cursor-pointer transition-colors min-h-touch flex items-center">
+            Import
+            <input type="file" accept=".json" onChange={handleImportTeam} className="hidden" />
           </label>
-          <button
-            onClick={handleClearTeam}
-            disabled={selectedDrivers.length === 0 && selectedConstructors.length === 0}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            🗑️ Clear Team
-          </button>
         </div>
       </div>
 
-      {/* Budget Display */}
-      <Card className="mb-6 bg-gradient-to-r from-f1-red to-f1-red-dark text-white">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      {/* Budget card */}
+      <div className="mb-5 rounded-xl bg-gradient-to-r from-f1-red to-f1-red-dark p-4 text-white shadow-lg shadow-f1-red/20">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           <div>
-            <h3 className="text-lg font-semibold">Budget</h3>
-            <p className="text-3xl font-bold">{formatPrice(remainingBudget)}</p>
-            <p className="text-sm opacity-90">Remaining of {formatPrice(FANTASY_BUDGET)}</p>
+            <p className="text-[10px] uppercase tracking-widest font-bold text-white/70">Remaining Budget</p>
+            <p className="text-3xl font-black leading-none mt-0.5">{formatPrice(remainingBudget)}</p>
+            <p className="text-xs text-white/70 mt-1">of {formatPrice(FANTASY_BUDGET)} total</p>
           </div>
-          <div className="flex-1 max-w-md">
-            <div className="w-full bg-white bg-opacity-20 rounded-full h-4">
-              <div 
-                className="bg-white h-4 rounded-full transition-all duration-300"
+          <div className="flex-1">
+            <div className="w-full bg-white/20 rounded-full h-2">
+              <div
+                className="bg-white h-2 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(budgetPercentage, 100)}%` }}
-              ></div>
+              />
             </div>
-            <p className="text-sm mt-1">{budgetPercentage.toFixed(1)}% of budget used</p>
+            <p className="text-xs text-white/70 mt-1">{budgetPercentage.toFixed(1)}% used</p>
           </div>
-          <div className="text-right">
-            <p className="text-sm opacity-90">Selected</p>
-            <p className="text-2xl font-bold">{selectedDrivers.length}/{MAX_DRIVERS} Drivers</p>
-            <p className="text-2xl font-bold">{selectedConstructors.length}/{MAX_CONSTRUCTORS} Constructors</p>
+          <div className="sm:text-right text-sm font-bold">
+            <p>{selectedDrivers.length}/{MAX_DRIVERS} Drivers</p>
+            <p>{selectedConstructors.length}/{MAX_CONSTRUCTORS} Constructors</p>
           </div>
         </div>
-      </Card>
+      </div>
 
-      {/* Selected Team Summary */}
+      {/* Selected team summary */}
       {(selectedDrivers.length > 0 || selectedConstructors.length > 0) && (
-        <Card className="mb-6">
-          <CardHeader>
-            <CardTitle>Your Team</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {selectedDrivers.length > 0 && (
-              <div className="mb-4">
-                <h4 className="font-semibold mb-2">Drivers:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedDrivers.map(driver => (
-                    <div 
-                      key={driver.driver_number}
-                      className={`px-3 py-2 rounded-lg border-2 flex items-center gap-2 ${
-                        turboDriver?.driver_number === driver.driver_number 
-                          ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30' 
-                          : 'border-gray-200 bg-gray-50 dark:border-gray-600 dark:bg-gray-700'
-                      }`}
-                    >
-                      <span className="font-bold">#{driver.driver_number}</span>
-                      <span>{driver.full_name || `${driver.first_name} ${driver.last_name}`}</span>
-                      {turboDriver?.driver_number === driver.driver_number && (
-                        <span className="text-xs bg-yellow-400 text-yellow-900 px-2 py-1 rounded">TURBO 2x</span>
-                      )}
-                      <button
-                        onClick={() => handleTurboSelect(driver)}
-                        className="text-xs bg-gray-200 hover:bg-yellow-400 dark:bg-gray-700 dark:hover:bg-yellow-600 dark:text-white px-2 py-1 rounded ml-2"
-                        title="Set as Turbo Driver (2x points)"
+        <div className="mb-5">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Team</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {selectedDrivers.length > 0 && (
+                <div className="mb-4">
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-f1-muted mb-2">Drivers</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedDrivers.map(driver => (
+                      <div
+                        key={driver.driver_number}
+                        className={`px-3 py-2 rounded-lg border flex items-center gap-2 text-sm ${
+                          turboDriver?.driver_number === driver.driver_number
+                            ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-300'
+                            : 'border-gray-200 dark:border-f1-border bg-gray-50 dark:bg-f1-elevated text-gray-800 dark:text-white'
+                        }`}
                       >
-                        ⚡
-                      </button>
-                    </div>
-                  ))}
+                        <span className="font-black text-xs">#{driver.driver_number}</span>
+                        <span className="font-semibold">
+                          {driver.full_name || `${driver.first_name} ${driver.last_name}`}
+                        </span>
+                        {turboDriver?.driver_number === driver.driver_number && (
+                          <span className="text-[10px] bg-yellow-400 text-yellow-900 px-1.5 py-0.5 rounded font-black uppercase">
+                            Turbo 2×
+                          </span>
+                        )}
+                        <button
+                          onClick={() => handleTurboSelect(driver)}
+                          className="text-xs bg-gray-200 dark:bg-white/10 hover:bg-yellow-200 dark:hover:bg-yellow-500/30 rounded px-1.5 py-0.5 ml-1 transition-colors"
+                          title="Set as Turbo Driver (2× points)"
+                        >
+                          ⚡
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-            {selectedConstructors.length > 0 && (
-              <div>
-                <h4 className="font-semibold mb-2">Constructors:</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedConstructors.map(constructor => (
-                    <div 
-                      key={constructor.team_name}
-                      className="px-3 py-2 rounded-lg bg-gray-50 dark:bg-gray-700 border-2 border-gray-200 dark:border-gray-600 dark:text-gray-100"
-                    >
-                      {constructor.team_name}
-                    </div>
-                  ))}
+              )}
+              {selectedConstructors.length > 0 && (
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-f1-muted mb-2">Constructors</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedConstructors.map(constructor => (
+                      <div
+                        key={constructor.team_name}
+                        className="px-3 py-2 rounded-lg text-sm font-semibold border border-gray-200 dark:border-f1-border bg-gray-50 dark:bg-f1-elevated text-gray-800 dark:text-white"
+                      >
+                        {constructor.team_name}
+                      </div>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       )}
 
-      {/* Drivers Section */}
+      {/* Drivers section */}
       <div className="mb-8">
-        <h2 className="text-2xl font-bold mb-4">Select Drivers ({selectedDrivers.length}/{MAX_DRIVERS})</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-1 h-6 bg-f1-red rounded-full" />
+          <h2 className="text-lg font-black uppercase tracking-tight text-gray-900 dark:text-white">
+            Drivers
+          </h2>
+          <span className="text-sm font-bold text-f1-muted">
+            {selectedDrivers.length}/{MAX_DRIVERS}
+          </span>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {drivers
             .sort((a, b) => getDriverPrice(b.driver_number) - getDriverPrice(a.driver_number))
             .map(driver => (
@@ -446,7 +392,7 @@ const TeamBuilder = () => {
                 selected={selectedDrivers.some(d => d.driver_number === driver.driver_number)}
                 onSelect={handleDriverSelect}
                 disabled={
-                  selectedDrivers.length >= MAX_DRIVERS && 
+                  selectedDrivers.length >= MAX_DRIVERS &&
                   !selectedDrivers.some(d => d.driver_number === driver.driver_number)
                 }
               />
@@ -454,10 +400,18 @@ const TeamBuilder = () => {
         </div>
       </div>
 
-      {/* Constructors Section */}
+      {/* Constructors section */}
       <div>
-        <h2 className="text-2xl font-bold mb-4">Select Constructors ({selectedConstructors.length}/{MAX_CONSTRUCTORS})</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-1 h-6 bg-f1-red rounded-full" />
+          <h2 className="text-lg font-black uppercase tracking-tight text-gray-900 dark:text-white">
+            Constructors
+          </h2>
+          <span className="text-sm font-bold text-f1-muted">
+            {selectedConstructors.length}/{MAX_CONSTRUCTORS}
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
           {constructors
             .sort((a, b) => getConstructorPrice(b.team_name) - getConstructorPrice(a.team_name))
             .map(constructor => (
@@ -468,7 +422,7 @@ const TeamBuilder = () => {
                 selected={selectedConstructors.some(c => c.team_name === constructor.team_name)}
                 onSelect={handleConstructorSelect}
                 disabled={
-                  selectedConstructors.length >= MAX_CONSTRUCTORS && 
+                  selectedConstructors.length >= MAX_CONSTRUCTORS &&
                   !selectedConstructors.some(c => c.team_name === constructor.team_name)
                 }
               />
@@ -476,24 +430,21 @@ const TeamBuilder = () => {
         </div>
       </div>
 
-      {/* Team Complete Banner */}
+      {/* Team complete banner */}
       {showCompleteBanner && (
-        <div className="fixed bottom-6 right-6 z-30">
-          <div 
+        <div className="fixed bottom-20 md:bottom-6 right-4 md:right-6 z-30">
+          <div
             onClick={() => setShowCompleteBanner(false)}
-            className="bg-green-600 text-white px-6 py-4 rounded-lg shadow-2xl flex items-center gap-3 cursor-pointer hover:bg-green-700 transition-colors"
+            className="bg-emerald-600 text-white px-5 py-4 rounded-xl shadow-2xl flex items-center gap-3 cursor-pointer hover:bg-emerald-700 transition-colors"
           >
             <span className="text-2xl">🏁</span>
             <div>
-              <p className="font-bold text-lg">Team Complete!</p>
-              <p className="text-sm opacity-90">Auto-saved • {selectedDrivers.length} drivers • {selectedConstructors.length} constructors</p>
+              <p className="font-black uppercase tracking-wide text-sm">Team Complete!</p>
+              <p className="text-xs text-white/80 mt-0.5">
+                Auto-saved · {selectedDrivers.length} drivers · {selectedConstructors.length} constructors
+              </p>
             </div>
-            <button 
-              className="ml-2 text-white opacity-75 hover:opacity-100 text-xl font-bold"
-              aria-label="Close"
-            >
-              ×
-            </button>
+            <span className="text-white/60 text-lg font-black ml-1">×</span>
           </div>
         </div>
       )}

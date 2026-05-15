@@ -20,7 +20,7 @@
  */
 
 import { fetchF1News, buildNewsContext } from "./newsService.js";
-import { TRANSFER_PENALTY } from "../config/api.js";
+import { TRANSFER_PENALTY, FREE_TRANSFERS } from "../config/api.js";
 
 const PROXY_URL = "/api/predict";
 const MODEL = "claude-sonnet-4-20250514";
@@ -35,10 +35,12 @@ const SCORING_RULES = `
 FANTASY F1 SCORING:
 Race finishing: 1st=25, 2nd=18, 3rd=15, 4th=12, 5th=10, 6th=8, 7th=6, 8th=4, 9th=2, 10th=1
 Qualifying: P1=10, P2=9, P3=8, P4=7, P5=6, P6=5, P7=4, P8=3, P9=2, P10=1
-Bonuses: Fastest Lap=+5, Position Gained=+2 each, Beat Teammate (Qual)=+2, Beat Teammate (Race)=+3, Classified Finish=+1
-Penalties: Position Lost=-2 each, Not Classified=-5, Disqualified=-20
-Turbo Driver: one driver scores 2x points
-Transfer penalty: each driver or constructor swap costs -${TRANSFER_PENALTY_PTS} fantasy points (a new pick must score ${TRANSFER_PENALTY_PTS}+ more pts than the one it replaces to be net-positive)
+Sprint (6 rounds per season): 1st=8, 2nd=7, 3rd=6, 4th=5, 5th=4, 6th=3, 7th=2, 8th=1; Sprint Fastest Lap=+5; Sprint DNF=-10
+Bonuses: Fastest Lap=+10, Driver of the Day=+10, Position Gained=+2 each, Beat Teammate (Qual)=+2, Beat Teammate (Race)=+3, Classified Finish=+1
+Penalties: Position Lost=-2 each, Not Classified/DNF=-20, Disqualified=-20
+Constructors: combined driver points + Q3 bonus (both drivers reach Q3=+10 each) + pit stop bonuses
+Turbo Driver: weekly selection — one driver scores 2x points for the full weekend (qualifying + race + any sprint)
+Transfers: ${FREE_TRANSFERS} free per race weekend; each additional swap costs -${TRANSFER_PENALTY_PTS} fantasy points
 `.trim();
 
 const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from Formula1.com, PlanetF1, and Reddit.
@@ -262,26 +264,28 @@ function computeOptimalTeam(driverTrends, allConstructors, aiDriverMap = {}, aiC
       const total = dCost + c[0].price + c[1].price;
       if (total > BUDGET) continue;
 
-      // Subtract transfer penalty for each pick NOT already in the current team
-      let transferPenalty = 0;
+      // Count how many picks are NOT already in the current team
+      let rawTransfers = 0;
       if (currentDriverNums) {
         for (const driver of d) {
-          if (!currentDriverNums.has(driver.driver_number)) transferPenalty += TRANSFER_PENALTY_PTS;
+          if (!currentDriverNums.has(driver.driver_number)) rawTransfers++;
         }
       }
       if (currentConstructorNames) {
         for (const cons of c) {
-          if (!currentConstructorNames.has(cons.team_name.toLowerCase().trim())) transferPenalty += TRANSFER_PENALTY_PTS;
+          if (!currentConstructorNames.has(cons.team_name.toLowerCase().trim())) rawTransfers++;
         }
       }
+      // First FREE_TRANSFERS changes are free; each additional costs TRANSFER_PENALTY_PTS
+      const penalizedTransfers = Math.max(0, rawTransfers - FREE_TRANSFERS);
+      const transferPenalty = penalizedTransfers * TRANSFER_PENALTY_PTS;
 
       const score = d.reduce((s, x) => s + x._score, 0)
                   + c.reduce((s, x) => s + x._score, 0);
       const effectiveScore = score - transferPenalty;
       if (effectiveScore > bestScore) {
         bestScore = effectiveScore;
-        const transfers = transferPenalty / TRANSFER_PENALTY_PTS;
-        best = { drivers: d, constructors: c, total_cost: total, budget_remaining: BUDGET - total, transfers };
+        best = { drivers: d, constructors: c, total_cost: total, budget_remaining: BUDGET - total, transfers: rawTransfers, penalizedTransfers };
       }
     }
   }
@@ -512,7 +516,7 @@ function buildUserMessage(payload, constructorPriceMap, allConstructors, newsCon
           .join(", ")
       : "none";
     const budget = t.totalSpent != null ? ` ($${(t.totalSpent / 1_000_000).toFixed(1)}M spent)` : (t.totalCost != null ? ` ($${t.totalCost}M)` : "");
-    currentTeamNote = `\nUSER'S CURRENT FANTASY TEAM:\nDrivers: ${dNames}\nConstructors: ${cNames}${budget}\n\nTRANSFER RULE: Each driver or constructor swap costs -${TRANSFER_PENALTY_PTS} pts. Only recommend a transfer if the replacement is expected to score ${TRANSFER_PENALTY_PTS}+ more fantasy points than who they replace.\n\nTEAM ASSESSMENT TASK: Evaluate EVERY one of the user's current picks. For each, decide KEEP (solid for this circuit, not worth the penalty) or TRANSFER (clear upgrade that justifies the -${TRANSFER_PENALTY_PTS} pt cost). Use practice session pace and news to inform these calls. Populate "team_verdict" ("keep" / "partial" / "transfer") and "current_team_assessment" in your JSON response.\n`;
+    currentTeamNote = `\nUSER'S CURRENT FANTASY TEAM:\nDrivers: ${dNames}\nConstructors: ${cNames}${budget}\n\nTRANSFER RULE: ${FREE_TRANSFERS} free transfers per race weekend. Each additional swap beyond ${FREE_TRANSFERS} costs -${TRANSFER_PENALTY_PTS} pts. Only recommend transfers beyond the free allowance if the upgrade is worth the penalty.\n\nTEAM ASSESSMENT TASK: Evaluate EVERY one of the user's current picks. For each, decide KEEP (solid for this circuit) or TRANSFER (clear upgrade). Prioritise picks that fit within the ${FREE_TRANSFERS} free transfers before flagging costlier changes. Populate "team_verdict" ("keep" / "partial" / "transfer") and "current_team_assessment" in your JSON response.\n`;
   }
 
   let practiceContext = "";
@@ -674,7 +678,7 @@ function parsePredictionJSON(rawText, fallbackPayload, allConstructors) {
     risks,
     total_cost: optimalTeam.total_cost,
     budget_remaining: optimalTeam.budget_remaining,
-    budget_analysis: `Optimal team: $${optimalTeam.total_cost.toFixed(2)}M / $100M ($${optimalTeam.budget_remaining.toFixed(2)}M remaining) — selected from ${totalDrivers} drivers & ${totalConstructors} constructors${optimalTeam.transfers > 0 ? ` — ${optimalTeam.transfers} transfer${optimalTeam.transfers !== 1 ? 's' : ''} from current team (-${optimalTeam.transfers * TRANSFER_PENALTY_PTS} pts penalty)` : ' — no transfers needed'}.`,
+    budget_analysis: `Optimal team: $${optimalTeam.total_cost.toFixed(2)}M / $100M ($${optimalTeam.budget_remaining.toFixed(2)}M remaining) — selected from ${totalDrivers} drivers & ${totalConstructors} constructors${optimalTeam.transfers > 0 ? ` — ${optimalTeam.transfers} change${optimalTeam.transfers !== 1 ? 's' : ''} from current team${optimalTeam.penalizedTransfers > 0 ? ` (-${optimalTeam.penalizedTransfers * TRANSFER_PENALTY_PTS} pts penalty for ${optimalTeam.penalizedTransfers} extra transfer${optimalTeam.penalizedTransfers !== 1 ? 's' : ''} beyond ${FREE_TRANSFERS} free)` : ' (within free transfer allowance)'}` : ' — no transfers needed'}.`,
     transfers: optimalTeam.transfers ?? null,
     data_confidence: parsed.data_confidence || "medium",
     data_note: parsed.data_note || null,

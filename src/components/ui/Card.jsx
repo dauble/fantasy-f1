@@ -1,33 +1,33 @@
 import React from 'react';
 
-export function Card({ 
-  children, 
-  className = '', 
+export function Card({
+  children,
+  className = '',
   variant = 'default',
   hoverable = false,
   padding = true,
   onClick = null
 }) {
   const variants = {
-    default: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 dark:text-gray-100',
-    dark: 'bg-gray-800 border-gray-700 text-white',
+    default: 'bg-white dark:bg-f1-surface border-gray-200 dark:border-f1-border text-gray-900 dark:text-white',
+    dark: 'bg-f1-surface border-f1-border text-white',
     primary: 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800',
-    f1: 'bg-gradient-to-br from-red-600 to-red-700 border-red-800 text-white',
+    f1: 'bg-gradient-to-br from-f1-red to-f1-red-dark border-f1-red-dark text-white',
   };
 
   const baseClasses = `
-    rounded-lg 
-    shadow-md 
-    border 
+    rounded-xl
+    shadow-sm
+    border
     ${variants[variant]}
-    ${hoverable ? 'hover:shadow-xl hover:scale-[1.02] transition-all duration-200' : ''}
-    ${padding ? 'p-4 md:p-6' : ''}
+    ${hoverable ? 'hover:shadow-lg hover:border-f1-red/40 transition-all duration-200 cursor-pointer' : ''}
+    ${padding ? 'p-4 md:p-5' : ''}
     ${onClick ? 'cursor-pointer' : ''}
     ${className}
   `;
 
   return (
-    <div 
+    <div
       className={baseClasses}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
@@ -48,7 +48,7 @@ export function CardHeader({ children, className = '' }) {
 
 export function CardTitle({ children, className = '' }) {
   return (
-    <h3 className={`text-xl md:text-2xl font-bold ${className}`}>
+    <h3 className={`text-lg md:text-xl font-black uppercase tracking-wide ${className}`}>
       {children}
     </h3>
   );
@@ -64,7 +64,7 @@ export function CardContent({ children, className = '' }) {
 
 export function CardFooter({ children, className = '' }) {
   return (
-    <div className={`mt-4 pt-4 border-t border-gray-200 dark:border-gray-700 ${className}`}>
+    <div className={`mt-4 pt-4 border-t border-gray-200 dark:border-f1-border ${className}`}>
       {children}
     </div>
   );

@@ -5,9 +5,9 @@ const LivePricingGuide = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <div className="container mx-auto px-4 py-6">
-      <div className="mb-6">
-        <h1 className="text-3xl md:text-4xl font-bold mb-2">Live Pricing Guide</h1>
+    <div className="px-4 py-5">
+      <div className="mb-5">
+        <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-2 dark:text-white">Live Pricing Guide</h1>
         <p className="text-gray-600">Options for automatically fetching Fantasy F1 prices</p>
       </div>
 

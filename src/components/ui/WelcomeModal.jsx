@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Card, CardHeader, CardTitle, CardContent } from './Card';
+import { Card, CardContent } from './Card';
 import setupStorage from '../../utils/setupStorage';
 
 const WelcomeModal = ({ onClose }) => {
@@ -22,71 +22,67 @@ const WelcomeModal = ({ onClose }) => {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
-      <div className="max-w-2xl w-full">
-        <Card className="shadow-2xl">
-          <CardHeader className="bg-gradient-to-r from-f1-red to-f1-red-dark text-white">
-            <div className="text-center">
-              <div className="text-6xl mb-4">🏎️</div>
-              <CardTitle className="text-white text-3xl mb-2">Welcome to Fantasy F1!</CardTitle>
-              <p className="text-white text-opacity-90">Let's get your team ready for race week</p>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-6">
-            <div className="space-y-6">
-              {/* Main Question */}
-              <div className="text-center mb-6">
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Would you like to update driver and constructor prices?
+    <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center p-4">
+      <div className="max-w-md w-full">
+        <Card className="shadow-2xl border-f1-border overflow-hidden">
+          {/* Red header */}
+          <div className="bg-gradient-to-r from-f1-red to-f1-red-dark px-5 py-6 text-white text-center">
+            <p className="text-4xl mb-3">🏎️</p>
+            <h2 className="text-xl font-black uppercase tracking-tight">Welcome to Fantasy F1!</h2>
+            <p className="text-sm text-white/80 mt-1">Let's get your team ready for race week</p>
+          </div>
+
+          <CardContent className="pt-5 pb-5">
+            <div className="space-y-4">
+              <div className="text-center">
+                <h3 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-wide">
+                  Update driver & constructor prices?
                 </h3>
-                <p className="text-gray-600">
-                  Prices change weekly on the official Fantasy F1 site. Update them now to match this week's values.
+                <p className="text-sm text-gray-500 dark:text-f1-muted mt-1">
+                  Prices change weekly on the official Fantasy F1 site.
                 </p>
               </div>
 
-              {/* Info Box */}
-              <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded">
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/30 rounded-xl p-3.5">
                 <div className="flex items-start gap-3">
-                  <span className="text-2xl">💡</span>
-                  <div className="text-sm text-blue-900">
-                    <p className="font-semibold mb-2">Why update prices?</p>
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Match the official Fantasy F1 website values</li>
-                      <li>Accurate budget calculations within your $100M limit</li>
-                      <li>Reflect driver performance and market changes</li>
-                      <li>You can always update them later from the Price Manager</li>
+                  <span className="text-lg flex-shrink-0">💡</span>
+                  <div className="text-xs text-blue-900 dark:text-blue-300 space-y-1">
+                    <p className="font-bold mb-1">Why update prices?</p>
+                    <ul className="list-disc list-inside space-y-0.5 text-blue-800 dark:text-blue-400">
+                      <li>Match the official Fantasy F1 site values</li>
+                      <li>Accurate budget calculations ($100M limit)</li>
+                      <li>Reflect driver performance changes</li>
+                      <li>Updatable anytime from Price Manager</li>
                     </ul>
                   </div>
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <button
                   onClick={handleSetupPrices}
-                  className="w-full px-6 py-4 bg-f1-red hover:bg-f1-red-dark text-white rounded-lg font-bold text-lg transition-colors shadow-lg"
+                  className="w-full px-5 py-3.5 bg-f1-red hover:bg-f1-red-dark text-white rounded-xl font-black uppercase tracking-wide text-sm transition-colors shadow-lg shadow-f1-red/30"
                 >
-                  💰 Update Prices Now (Recommended)
+                  Update Prices Now (Recommended)
                 </button>
-                
+
                 <button
                   onClick={handleUseDefaults}
-                  className="w-full px-6 py-4 bg-gray-600 hover:bg-gray-700 text-white rounded-lg font-semibold transition-colors"
+                  className="w-full px-5 py-3 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-xl font-bold uppercase tracking-wide text-sm transition-colors"
                 >
-                  📊 Use Default Prices
+                  Use Default Prices
                 </button>
-                
+
                 <button
                   onClick={handleSkipSetup}
-                  className="w-full px-6 py-3 text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                  className="w-full px-5 py-2.5 text-gray-400 dark:text-f1-muted hover:text-gray-600 dark:hover:text-white font-semibold text-sm transition-colors"
                 >
                   Skip for now
                 </button>
               </div>
 
-              {/* Footer Note */}
-              <p className="text-xs text-center text-gray-500 mt-4">
-                You can access the Price Manager anytime from the navigation menu
+              <p className="text-[10px] text-center text-gray-400 dark:text-f1-muted">
+                Access Price Manager anytime from the navigation
               </p>
             </div>
           </CardContent>

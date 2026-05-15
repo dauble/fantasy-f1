@@ -133,7 +133,7 @@ This starts the Vite dev server on port 5173, which:
 
 3. **AI Service** (`aiPredictionService.js`):
    - Sends payload to `/api/predict` endpoint
-   - Includes system prompt with Fantasy F1 scoring rules
+   - Includes system prompt with Fantasy F1 scoring rules (see below)
 
 4. **Express Proxy** (`server.js`):
    - Receives request at `/api/predict`
@@ -144,6 +144,32 @@ This starts the Vite dev server on port 5173, which:
    - Shows recommended drivers/constructors
    - Highlights turbo pick and value selections
    - Displays reasoning for each pick
+
+### Fantasy F1 Scoring Rules (as sent to Claude)
+
+The `SCORING_RULES` constant in `aiPredictionService.js` encodes the full official 2026 scoring system. Key values sourced from `config/api.js`:
+
+| Category | Points |
+|---|---|
+| Race finish P1–P10 | 25, 18, 15, 12, 10, 8, 6, 4, 2, 1 |
+| Qualifying P1–P10 | 10, 9, 8, 7, 6, 5, 4, 3, 2, 1 |
+| Sprint finish P1–P8 | 8, 7, 6, 5, 4, 3, 2, 1 |
+| Sprint fastest lap | +5 |
+| Sprint DNF | -10 |
+| Fastest Lap | +10 |
+| Driver of the Day | +10 |
+| Position Gained | +2 each |
+| Beat Teammate (Qual) | +2 |
+| Beat Teammate (Race) | +3 |
+| Classified Finish | +1 |
+| Position Lost | -2 each |
+| DNF / Not Classified | -20 |
+| Disqualified | -20 |
+| Constructor Q3 (both drivers reach Q3) | +10 each |
+
+**Transfers:** 2 free per race weekend; each additional swap costs -10 pts. The budget optimizer applies this correctly — only changes beyond the free allowance incur a penalty.
+
+**Turbo Driver:** weekly selection that doubles one driver's full weekend score (qualifying + race + sprint). Separate from the 6 one-time seasonal chips (3x Boost, Limitless, No Negative, Wildcard, Final Fix, Autopilot).
 
 ### API Costs
 

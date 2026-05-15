@@ -39,20 +39,34 @@ export const POINTS = {
     9: 2,
     10: 1
   },
+  // Sprint race finishing positions (top 8 score)
+  sprint: {
+    1: 8,
+    2: 7,
+    3: 6,
+    4: 5,
+    5: 4,
+    6: 3,
+    7: 2,
+    8: 1
+  },
+  sprintFastestLap: 5,
+  sprintDNF: -10,
   // Additional points
-  fastestLap: 5,
+  fastestLap: 10,
+  driverOfTheDay: 10,
   positionGained: 2,
   positionLost: -2,
   classified: 1,
-  notClassified: -5,
+  notClassified: -20,
   disqualified: -20,
   beaten_teammate_qualifying: 2,
   beaten_teammate_race: 3
 };
 
-// Turbo Driver multiplier (for chips)
+// Turbo Driver multiplier (weekly selection, not a chip)
 export const TURBO_MULTIPLIER = 2;
 
-// Transfer penalty: each driver or constructor change between race weekends
-// costs this many fantasy points in the official Fantasy F1 game.
-export const TRANSFER_PENALTY = 30;
+// Transfers: 2 free per race weekend. Each additional swap costs this many points.
+export const FREE_TRANSFERS = 2;
+export const TRANSFER_PENALTY = 10;
