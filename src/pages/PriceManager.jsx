@@ -5,11 +5,13 @@ import priceStorage from '../utils/priceStorage';
 import setupStorage from '../utils/setupStorage';
 import { DRIVER_PRICES, CONSTRUCTOR_PRICES, formatPrice, getDriverPrice, getConstructorPrice } from '../utils/pricing';
 import openF1API from '../services/openF1API';
+import { useAuth } from '../context/AuthContext';
 
 const PriceManager = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const isSetupMode = searchParams.get('setup') === 'true';
+  const { syncToCloud } = useAuth();
   
   const [drivers, setDrivers] = useState([]);
   const [constructors, setConstructors] = useState([]);
@@ -93,13 +95,16 @@ const PriceManager = () => {
     }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setSaveStatus('saving');
     const success = priceStorage.saveCustomPrices(customPrices);
-    
+
     if (success) {
+      // Sync prices to database immediately if user is logged in
+      await syncToCloud();
+
       setSaveStatus('saved');
-      
+
       // If in setup mode, mark setup complete and redirect
       if (isSetupMode) {
         setupStorage.markSetupComplete();
@@ -114,10 +119,14 @@ const PriceManager = () => {
     }
   };
 
-  const handleResetToDefaults = () => {
+  const handleResetToDefaults = async () => {
     if (window.confirm('Reset all prices to defaults? This will clear your custom prices.')) {
       priceStorage.clearCustomPrices();
       setCustomPrices({ drivers: {}, constructors: {} });
+
+      // Sync to database immediately if user is logged in
+      await syncToCloud();
+
       setSaveStatus('reset');
       setTimeout(() => setSaveStatus(''), 3000);
     }

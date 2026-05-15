@@ -84,7 +84,6 @@ const TeamBuilder = () => {
       setSelectedConstructors(savedTeam.selectedConstructors || []);
       setTurboDriver(savedTeam.turboDriver || null);
       setLastSaved(savedTeam.lastSaved);
-      console.log('Loaded saved team:', savedTeam);
     }
   };
 
