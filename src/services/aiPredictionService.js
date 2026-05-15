@@ -24,6 +24,9 @@ import { TRANSFER_PENALTY } from "../config/api.js";
 
 const PROXY_URL = "/api/predict";
 const MODEL = "claude-sonnet-4-20250514";
+const THINKING_BUDGET_TOKENS = 10000;
+const RESPONSE_OUTPUT_TOKENS = 6000;
+const MAX_RESPONSE_TOKENS = THINKING_BUDGET_TOKENS + RESPONSE_OUTPUT_TOKENS;
 
 // Points penalty applied per driver or constructor change in the official game
 const TRANSFER_PENALTY_PTS = TRANSFER_PENALTY;
@@ -373,10 +376,10 @@ export async function generatePredictions(dataPayload, onProgress) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 16000,
+        max_tokens: MAX_RESPONSE_TOKENS,
         thinking: {
           type: "enabled",
-          budget_tokens: 10000,
+          budget_tokens: THINKING_BUDGET_TOKENS,
         },
         system: SYSTEM_PROMPT,
         messages: [{ role: "user", content: userMessage }],
