@@ -89,12 +89,25 @@ A modern React application for building and managing your Fantasy Formula 1 team
 
 ## Data Source
 
-This application uses the [OpenF1 API](https://openf1.org/) which provides:
+This application uses the [OpenF1 API](https://openf1.org/) as its primary data source, with the [Ergast F1 API](http://ergast.com/mrd/) as an automatic fallback.
+
+### Primary: OpenF1 API
 
 - Real-time and historical F1 data
 - Driver information and statistics
 - Session data and results
 - Official F1 timing data
+
+### Fallback: Ergast F1 API
+
+When OpenF1 is unavailable (rate limits, server errors, or network issues), the app automatically falls back to the Ergast F1 API:
+
+- Historical F1 data from 1950 to present
+- Race results and qualifying data
+- Driver and constructor standings
+- Reliable backup ensuring predictions remain available
+
+The UI clearly indicates when fallback data is being used. See [Fallback API Documentation](documentation/FALLBACK_API.md) for details.
 
 ### API Caching — 4-Layer System
 

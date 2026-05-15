@@ -394,6 +394,8 @@ function TransferWarning({ prediction, rawData }) {
 
 function APIErrorsSummary({ rawData }) {
   const apiErrors = rawData?.api_errors || [];
+  const fallbackUsed = rawData?.fallback_used || false;
+
   if (!apiErrors || apiErrors.length === 0) return null;
 
   // Group errors by type and extract useful information
@@ -402,6 +404,7 @@ function APIErrorsSummary({ rawData }) {
     notFound: [],
     serverError: [],
     networkError: [],
+    fallback: [],
   };
 
   const sessionKeyPattern = /session_key=(\d+)/;
@@ -409,6 +412,15 @@ function APIErrorsSummary({ rawData }) {
 
   apiErrors.forEach(error => {
     const { url, statusCode, errorMessage, context } = error;
+
+    // Check if this is a fallback indicator
+    if (context?.isFallback) {
+      errorsByType.fallback.push({
+        source: context.source,
+        reason: errorMessage,
+      });
+      return;
+    }
 
     // Extract session key or year from URL
     const sessionMatch = url.match(sessionKeyPattern);
@@ -553,6 +565,25 @@ function APIErrorsSummary({ rawData }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {/* Fallback API usage */}
+      {errorsByType.fallback.length > 0 && (
+        <div className="mt-2 pl-7">
+          <p className="font-medium text-emerald-800 dark:text-emerald-300 mb-1">
+            ✅ Fallback data source used:
+          </p>
+          <ul className="list-disc list-inside text-emerald-700 dark:text-emerald-400 space-y-0.5">
+            {errorsByType.fallback.map((fb, i) => (
+              <li key={i}>
+                {fb.reason}
+              </li>
+            ))}
+          </ul>
+          <p className="text-emerald-600 dark:text-emerald-500 mt-1 text-xs">
+            Data was successfully retrieved from {errorsByType.fallback[0]?.source} as a backup source.
+          </p>
         </div>
       )}
     </div>

@@ -4,9 +4,11 @@
  * for use in AI-powered Fantasy F1 predictions.
  *
  * Integrated with existing cache system and OpenF1 API structure.
+ * Falls back to Ergast API when OpenF1 is unavailable.
  */
 
 import openF1API from './openF1API';
+import ergastAPI from './ergastAPI';
 
 const BASE_URL = "https://api.openf1.org/v1";
 
@@ -42,6 +44,7 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 // Tracks all API failures during a data fetch session so we can show users
 // exactly what failed and why.
 let apiErrors = [];
+let fallbackUsed = false;
 
 function recordAPIError(url, statusCode, errorMessage, context = {}) {
   apiErrors.push({
@@ -50,6 +53,17 @@ function recordAPIError(url, statusCode, errorMessage, context = {}) {
     errorMessage,
     timestamp: new Date().toISOString(),
     context,
+  });
+}
+
+function recordFallbackUsed(source, reason) {
+  fallbackUsed = true;
+  apiErrors.push({
+    url: 'FALLBACK',
+    statusCode: 0,
+    errorMessage: `Using ${source} as fallback: ${reason}`,
+    timestamp: new Date().toISOString(),
+    context: { isFallback: true, source },
   });
 }
 
@@ -71,6 +85,7 @@ function getAPIErrors() {
 
 function clearAPIErrors() {
   apiErrors = [];
+  fallbackUsed = false;
 }
 
 // ─── Cache helpers (reuses your existing pattern) ───────────────────────────
@@ -250,7 +265,36 @@ export async function getRecentRaceSessions(limit = 5) {
     }
     return result;
   } catch (error) {
-    // Last resort: accept a stale sessions list rather than returning nothing
+    // Last resort: try Ergast API as fallback
+    console.warn('OpenF1 API failed for recent sessions, trying Ergast fallback...');
+    try {
+      const ergastRaces = await ergastAPI.getRecentRacesFromErgast(limit);
+      if (ergastRaces && ergastRaces.length > 0) {
+        recordFallbackUsed('Ergast API', 'OpenF1 API unavailable for recent race sessions');
+        console.log(`✓ Retrieved ${ergastRaces.length} races from Ergast fallback`);
+
+        // Convert Ergast format to a structure we can work with
+        // Note: Ergast doesn't provide session_key, so we'll create synthetic ones
+        const sessions = ergastRaces.map((race, idx) => ({
+          session_key: `ergast_${race.season}_${race.round}`,
+          session_name: 'Race',
+          circuit_short_name: race.circuit,
+          country_name: race.country,
+          date_start: race.date,
+          date_end: race.date,
+          _from_ergast: true,
+          _ergast_data: race, // Store original data for later use
+        }));
+
+        setCache(listCacheKey, sessions);
+        return sessions;
+      }
+    } catch (ergastError) {
+      console.error('Ergast fallback also failed:', ergastError);
+      recordAPIError('ergast', 0, ergastError.message, { fallbackFailed: true });
+    }
+
+    // Accept a stale sessions list rather than returning nothing
     const stale = getCached(listCacheKey, true, SESSIONS_LIST_TTL_MS);
     if (stale) {
       console.warn('Using stale sessions list as fallback:', error.message);
@@ -361,6 +405,20 @@ export async function getNextRaceSession() {
     return null;
   } catch (error) {
     console.error('Error fetching next race session:', error);
+
+    // Try Ergast fallback
+    try {
+      const ergastNext = await ergastAPI.getNextRaceFromErgast();
+      if (ergastNext) {
+        recordFallbackUsed('Ergast API', 'OpenF1 API unavailable for next race session');
+        console.log('✓ Retrieved next race from Ergast fallback');
+        return ergastNext;
+      }
+    } catch (ergastError) {
+      console.error('Ergast fallback also failed for next race:', ergastError);
+      recordAPIError('ergast', 0, ergastError.message, { fallbackFailed: true });
+    }
+
     return null;
   }
 }
@@ -628,6 +686,42 @@ export async function buildSessionStats(session) {
     return cachedStats;
   }
 
+  // Handle Ergast-sourced sessions differently
+  if (session._from_ergast && session._ergast_data) {
+    console.log(`Building session stats from Ergast data for ${session.session_key}`);
+    try {
+      const ergastRace = session._ergast_data;
+      const results = ergastRace.results.map((driver) => ({
+        driver_number: driver.driver_number,
+        full_name: driver.full_name,
+        abbreviation: driver.abbreviation,
+        team_name: driver.team_name,
+        team_colour: driver.team_colour || "888888",
+        finish_position: driver.finish_position,
+        fastest_lap_ms: driver.fastest_lap_time ? parseFloat(driver.fastest_lap_time) * 1000 : null,
+        avg_lap_ms: null, // Ergast doesn't provide average lap times
+        pit_stops: 0, // Ergast doesn't provide pit stop counts in results
+        laps_completed: driver.laps_completed,
+      }));
+
+      const result = {
+        session_key: session.session_key,
+        race_name: ergastRace.race_name,
+        circuit: ergastRace.circuit,
+        country: ergastRace.country,
+        date: ergastRace.date,
+        results,
+        _from_ergast: true,
+      };
+
+      setCache(statsCacheKey, result);
+      return result;
+    } catch (error) {
+      console.error(`Error building Ergast session stats for ${session.session_key}:`, error);
+      return null;
+    }
+  }
+
   try {
     const drivers   = await getDriversForSession(session.session_key)
                         .then(v => ({ status: 'fulfilled', value: v }))
@@ -892,6 +986,7 @@ export async function buildPredictionPayload(recentRaceCount = 5, bypassPayloadC
       data_window: `Last ${recentRaceStats.length} races`,
       generated_at: new Date().toISOString(),
       api_errors: getAPIErrors(), // Include all API errors encountered during this fetch
+      fallback_used: fallbackUsed, // Indicate if Ergast API was used as fallback
     };
 
     // Save the payload so the next call (within 4 hours) costs 0 API requests
