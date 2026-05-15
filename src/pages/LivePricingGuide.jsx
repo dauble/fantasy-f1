@@ -8,7 +8,7 @@ const LivePricingGuide = () => {
     <div className="px-4 py-5">
       <div className="mb-5">
         <h1 className="text-2xl sm:text-3xl font-black uppercase tracking-tight mb-2 dark:text-white">Live Pricing Guide</h1>
-        <p className="text-gray-600">Options for automatically fetching Fantasy F1 prices</p>
+        <p className="text-gray-600 dark:text-gray-400">Options for automatically fetching Fantasy F1 prices</p>
       </div>
 
       {/* Overview Card */}

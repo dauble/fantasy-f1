@@ -273,8 +273,6 @@ const Rules = () => {
             <div>
               <h4 className="font-semibold mb-2">Key Rules</h4>
               <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-200">
-                <li>You can bank unused transfers — up to <strong>3 maximum</strong> carried over</li>
-                <li>Net transfers: swapping a player out and back in counts as <strong>zero</strong> transfers</li>
                 <li>Extra transfers cost <strong>-{TRANSFER_PENALTY} pts</strong> each — a new pick must score {TRANSFER_PENALTY}+ more to break even</li>
                 <li>Use the <strong>Wildcard</strong> chip to make unlimited free transfers in one weekend</li>
               </ul>

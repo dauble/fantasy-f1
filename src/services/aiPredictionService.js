@@ -49,7 +49,7 @@ Your task is to predict the race outcome for EVERY driver and EVERY constructor 
 
 ${SCORING_RULES}
 
-TRANSFER CONTEXT: The user may already have an existing fantasy team. Each change to that team costs -${TRANSFER_PENALTY_PTS} pts. Your rankings will be used by an algorithm that automatically accounts for this penalty, so you should rank purely by expected race performance. However, when writing your analysis_summary, acknowledge if the user’s current picks look worth keeping or swapping given the transfer cost.
+TRANSFER CONTEXT: The user may already have an existing fantasy team. They receive ${FREE_TRANSFERS} free transfers per race weekend; each additional swap beyond that costs -${TRANSFER_PENALTY_PTS} pts. Your rankings will be used by an algorithm that automatically accounts for this penalty, so you should rank purely by expected race performance. However, when writing your analysis_summary, acknowledge if the user’s current picks look worth keeping or swapping given the transfer cost.
 - Provide predicted_points for each constructor (combined fantasy points from both their drivers: race finish + qualifying + bonuses for each)
 - Provide clear reasoning for each driver and constructor based on recent form, circuit characteristics, teammate battles, and likely qualifying pace
 - Mark exactly one driver as is_turbo_candidate (the single driver expected to score the most fantasy points — the best turbo pick regardless of price)

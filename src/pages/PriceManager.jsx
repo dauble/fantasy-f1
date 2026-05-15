@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Card, CardContent } from '../components/ui/Card';
 import priceStorage from '../utils/priceStorage';
 import setupStorage from '../utils/setupStorage';
-import { DRIVER_PRICES, CONSTRUCTOR_PRICES, formatPrice, getDriverPrice, getConstructorPrice } from '../utils/pricing';
+import { DRIVER_PRICES, CONSTRUCTOR_PRICES, getDriverPrice, getConstructorPrice } from '../utils/pricing';
 import openF1API from '../services/openF1API';
 import { useAuth } from '../context/AuthContext';
 import { getDriverColor, getTeamColor } from '../utils/teamColors';
@@ -299,7 +298,7 @@ const PriceManager = () => {
                     max="50"
                     value={(currentPrice / 1_000_000).toFixed(1)}
                     onChange={(e) => handleDriverPriceChange(driver.driver_number, e.target.value)}
-                    className="w-18 px-2 py-2 text-base font-bold text-center bg-gray-50 dark:bg-f1-elevated border border-gray-200 dark:border-f1-border rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red text-gray-900 dark:text-white"
+                    className="w-16 px-2 py-2 text-base font-bold text-center bg-gray-50 dark:bg-f1-elevated border border-gray-200 dark:border-f1-border rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red text-gray-900 dark:text-white"
                   />
                   <span className="text-sm font-bold text-gray-500 dark:text-f1-muted">M</span>
                 </div>
@@ -370,7 +369,7 @@ const PriceManager = () => {
                     max="50"
                     value={(currentPrice / 1_000_000).toFixed(1)}
                     onChange={(e) => handleConstructorPriceChange(teamName, e.target.value)}
-                    className="w-18 px-2 py-2 text-base font-bold text-center bg-gray-50 dark:bg-f1-elevated border border-gray-200 dark:border-f1-border rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red text-gray-900 dark:text-white"
+                    className="w-16 px-2 py-2 text-base font-bold text-center bg-gray-50 dark:bg-f1-elevated border border-gray-200 dark:border-f1-border rounded-lg focus:outline-none focus:ring-2 focus:ring-f1-red text-gray-900 dark:text-white"
                   />
                   <span className="text-sm font-bold text-gray-500 dark:text-f1-muted">M</span>
                 </div>
