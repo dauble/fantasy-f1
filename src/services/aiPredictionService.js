@@ -373,7 +373,7 @@ export async function generatePredictions(dataPayload, onProgress) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         model: MODEL,
-        max_tokens: 4000,
+        max_tokens: 16000,
         thinking: {
           type: "enabled",
           budget_tokens: 10000,
