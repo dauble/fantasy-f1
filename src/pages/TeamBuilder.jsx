@@ -84,15 +84,6 @@ const TeamBuilder = () => {
       setSelectedConstructors(savedTeam.selectedConstructors || []);
       setTurboDriver(savedTeam.turboDriver || null);
       setLastSaved(savedTeam.lastSaved);
-
-      // Recalculate total with current prices (prices may have changed since team was saved)
-      const recalculatedTotal = calculateTotalPrice(
-        savedTeam.selectedDrivers || [],
-        savedTeam.selectedConstructors || []
-      );
-      console.log('Loaded saved team:', savedTeam);
-      console.log('Original total:', savedTeam.totalSpent);
-      console.log('Recalculated total with current prices:', recalculatedTotal);
     }
   };
 
