@@ -209,11 +209,11 @@ export async function getRecentRaceSessions(limit = 5) {
       if (!meetings || meetings.length === 0) continue;
 
       // Only consider meetings that have already ended; most recent first.
-      // Cap at (limit * 2 + 2) to avoid scanning the whole calendar unnecessarily.
+      // Fetch more candidates to account for canceled races or sessions without data.
       const completedMeetings = meetings
         .filter(m => m.date_end && new Date(m.date_end) < now)
         .sort((a, b) => new Date(b.date_start) - new Date(a.date_start))
-        .slice(0, limit * 2 + 2);
+        .slice(0, Math.max(limit * 3, limit * 2 + 2));
 
       for (const meeting of completedMeetings) {
         try {
@@ -221,7 +221,15 @@ export async function getRecentRaceSessions(limit = 5) {
           const raceSession = sessions.find(
             s => s.session_name === 'Race' && s.date_end && new Date(s.date_end) < now
           );
-          if (raceSession) raceSessions.push(raceSession);
+
+          // Verify the session actually happened by checking if it has position data
+          if (raceSession) {
+            const positions = await getPositionsForSession(raceSession.session_key);
+            if (positions.length > 0) {
+              raceSessions.push(raceSession);
+              console.log(`✓ Verified session ${raceSession.session_key} has race data`);
+            }
+          }
         } catch (err) {
           console.warn(`Could not fetch sessions for meeting ${meeting.meeting_key}:`, err);
           recordDiscoveryError(`${BASE_URL}/sessions?meeting_key=${meeting.meeting_key}`, err);
