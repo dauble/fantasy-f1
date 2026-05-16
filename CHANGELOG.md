@@ -19,7 +19,8 @@ All notable changes to Fantasy F1 are documented here.
 ### Rate Limit Mitigation
 
 - **Increased API request delays**: Inter-call delays increased from 1.5s to 2s, inter-session delays from 4s to 5s, and inter-meeting delays from 700ms to 1s to reduce rate limit encounters
-- **Extended cache TTLs**: Stale cache fallback extended from 7 days to 14 days for both raw API data and processed session stats, allowing more reliance on cached data when fresh data is unavailable
+- **Extended stale-cache fallback window**: Maximum stale-cache age extended from 7 days to 14 days for raw API data, allowing cached data to be used as fallback for longer when fresh data is unavailable
+- **Extended session stats cache TTL**: Processed session stats cache extended from 7 days to 14 days, reducing reprocessing of historical race data
 - **Updated cache info banner**: UI now reflects new 14-day session stats cache duration
 
 ### Technical Details
