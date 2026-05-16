@@ -70,7 +70,7 @@ export async function fetchF1News() {
         console.warn(`[newsService] News API returned ${res.status}, using fallback structure:`, errorData);
         // Normalize: merge 'details' into 'error' so downstream code surfaces the full error context
         if (errorData.details && errorData.error) {
-          return { ...errorData, error: `${errorData.error} ${errorData.details}` };
+          return { ...errorData, error: `${errorData.error.trim()}: ${errorData.details.trim()}` };
         }
         return errorData;
       }
