@@ -6,9 +6,13 @@ All notable changes to Fantasy F1 are documented here.
 
 ## Version 0.12.0 - 2026-05-16 - API Resilience Improvements
 
+### Critical Bug Fix
+
+- **Fixed /api/news 502 errors**: Corrected malformed JSDoc comment in server-side newsService.js that was causing the module to fail to load properly, resulting in 502 errors when predictions were refreshed
+
 ### API Error Handling
 
-- **Fixed /api/news 502 errors during prediction refresh**: News API failures now gracefully return structured error objects instead of throwing errors, preventing prediction failures when news sources are unavailable
+- **Enhanced client-side news error handling**: News API failures now gracefully parse error responses instead of throwing errors, preventing prediction failures when news sources are unavailable
 - **Enhanced server error messages**: Server error display now shows specific details including endpoint name, session key, year, and HTTP status code for each failed request, making it easier to diagnose issues
 - **Improved error detail display**: Server errors section now lists up to 5 specific failed requests with full context
 
@@ -21,9 +25,10 @@ All notable changes to Fantasy F1 are documented here.
 ### Technical Details
 
 These changes address issues where:
-1. News API 502 errors could interrupt prediction generation
-2. Rate limits were encountered due to aggressive API polling
-3. Server error messages lacked specific details about which requests failed
+1. A syntax error in newsService.js caused complete failure of the /api/news endpoint with 502 errors
+2. News API 502 errors could interrupt prediction generation
+3. Rate limits were encountered due to aggressive API polling
+4. Server error messages lacked specific details about which requests failed
 
 ---
 
