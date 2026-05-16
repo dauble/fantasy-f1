@@ -4,6 +4,35 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.12.0 - 2026-05-16 - API Resilience Improvements
+
+### Critical Bug Fix
+
+- **Fixed /api/news 502 errors**: Corrected malformed JSDoc comment in server-side newsService.js that was causing the module to fail to load properly, resulting in 502 errors when predictions were refreshed
+
+### API Error Handling
+
+- **Enhanced client-side news error handling**: News API failures now gracefully parse error responses instead of throwing errors, preventing prediction failures when news sources are unavailable
+- **Enhanced server error messages**: Server error display now shows specific details including endpoint name, session key, year, and HTTP status code for each failed request, making it easier to diagnose issues
+- **Improved error detail display**: Server errors section now lists up to 5 specific failed requests with full context
+
+### Rate Limit Mitigation
+
+- **Increased API request delays**: Inter-call delays increased from 1.5s to 2s, inter-session delays from 4s to 5s, and inter-meeting delays from 700ms to 1s to reduce rate limit encounters
+- **Extended stale-cache fallback window**: Maximum stale-cache age extended from 7 days to 14 days for raw API data, allowing cached data to be used as fallback for longer when fresh data is unavailable
+- **Extended session stats cache TTL**: Processed session stats cache extended from 7 days to 14 days, reducing reprocessing of historical race data
+- **Updated cache info banner**: UI now reflects new 14-day session stats cache duration
+
+### Technical Details
+
+These changes address issues where:
+1. A syntax error in newsService.js caused complete failure of the /api/news endpoint with 502 errors
+2. News API 502 errors could interrupt prediction generation
+3. Rate limits were encountered due to aggressive API polling
+4. Server error messages lacked specific details about which requests failed
+
+---
+
 ## Version 0.11.0 - 2026-05-15 - Scoring Rules Accuracy & UI Polish
 
 ### Scoring Rules — Corrections

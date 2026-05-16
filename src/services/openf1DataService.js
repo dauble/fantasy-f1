@@ -16,10 +16,10 @@ const BASE_URL = "https://api.openf1.org/v1";
 // Raw API responses (positions, laps, pit stops, drivers):
 //   Historical race data is IMMUTABLE — it will never change for a past event.
 const CACHE_TTL_MS          = 24 * 60 * 60 * 1000;   // 24 h  — raw API data
-const MAX_CACHE_AGE_MS      =  7 * 24 * 60 * 60 * 1000; // 7 days — stale fallback
+const MAX_CACHE_AGE_MS      = 14 * 24 * 60 * 60 * 1000; // 14 days — stale fallback (was 7 days)
 
 // Processed / derived caches:
-const SESSION_STATS_TTL_MS  =  7 * 24 * 60 * 60 * 1000; // 7 days — processed session stats (tiny & immutable)
+const SESSION_STATS_TTL_MS  = 14 * 24 * 60 * 60 * 1000; // 14 days — processed session stats (was 7 days)
 const SESSIONS_LIST_TTL_MS  =  6 * 60 * 60 * 1000;  // 6 h   — list of which sessions to use
 const PAYLOAD_TTL_MS        =  4 * 60 * 60 * 1000;  // 4 h   — full prediction payload
 const PRACTICE_CACHE_TTL_MS =  2 * 60 * 60 * 1000;  // 2 h   — practice session results (updates as sessions complete)
@@ -31,10 +31,11 @@ const PAYLOAD_CACHE_KEY           = 'openf1_prediction_payload_v2_';
 const PRACTICE_CACHE_KEY          = 'openf1_practice_';
 
 // ─── Request pacing ───────────────────────────────────────────────────────────
-// Sequential delays prevent bursting the OpenF1 API.
-const INTER_CALL_DELAY_MS     = 1500; // Between raw endpoint calls within a session
-const INTER_SESSION_DELAY_MS  = 4000; // Between processing different sessions
-const INTER_MEETING_DELAY_MS  =  700; // Between getSessions calls during discovery
+// Sequential delays prevent bursting the OpenF1 API and avoid rate limits.
+// Increased delays to be more conservative and avoid 429 errors.
+const INTER_CALL_DELAY_MS     = 2000; // Between raw endpoint calls within a session (was 1500)
+const INTER_SESSION_DELAY_MS  = 5000; // Between processing different sessions (was 4000)
+const INTER_MEETING_DELAY_MS  = 1000; // Between getSessions calls during discovery (was 700)
 
 // ─── Rate limiting helpers ────────────────────────────────────────────────────
 

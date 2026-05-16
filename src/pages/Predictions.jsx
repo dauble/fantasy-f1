@@ -543,10 +543,26 @@ function APIErrorsSummary({ rawData }) {
           <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
             ⚠️ Server errors:
           </p>
-          <p className="text-blue-700 dark:text-blue-400">
+          <p className="text-blue-700 dark:text-blue-400 mb-1">
             {errorsByType.serverError.length} request{errorsByType.serverError.length !== 1 ? 's' : ''} failed due to server issues.
             These may be temporary OpenF1 API problems.
           </p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-400 space-y-0.5 mt-2">
+            {errorsByType.serverError.slice(0, 5).map((err, i) => (
+              <li key={i}>
+                {err.endpoint && `${err.endpoint}`}
+                {err.sessionKey && ` (session ${err.sessionKey})`}
+                {err.year && ` (year ${err.year})`}
+                {err.statusCode && ` - HTTP ${err.statusCode}`}
+                {err.hadStaleCache && ' ✓ cached data used as fallback'}
+              </li>
+            ))}
+            {errorsByType.serverError.length > 5 && (
+              <li className="text-blue-600 dark:text-blue-500 italic">
+                ...and {errorsByType.serverError.length - 5} more server errors
+              </li>
+            )}
+          </ul>
         </div>
       )}
 
@@ -857,7 +873,7 @@ export default function Predictions() {
         <p className="flex items-start gap-2">
           <span className="text-blue-500 shrink-0">ℹ️</span>
           <span>
-            Race data is cached locally in layers (raw API: 24 h · session stats: 7 days · payload: 4 h).
+            Race data is cached locally in layers (raw API: 24 h · session stats: 14 days · payload: 4 h).
             Most visits require <span className="font-semibold">zero API calls</span>.
             Use <span className="font-semibold">Refresh Predictions</span> to force a fresh fetch from OpenF1.
           </span>

@@ -11,7 +11,7 @@
  *
  * Note: Formula1.com retired their public RSS feed; Autosport and The Race
  * are the most reliable replacements with equivalent coverage quality.
- *
+ */
 
 // ─── F1 entity name lists for mention extraction ─────────────────────────────
 

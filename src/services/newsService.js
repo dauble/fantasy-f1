@@ -63,6 +63,17 @@ export async function fetchF1News() {
   try {
     const res = await fetch("/api/news");
     if (!res.ok) {
+      // Even if the server returns an error status, try to parse the JSON response
+      // as it may contain a structured error with fallback data
+      const errorData = await res.json().catch(() => null);
+      if (errorData && typeof errorData === 'object') {
+        console.warn(`[newsService] News API returned ${res.status}, using fallback structure:`, errorData);
+        // Normalize: merge 'details' into 'error' so downstream code surfaces the full error context
+        if (errorData.details && errorData.error) {
+          return { ...errorData, error: `${errorData.error.trim()}: ${errorData.details.trim()}` };
+        }
+        return errorData;
+      }
       throw new Error(`News API returned ${res.status}`);
     }
     const data = await res.json();
