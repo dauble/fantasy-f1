@@ -4,6 +4,29 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.12.0 - 2026-05-16 - API Resilience Improvements
+
+### API Error Handling
+
+- **Fixed /api/news 502 errors during prediction refresh**: News API failures now gracefully return structured error objects instead of throwing errors, preventing prediction failures when news sources are unavailable
+- **Enhanced server error messages**: Server error display now shows specific details including endpoint name, session key, year, and HTTP status code for each failed request, making it easier to diagnose issues
+- **Improved error detail display**: Server errors section now lists up to 5 specific failed requests with full context
+
+### Rate Limit Mitigation
+
+- **Increased API request delays**: Inter-call delays increased from 1.5s to 2s, inter-session delays from 4s to 5s, and inter-meeting delays from 700ms to 1s to reduce rate limit encounters
+- **Extended cache TTLs**: Stale cache fallback extended from 7 days to 14 days for both raw API data and processed session stats, allowing more reliance on cached data when fresh data is unavailable
+- **Updated cache info banner**: UI now reflects new 14-day session stats cache duration
+
+### Technical Details
+
+These changes address issues where:
+1. News API 502 errors could interrupt prediction generation
+2. Rate limits were encountered due to aggressive API polling
+3. Server error messages lacked specific details about which requests failed
+
+---
+
 ## Version 0.11.0 - 2026-05-15 - Scoring Rules Accuracy & UI Polish
 
 ### Scoring Rules — Corrections
