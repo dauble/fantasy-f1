@@ -204,8 +204,42 @@ function ErrorState({ error, onRetry }) {
   );
 }
 
-function ApplyRecommendationsCard({ prediction, onApply, applied }) {
+function ApplyRecommendationsCard({ prediction, rawData, onApply, applied }) {
   if (!prediction?.recommended_drivers?.length) return null;
+
+  // Calculate total changes to determine if we should show this card
+  const rawCurrentTeam = rawData?.user_context?.current_team;
+  if (rawCurrentTeam && !applied) {
+    const currentDrivers = rawCurrentTeam.drivers || rawCurrentTeam.selectedDrivers || [];
+    const currentConstructors = rawCurrentTeam.constructors || rawCurrentTeam.selectedConstructors || [];
+
+    if (currentDrivers.length && currentConstructors.length) {
+      // Build abbreviation → driver_number map from driver_trends
+      const abbrevToNum = {};
+      for (const d of (rawData.driver_trends || [])) {
+        if (d.abbreviation) abbrevToNum[d.abbreviation] = Number(d.driver_number);
+      }
+
+      const currentDriverNums = new Set(currentDrivers.map(n => Number(n)));
+      const currentConstructorNames = new Set(currentConstructors.map(n => String(n).toLowerCase().trim()));
+
+      let addedDriversCount = 0;
+      let addedConstructorsCount = 0;
+
+      for (const d of (prediction.recommended_drivers || [])) {
+        const num = abbrevToNum[d.abbreviation];
+        if (num == null || !currentDriverNums.has(num)) addedDriversCount++;
+      }
+      for (const c of (prediction.recommended_constructors || [])) {
+        if (!currentConstructorNames.has(String(c.team_name).toLowerCase().trim())) addedConstructorsCount++;
+      }
+
+      const totalChanges = addedDriversCount + addedConstructorsCount;
+
+      // If AI recommends keeping exact team (0 changes), don't show this card
+      if (totalChanges === 0) return null;
+    }
+  }
 
   const turbo = prediction.recommended_drivers.find(d => d.is_turbo_pick);
   const driverList = prediction.recommended_drivers.map(d => d.abbreviation).join(' · ');

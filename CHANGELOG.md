@@ -4,6 +4,19 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.12.1 - 2026-05-16 - UI Enhancement for "Keep Team" Recommendations
+
+### User Experience Improvement
+
+- **Streamlined "Keep Team" recommendation display**: When AI analysis determines your current team is optimal (no changes needed), the "Apply AI Recommendation" banner is now hidden. Instead, only the green "Keep your team" banner from the Team Assessment card is displayed, making it clearer that no action is required.
+
+### Technical Details
+
+- Modified `ApplyRecommendationsCard` component in Predictions.jsx to calculate team changes and return null when `totalChanges === 0`
+- This prevents redundant UI elements when AI recommends keeping the exact same team composition
+
+---
+
 ## Version 0.12.0 - 2026-05-16 - API Resilience Improvements
 
 ### Critical Bug Fix
