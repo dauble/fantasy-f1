@@ -158,7 +158,7 @@ app.use(express.static(DIST));
 
 // Fallback: send index.html for all non-API routes (React Router)
 // Note: Express 5 doesn't support app.get("*") — use middleware instead
-app.use((req, res) => {
+app.use(rateLimiter, (req, res) => {
   if (req.path.startsWith("/api/")) {
     return res.status(404).json({ error: "Not found" });
   }
