@@ -154,13 +154,11 @@ app.delete("/api/news/cache", (_req, res) => {
 // ─── Serve Vite build ─────────────────────────────────────────────────────────
 
 const DIST = join(__dirname, "dist");
-// Apply rate limiting to all static file and SPA routes
-app.use(rateLimiter);
-app.use(express.static(DIST));
+
+app.use(rateLimiter, express.static(DIST));
 
 // Fallback: send index.html for all non-API routes (React Router)
 // Note: Express 5 doesn't support app.get("*") — use middleware instead
-app.use(rateLimiter, express.static(DIST)); // Ensure static files are served with rate limiting
 app.use(rateLimiter, (req, res) => {
   res.sendFile(join(DIST, "index.html"));
 });
