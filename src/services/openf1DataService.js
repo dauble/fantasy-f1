@@ -324,11 +324,11 @@ export async function getRecentRaceSessions(limit = 5) {
       if (!meetings || meetings.length === 0) continue;
 
       // Only consider meetings that have already ended; most recent first.
-      // Fetch more candidates to account for canceled races or sessions without data.
+      // Fetch fewer candidates and be more selective to reduce API calls
       const completedMeetings = meetings
         .filter(m => m.date_end && new Date(m.date_end) < now)
         .sort((a, b) => new Date(b.date_start) - new Date(a.date_start))
-        .slice(0, Math.max(limit * 3, limit * 2 + 2));
+        .slice(0, Math.max(limit * 2, limit + 3)); // Reduced from limit * 3 to limit * 2
 
       for (const meeting of completedMeetings) {
         try {
@@ -337,12 +337,31 @@ export async function getRecentRaceSessions(limit = 5) {
             s => s.session_name === 'Race' && s.date_end && new Date(s.date_end) < now
           );
 
-          // Verify the session actually happened by checking if it has position data
+          // For recent sessions (within last 90 days), trust they have data without verification
+          // This avoids unnecessary HTTP requests that might fail with 404/429
           if (raceSession) {
-            const positions = await getPositionsForSession(raceSession.session_key);
-            if (positions.length > 0) {
+            const raceDate = new Date(raceSession.date_end);
+            const daysAgo = (now - raceDate) / (1000 * 60 * 60 * 24);
+
+            if (daysAgo <= 90) {
+              // Trust recent race sessions - they should have data
               raceSessions.push(raceSession);
-              console.log(`✓ Verified session ${raceSession.session_key} has race data`);
+              console.log(`✓ Added recent session ${raceSession.session_key} (${Math.round(daysAgo)} days ago)`);
+            } else {
+              // Older sessions: verify they have data to avoid including canceled races
+              try {
+                const positions = await getPositionsForSession(raceSession.session_key);
+                if (positions.length > 0) {
+                  raceSessions.push(raceSession);
+                  console.log(`✓ Verified session ${raceSession.session_key} has race data`);
+                } else {
+                  console.log(`Session ${raceSession.session_key} has no position data (skipping)`);
+                }
+              } catch (err) {
+                // Silently skip sessions that fail verification (404s, rate limits, etc.)
+                // These errors are already tracked by fetchWithCache
+                console.log(`Session ${raceSession.session_key} verification failed (skipping)`);
+              }
             }
           }
         } catch (err) {
@@ -350,7 +369,8 @@ export async function getRecentRaceSessions(limit = 5) {
           recordDiscoveryError(`${BASE_URL}/sessions?meeting_key=${meeting.meeting_key}`, err);
         }
         if (raceSessions.length >= limit) break;
-        await delay(INTER_MEETING_DELAY_MS);
+        // Increased delay between meeting checks to reduce rate limiting
+        await delay(INTER_MEETING_DELAY_MS * 2);
       }
 
       if (raceSessions.length >= limit) break;
