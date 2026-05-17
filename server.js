@@ -10,6 +10,7 @@
 
 import "dotenv/config";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
@@ -22,39 +23,13 @@ app.use(express.json({ limit: "1mb" }));
 
 // ─── Security middleware ───────────────────────────────────────────────────────
 
-// Basic rate limiting — 60 prediction requests per IP per 15 minutes
-const requestCounts = new Map();
-const RATE_LIMIT = 60;
-const RATE_WINDOW_MS = 15 * 60 * 1000;
-
-function rateLimiter(req, res, next) {
-  const ip = req.ip || req.socket.remoteAddress;
-  const now = Date.now();
-
-  // Prune stale entries so the requestCounts map does not grow without bound.
-  for (const [key, value] of requestCounts) {
-    if (now - value.windowStart > RATE_WINDOW_MS) {
-      requestCounts.delete(key);
-    }
-  }
-  const entry = requestCounts.get(ip) || { count: 0, windowStart: now };
-
-  if (now - entry.windowStart > RATE_WINDOW_MS) {
-    entry.count = 1;
-    entry.windowStart = now;
-  } else {
-    entry.count++;
-  }
-
-  requestCounts.set(ip, entry);
-
-  if (entry.count > RATE_LIMIT) {
-    return res.status(429).json({
-      error: "Too many requests. Please wait a few minutes before trying again.",
-    });
-  }
-  next();
-}
+const rateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 60,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests. Please wait a few minutes before trying again." },
+});
 
 // ─── Anthropic proxy endpoint ─────────────────────────────────────────────────
 
@@ -154,16 +129,12 @@ app.delete("/api/news/cache", (_req, res) => {
 // ─── Serve Vite build ─────────────────────────────────────────────────────────
 
 const DIST = join(__dirname, "dist");
-// Apply rate limiting to all static file and SPA routes
-app.use(rateLimiter);
-app.use(express.static(DIST));
+
+app.use(rateLimiter, express.static(DIST));
 
 // Fallback: send index.html for all non-API routes (React Router)
 // Note: Express 5 doesn't support app.get("*") — use middleware instead
-app.use((req, res) => {
-  if (req.path.startsWith("/api/")) {
-    return res.status(404).json({ error: "Not found" });
-  }
+app.use(rateLimiter, (req, res) => {
   res.sendFile(join(DIST, "index.html"));
 });
 
