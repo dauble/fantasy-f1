@@ -12,7 +12,7 @@ export default defineConfig({
     createHtmlPlugin({
       inject: {
         data: {
-          VITE_PUBLIC_URL: process.env.VITE_PUBLIC_URL || "https://fantasy-f1-hn8mhg.fly.dev",
+          VITE_PUBLIC_URL: process.env.VITE_PUBLIC_URL || "https://fantasy-f1-kb7njg.fly.dev",
         },
       },
     }),

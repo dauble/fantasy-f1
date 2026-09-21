@@ -1,9 +1,15 @@
-# fly.toml app configuration file generated for fantasy-f1-hn8mhg on 2026-03-08T20:44:51Z
+# fly.toml app configuration file for fantasy-f1-kb7njg
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
+# NOTE: internal_port must stay 8080 to match the Dockerfile's `ENV PORT=8080` /
+# `EXPOSE 8080` and what server.js actually binds to. Re-running `fly launch`
+# against this app resets internal_port to 3000, which breaks every request
+# with connection-refused/502 even though the machine reports "started" — the
+# same failure mode documented in the countdown-to-f1 project's README. If you
+# see that again, set this back to 8080 and redeploy.
 
-app = 'fantasy-f1-hn8mhg'
+app = 'fantasy-f1-kb7njg'
 primary_region = 'iad'
 
 [build]
