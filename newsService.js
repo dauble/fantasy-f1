@@ -5,12 +5,24 @@
  * Fetches recent F1 articles and discussions from:
  *   1. Autosport       — RSS feed (primary, high-volume F1 news)
  *   2. The Race        — RSS feed (premium F1 journalism)
- *   3. PlanetF1        — RSS feed
+ *   3. PlanetF1        — RSS feed — disabled by default, see below
  *   4. Motorsport.com  — F1 RSS feed (supplementary)
- *   5. Reddit          — r/formula1 JSON API (no auth required)
+ *   5. Reddit          — r/formula1 JSON API — disabled by default, see below
  *
  * Note: Formula1.com retired their public RSS feed; Autosport and The Race
  * are the most reliable replacements with equivalent coverage quality.
+ *
+ * PlanetF1 and Reddit are disabled by default (confirmed 2026-09-21):
+ *  - PlanetF1 discontinued their RSS feed entirely — planetf1.com/feed now
+ *    returns a WordPress "No feed available" 404, and there's no RSS
+ *    autodiscovery link on their homepage to replace it with.
+ *  - Reddit's public JSON API returns HTTP 403 for requests from hosting/
+ *    datacenter IP ranges (confirmed with a full browser User-Agent, not
+ *    just our own) — this is IP-based anti-scraping, not a header problem,
+ *    and will keep failing from any cloud-hosted deployment (Fly.io
+ *    included) without registering an authenticated Reddit API app.
+ * Re-enable either via NEWS_PLANETF1_ENABLED=true / NEWS_REDDIT_ENABLED=true
+ * once a working replacement feed or authenticated Reddit access exists.
  */
 
 // ─── F1 entity name lists for mention extraction ─────────────────────────────
@@ -41,11 +53,12 @@ const MAX_ARTICLES_PER_SOURCE =
 const FETCH_TIMEOUT_MS = 8000; // 8 seconds per source request
 
 const SOURCE_ENABLED = {
-  autosport:  (process.env.NEWS_AUTOSPORT_ENABLED  ?? "true") === "true",
-  therace:    (process.env.NEWS_THERACE_ENABLED    ?? "true") === "true",
-  planetf1:   (process.env.NEWS_PLANETF1_ENABLED   ?? "true") === "true",
-  motorsport: (process.env.NEWS_MOTORSPORT_ENABLED ?? "true") === "true",
-  reddit:     (process.env.NEWS_REDDIT_ENABLED     ?? "true") === "true",
+  autosport:  (process.env.NEWS_AUTOSPORT_ENABLED  ?? "true")  === "true",
+  therace:    (process.env.NEWS_THERACE_ENABLED    ?? "true")  === "true",
+  // Disabled by default — see the file header comment for why.
+  planetf1:   (process.env.NEWS_PLANETF1_ENABLED   ?? "false") === "true",
+  motorsport: (process.env.NEWS_MOTORSPORT_ENABLED ?? "true")  === "true",
+  reddit:     (process.env.NEWS_REDDIT_ENABLED     ?? "false") === "true",
 };
 
 // ─── RSS feed URLs ────────────────────────────────────────────────────────────
