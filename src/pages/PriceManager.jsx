@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import priceStorage from '../utils/priceStorage';
+import priceStorage, { buildCustomPricesFromFeed } from '../utils/priceStorage';
 import setupStorage from '../utils/setupStorage';
 import { DRIVER_PRICES, CONSTRUCTOR_PRICES, getDriverPrice, getConstructorPrice } from '../utils/pricing';
 import openF1API from '../services/openF1API';
@@ -19,6 +19,8 @@ const PriceManager = () => {
   const [loading, setLoading] = useState(true);
   const [saveStatus, setSaveStatus] = useState('');
   const [activeTab, setActiveTab] = useState('drivers');
+  const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState(null); // { matched, unmatched, fetchedAt } | { error }
 
   useEffect(() => {
     loadData();
@@ -93,6 +95,44 @@ const PriceManager = () => {
       await syncToCloud();
       setSaveStatus('reset');
       setTimeout(() => setSaveStatus(''), 3000);
+    }
+  };
+
+  const handleSyncOfficialPrices = async () => {
+    setSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await fetch('/api/fantasy-prices');
+      if (!res.ok) throw new Error(`Server returned ${res.status}`);
+      const { latest } = await res.json();
+
+      if (!latest) {
+        setSyncResult({ error: 'No price snapshot available yet — the daily sync workflow may not have run yet.' });
+        return;
+      }
+
+      const { customPrices: fetchedPrices, unmatched } = buildCustomPricesFromFeed(latest, drivers);
+
+      const merged = {
+        drivers: { ...customPrices.drivers, ...fetchedPrices.drivers },
+        constructors: { ...customPrices.constructors, ...fetchedPrices.constructors },
+      };
+
+      setCustomPrices(merged);
+      priceStorage.saveCustomPrices(merged);
+      await syncToCloud();
+
+      setSyncResult({
+        matchedDrivers: Object.keys(fetchedPrices.drivers).length,
+        matchedConstructors: Object.keys(fetchedPrices.constructors).length,
+        unmatched,
+        fetchedAt: latest.fetchedAt,
+      });
+    } catch (error) {
+      console.error('Error syncing official prices:', error);
+      setSyncResult({ error: 'Failed to sync official prices. Please try again.' });
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -178,6 +218,13 @@ const PriceManager = () => {
         {!isSetupMode && (
           <>
             <button
+              onClick={handleSyncOfficialPrices}
+              disabled={syncing}
+              className="px-4 py-2.5 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-xl font-bold uppercase tracking-wide text-sm transition-colors disabled:opacity-50 min-h-touch"
+            >
+              {syncing ? 'Syncing…' : 'Sync Official Prices'}
+            </button>
+            <button
               onClick={handleResetToDefaults}
               className="px-4 py-2.5 bg-gray-100 dark:bg-white/10 hover:bg-gray-200 dark:hover:bg-white/20 text-gray-700 dark:text-white rounded-xl font-bold uppercase tracking-wide text-sm transition-colors min-h-touch"
             >
@@ -215,6 +262,29 @@ const PriceManager = () => {
           {saveStatus === 'saved' && (isSetupMode ? 'Prices saved! Redirecting…' : 'Prices saved successfully.')}
           {saveStatus === 'reset' && 'Prices reset to defaults.'}
           {saveStatus === 'error' && 'Failed to save prices. Please try again.'}
+        </div>
+      )}
+
+      {/* Sync status */}
+      {syncResult && (
+        <div className={`mb-5 px-4 py-3 rounded-xl text-sm font-semibold ${
+          syncResult.error
+            ? 'bg-red-100 dark:bg-red-900/30 text-f1-red dark:text-red-400'
+            : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-300'
+        }`}>
+          {syncResult.error ? (
+            syncResult.error
+          ) : (
+            <>
+              Synced {syncResult.matchedDrivers} drivers and {syncResult.matchedConstructors} constructors from the
+              official F1 Fantasy site (snapshot from {new Date(syncResult.fetchedAt).toLocaleString()}).
+              {syncResult.unmatched.length > 0 && (
+                <span className="block mt-1 font-normal">
+                  Couldn't match: {syncResult.unmatched.map((u) => u.name).join(', ')} — set these manually below.
+                </span>
+              )}
+            </>
+          )}
         </div>
       )}
 

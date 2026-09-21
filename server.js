@@ -14,6 +14,7 @@ import rateLimit from "express-rate-limit";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
 import { fetchF1News, clearNewsCache } from "./newsService.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -99,6 +100,34 @@ app.get("/api/config", (_req, res) => {
     supabaseUrl: process.env.SUPABASE_URL || null,
     supabaseAnonKey: process.env.SUPABASE_ANON_KEY || null,
   });
+});
+
+// ─── Official F1 Fantasy price snapshots ─────────────────────────────────────
+//
+// data/price_snapshots.json is committed to the repo by the scheduled
+// .github/workflows/refresh-fantasy-prices.yml workflow (fetches the public
+// F1 Fantasy statistics feed daily). Ships with the deployed image, so it's
+// available even though Fly's container disk isn't persistent. Returns an
+// empty history gracefully if the file doesn't exist yet (e.g. before the
+// workflow has ever run).
+
+const PRICE_SNAPSHOTS_PATH = join(__dirname, "data", "price_snapshots.json");
+const PRICE_HISTORY_LIMIT = 14;
+
+app.get("/api/fantasy-prices", rateLimiter, async (_req, res) => {
+  try {
+    const raw = await readFile(PRICE_SNAPSHOTS_PATH, "utf-8");
+    const snapshots = JSON.parse(raw);
+    const history = snapshots.slice(-PRICE_HISTORY_LIMIT);
+    const latest = history[history.length - 1] || null;
+    return res.json({ latest, history });
+  } catch (err) {
+    if (err.code === "ENOENT") {
+      return res.json({ latest: null, history: [] });
+    }
+    console.error("[/api/fantasy-prices] Error reading price snapshots:", err.message);
+    return res.status(500).json({ error: "Failed to read price snapshots", details: err.message });
+  }
 });
 
 // ─── OpenF1 driver data (via Cloudflare Worker KV cache, with direct fallback) ─
