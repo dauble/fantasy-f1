@@ -1,34 +1,33 @@
-import axios from 'axios';
 import { OPENF1_API_BASE } from '../config/api';
 import apiCache from '../utils/cache';
+import { rateLimitedFetch } from '../utils/openf1RateLimiter';
 
 // Get current season
 const CURRENT_YEAR = new Date().getFullYear();
 
-// Helper function to handle API calls with caching and 429 fallback
+// Helper function to handle API calls with caching and 429 fallback.
+// The actual network call goes through rateLimitedFetch so this — and every
+// other OpenF1 caller sharing that module-level queue — can never burst
+// past OpenF1's free-tier limits, regardless of how many calls fire
+// concurrently (e.g. Promise.all in openf1DataService.js).
 async function cachedAPICall(endpoint, params, retryCount = 0) {
   // Check cache first
   const cached = apiCache.get(endpoint, params);
   if (cached) return cached;
-  
+
+  const url = `${OPENF1_API_BASE}/${endpoint}?${new URLSearchParams(params).toString()}`;
+
   try {
-    const response = await axios.get(`${OPENF1_API_BASE}/${endpoint}`, { params });
-    const data = response.data;
-    
-    // Store in cache
-    apiCache.set(endpoint, params, data);
-    
-    return data;
-  } catch (error) {
-    // Handle rate limiting (429) - use expired cache if available
-    if (error.response?.status === 429) {
+    const response = await rateLimitedFetch(url);
+
+    if (response.status === 429) {
       console.warn(`Rate limited by OpenF1 API (429) for ${endpoint}. Checking for expired cache...`);
       const expiredCache = apiCache.get(endpoint, params, true); // Ignore expiry
       if (expiredCache) {
         console.log(`Using expired cache data for ${endpoint} (better than no data)`);
         return expiredCache;
       }
-      
+
       // If no cache available and we haven't retried too much, wait and retry
       if (retryCount < 2) {
         const delay = (retryCount + 1) * 2000; // 2s, 4s
@@ -36,19 +35,30 @@ async function cachedAPICall(endpoint, params, retryCount = 0) {
         await new Promise(resolve => setTimeout(resolve, delay));
         return cachedAPICall(endpoint, params, retryCount + 1);
       }
-      
+
       // Give up - return empty array or null
       console.error(`Rate limited and no cache available for: ${endpoint}`);
       return [];
     }
-    
+
+    if (!response.ok) {
+      throw new Error(`OpenF1 API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    // Store in cache
+    apiCache.set(endpoint, params, data);
+
+    return data;
+  } catch (error) {
     // For other errors, try expired cache
     const expiredCache = apiCache.get(endpoint, params, true);
     if (expiredCache) {
       console.warn(`API error for ${endpoint}, using expired cache`);
       return expiredCache;
     }
-    
+
     console.error(`Error fetching ${endpoint}:`, error);
     throw error;
   }
