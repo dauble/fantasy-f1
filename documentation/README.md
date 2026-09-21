@@ -55,7 +55,7 @@ Complete documentation for the Fantasy F1 Team Builder & Predictor application.
 
 **News aggregation system** feeding real-time F1 articles into the AI predictions engine:
 
-- Supported sources: Autosport, The Race, PlanetF1, Reddit r/formula1
+- Supported sources: Autosport, The Race, Motorsport.com (enabled by default); PlanetF1, Reddit r/formula1 (disabled by default — see NEWS_INTEGRATION.md)
 - Server-side and client-side caching (30-minute TTL)
 - Configuration via environment variables
 - API endpoint reference (`GET /api/news`)

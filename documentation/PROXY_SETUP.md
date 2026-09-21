@@ -14,7 +14,7 @@ The Fantasy F1 app uses an Express proxy server to keep the Anthropic API key se
 Client (React/Vite)
   ├── POST /api/predict  →  Express Proxy  →  Anthropic API (Claude)
   ├── GET  /api/config   →  Express Proxy  →  returns SUPABASE_URL + SUPABASE_ANON_KEY
-  └── GET  /api/news     →  Express Proxy  →  newsService.js (Autosport, The Race, PlanetF1, Reddit)
+  └── GET  /api/news     →  Express Proxy  →  newsService.js (Autosport, The Race; PlanetF1/Reddit disabled by default)
 ```
 
 ## File Changes

@@ -4,14 +4,22 @@ Fantasy F1 integrates real-time F1 news and community discussions into the AI pr
 
 ## Overview
 
-When you generate predictions, the server automatically fetches recent articles from four sources and includes their headlines and summaries in the prompt sent to Claude AI:
+When you generate predictions, the server automatically fetches recent articles from the enabled sources below and includes their headlines and summaries in the prompt sent to Claude AI:
 
-| Source            | Type     | URL                                    | Max articles |
-| ----------------- | -------- | -------------------------------------- | ------------ |
-| Autosport         | RSS feed | https://www.autosport.com/rss/f1/news/ | 15           |
-| The Race          | RSS feed | https://the-race.com/feed/             | 10           |
-| PlanetF1          | RSS feed | https://www.planetf1.com/feed/         | 10           |
-| Reddit r/formula1 | JSON API | https://www.reddit.com/r/formula1/     | 10           |
+| Source            | Type     | URL                                    | Max articles | Enabled by default? |
+| ----------------- | -------- | -------------------------------------- | ------------ | -------------------- |
+| Autosport         | RSS feed | https://www.autosport.com/rss/f1/news/ | 15           | Yes                   |
+| The Race          | RSS feed | https://the-race.com/feed/             | 10           | Yes                   |
+| Motorsport.com    | RSS feed | https://www.motorsport.com/rss/f1/news/| 5            | No                    |
+| PlanetF1          | RSS feed | https://www.planetf1.com/feed/         | 10           | **No — see below**    |
+| Reddit r/formula1 | JSON API | https://www.reddit.com/r/formula1.json | 10           | **No — see below**    |
+
+**PlanetF1 and Reddit are disabled by default** (confirmed 2026-09-21):
+
+- **PlanetF1** discontinued their RSS feed entirely — `planetf1.com/feed` now returns a WordPress `"No feed available"` 404, and there's no RSS autodiscovery link on their homepage to replace it with.
+- **Reddit**'s public JSON API returns HTTP 403 for requests from hosting/datacenter IP ranges — confirmed even with a full browser `User-Agent`, so it's IP-based anti-scraping rather than something a header change fixes. It will keep failing from any cloud deployment (Fly.io included) without a registered, authenticated Reddit API app.
+
+Both can be re-enabled (`NEWS_PLANETF1_ENABLED=true` / `NEWS_REDDIT_ENABLED=true`) if a working replacement feed or authenticated Reddit access becomes available.
 
 ## How News Data Influences Predictions
 
@@ -35,8 +43,9 @@ Browser (React)
          │           └── newsService.js (server-side)
          │                 ├── Autosport RSS
          │                 ├── The Race RSS
-         │                 ├── PlanetF1 RSS
-         │                 └── Reddit JSON API
+         │                 ├── Motorsport.com RSS (disabled by default)
+         │                 ├── PlanetF1 RSS (disabled by default - feed discontinued)
+         │                 └── Reddit JSON API (disabled by default - blocks datacenter IPs)
          └── buildUserMessage()    ← includes news context in Claude prompt
 ```
 
@@ -59,22 +68,22 @@ If any news source is unavailable:
 
 Set these in your `.env` file:
 
-| Variable                       | Default | Description                                         |
-| ------------------------------ | ------- | --------------------------------------------------- |
-| `NEWS_AUTOSPORT_ENABLED`       | `true`  | Enable/disable Autosport RSS (primary source)       |
-| `NEWS_THERACE_ENABLED`         | `true`  | Enable/disable The Race RSS                         |
-| `NEWS_PLANETF1_ENABLED`        | `true`  | Enable/disable PlanetF1 RSS                         |
-| `NEWS_MOTORSPORT_ENABLED`      | `false` | Enable/disable Motorsport.com RSS                   |
-| `NEWS_REDDIT_ENABLED`          | `true`  | Enable/disable Reddit r/formula1                    |
-| `NEWS_MAX_ARTICLES_PER_SOURCE` | `10`    | Default max articles per source (Autosport uses 15) |
-| `NEWS_CACHE_TTL_MINUTES`       | `30`    | Server-side cache lifetime in minutes               |
+| Variable                       | Default | Description                                                    |
+| ------------------------------ | ------- | ---------------------------------------------------------------|
+| `NEWS_AUTOSPORT_ENABLED`       | `true`  | Enable/disable Autosport RSS (primary source)                  |
+| `NEWS_THERACE_ENABLED`         | `true`  | Enable/disable The Race RSS                                    |
+| `NEWS_PLANETF1_ENABLED`        | `false` | Enable/disable PlanetF1 RSS — off by default, feed discontinued|
+| `NEWS_MOTORSPORT_ENABLED`      | `true`  | Enable/disable Motorsport.com RSS                               |
+| `NEWS_REDDIT_ENABLED`          | `false` | Enable/disable Reddit r/formula1 — off by default, blocks datacenter IPs |
+| `NEWS_MAX_ARTICLES_PER_SOURCE` | `10`    | Default max articles per source (Autosport uses 15)            |
+| `NEWS_CACHE_TTL_MINUTES`       | `30`    | Server-side cache lifetime in minutes                           |
 
 ### Examples
 
-Disable Reddit (e.g., if rate-limited):
+Re-enable Reddit (disabled by default — only do this if you've set up authenticated Reddit API access, since the public JSON API blocks datacenter IPs):
 
 ```
-NEWS_REDDIT_ENABLED=false
+NEWS_REDDIT_ENABLED=true
 ```
 
 Fetch more articles per source for richer context:
@@ -101,7 +110,7 @@ Returns the latest cached news data.
 {
   "articles": [
     {
-      "source": "PlanetF1",
+      "source": "Autosport",
       "title": "Verstappen leads first practice at Monaco",
       "url": "https://...",
       "summary": "Max Verstappen set the pace in FP1...",
@@ -112,21 +121,19 @@ Returns the latest cached news data.
   ],
   "sources_attempted": [
     "Autosport",
-    "The Race",
-    "PlanetF1",
-    "Reddit r/formula1"
+    "The Race"
   ],
   "sources_succeeded": [
     "Autosport",
-    "The Race",
-    "PlanetF1",
-    "Reddit r/formula1"
+    "The Race"
   ],
   "sources_failed": [],
   "fetched_at": "2025-05-22T11:00:00.000Z",
   "cache_ttl_minutes": 30
 }
 ```
+
+(`sources_attempted` only lists the currently enabled sources — PlanetF1 and Reddit are omitted since they default to disabled; see [Configuration](#configuration).)
 
 ### `DELETE /api/news/cache`
 
@@ -143,5 +150,5 @@ Detected drivers include all current and recent F1 drivers (Verstappen, Norris, 
 - All requests include a descriptive `User-Agent` header identifying the app
 - Requests time out after 8 seconds to avoid blocking the server
 - Server-side caching ensures each source is only requested once per cache TTL
-- The Reddit public JSON API is used (no authentication required, read-only)
+- The Reddit public JSON API requires no authentication, but is disabled by default here since it blocks requests from hosting/datacenter IPs regardless of headers
 - RSS feeds are publicly available and intended for syndication
