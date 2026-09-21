@@ -20,6 +20,7 @@
  */
 
 import { fetchF1News, buildNewsContext } from "./newsService.js";
+import { matchDriverByName } from "../utils/priceStorage.js";
 import { TRANSFER_PENALTY, FREE_TRANSFERS } from "../config/api.js";
 
 const PROXY_URL = "/api/predict";
@@ -43,7 +44,7 @@ Turbo Driver: weekly selection — one driver scores 2x points for the full week
 Transfers: ${FREE_TRANSFERS} free per race weekend; each additional swap costs -${TRANSFER_PENALTY_PTS} fantasy points
 `.trim();
 
-const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices, and real-time news articles from Formula1.com, PlanetF1, and Reddit.
+const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices (some annotated with the official season-to-date price change and selection % — e.g. "▲$3.4M season, 38% picked" — use this to flag drivers/constructors at risk of an imminent price rise or drop, since a rise after you've picked them raises the effective cost of keeping them), and real-time news articles from Formula1.com, PlanetF1, and Reddit.
 
 Your task is to predict the race outcome for EVERY driver and EVERY constructor in the list for the upcoming Grand Prix. Do NOT pre-select a team; rank the entire field.
 
@@ -89,6 +90,55 @@ Return ONLY valid JSON with no preamble or markdown fences:
     }
   ]
 }`;
+
+// ─── Official F1 Fantasy price-trend context (best-effort, additive) ─────────
+//
+// /api/fantasy-prices serves the daily-snapshotted official F1 Fantasy feed
+// (see server.js + scripts/fetch-fantasy-prices.mjs). This is purely additive
+// context for the prompt — a failure here never blocks predictions.
+
+async function fetchPriceTrendSnapshot() {
+  try {
+    const res = await fetch("/api/fantasy-prices");
+    if (!res.ok) return null;
+    const { latest } = await res.json();
+    return latest;
+  } catch (err) {
+    console.warn("[predictions] Price-trend fetch failed (continuing without):", err.message);
+    return null;
+  }
+}
+
+/** Maps a price snapshot's driver/constructor entries onto driver_number / team_name keys. */
+function buildPriceTrendMaps(snapshot, driverTrends) {
+  const driverTrendByNumber = {};
+  const constructorTrendByTeam = {};
+  if (!snapshot) return { driverTrendByNumber, constructorTrendByTeam };
+
+  for (const d of snapshot.drivers || []) {
+    const match = matchDriverByName(d.name, driverTrends);
+    if (match?.driver_number != null) {
+      driverTrendByNumber[match.driver_number] = d;
+    }
+  }
+  for (const c of snapshot.constructors || []) {
+    if (c.team) constructorTrendByTeam[c.team] = c;
+  }
+  return { driverTrendByNumber, constructorTrendByTeam };
+}
+
+function formatPriceTrend(entry) {
+  if (!entry) return "";
+  const parts = [];
+  if (typeof entry.seasonPriceChangeM === "number") {
+    const arrow = entry.seasonPriceChangeM > 0 ? "▲" : entry.seasonPriceChangeM < 0 ? "▼" : "→";
+    parts.push(`${arrow}$${Math.abs(entry.seasonPriceChangeM).toFixed(1)}M season`);
+  }
+  if (typeof entry.selectionPct === "number") {
+    parts.push(`${entry.selectionPct}% picked`);
+  }
+  return parts.length ? ` [${parts.join(", ")}]` : "";
+}
 
 // ─── Constructor list builder ─────────────────────────────────────────────────
 
@@ -371,8 +421,11 @@ export async function generatePredictions(dataPayload, onProgress) {
     };
   }
 
+  const priceTrendSnapshot = await fetchPriceTrendSnapshot();
+  const priceTrends = buildPriceTrendMaps(priceTrendSnapshot, dataPayload.driver_trends);
+
   onProgress?.("🤖 Asking Claude AI to rank all drivers & constructors…");
-  const userMessage = buildUserMessage(dataPayload, constructorPriceMap, allConstructors, newsContext);
+  const userMessage = buildUserMessage(dataPayload, constructorPriceMap, allConstructors, newsContext, priceTrends);
 
   try {
     const response = await fetch(PROXY_URL, {
@@ -436,7 +489,7 @@ export async function generatePredictions(dataPayload, onProgress) {
 
 // ─── User message builder ─────────────────────────────────────────────────────
 
-function buildUserMessage(payload, constructorPriceMap, allConstructors, newsContext = "") {
+function buildUserMessage(payload, constructorPriceMap, allConstructors, newsContext = "", priceTrends = null) {
   const { next_race, recent_races, driver_trends, user_context, data_window, practice_data } = payload;
 
   // Build the upcoming race string from whatever data we have
@@ -468,14 +521,16 @@ function buildUserMessage(payload, constructorPriceMap, allConstructors, newsCon
       const trend = d.position_trend === true  ? "↑"
                   : d.position_trend === false ? "↓" : "→";
       const price = typeof d.price === 'number' ? `$${d.price}M` : "$?M";
-      return `  ${d.abbreviation.padEnd(4)} ${d.full_name.padEnd(26)} ${d.team_name.padEnd(22)} ${price.padEnd(7)} avg P${String(d.avg_finish_position).padEnd(5)} recent [${d.recent_positions.join(",")}] ${trend}`;
+      const priceTrend = formatPriceTrend(priceTrends?.driverTrendByNumber?.[d.driver_number]);
+      return `  ${d.abbreviation.padEnd(4)} ${d.full_name.padEnd(26)} ${d.team_name.padEnd(22)} ${price.padEnd(7)} avg P${String(d.avg_finish_position).padEnd(5)} recent [${d.recent_positions.join(",")}] ${trend}${priceTrend}`;
     })
     .join("\n");
 
   const constructorStats = allConstructors
     .map(c => {
       const drivers = c.drivers.length ? c.drivers.join(", ") : "no driver data";
-      return `  ${c.team_name.padEnd(28)} $${c.price}M   drivers: ${drivers}`;
+      const priceTrend = formatPriceTrend(priceTrends?.constructorTrendByTeam?.[c.team_name]);
+      return `  ${c.team_name.padEnd(28)} $${c.price}M   drivers: ${drivers}${priceTrend}`;
     })
     .join("\n");
 

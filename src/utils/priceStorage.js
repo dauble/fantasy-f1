@@ -3,6 +3,91 @@
 const CUSTOM_PRICES_KEY = 'fantasy_f1_custom_prices';
 const PRICE_HISTORY_KEY = 'fantasy_f1_price_history';
 
+// Normalizes a name for matching: lowercase, strip accents/diacritics, drop
+// anything that isn't a letter/space, collapse whitespace.
+function normalizeName(name) {
+  return (name || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function lastToken(normalized) {
+  const parts = normalized.split(' ').filter(Boolean);
+  return parts[parts.length - 1] || '';
+}
+
+/**
+ * Matches an F1 Fantasy feed driver name (e.g. "Lando Norris") against the
+ * OpenF1 driver grid (e.g. full_name "Lando NORRIS") to resolve driver_number.
+ * The two sources use different casing/formatting, so match is done on a
+ * normalized full-name comparison, falling back to last-name-only.
+ * Returns the matching OpenF1 driver object, or null if no confident match.
+ */
+export function matchDriverByName(fantasyName, openF1Drivers) {
+  const target = normalizeName(fantasyName);
+  if (!target || !openF1Drivers?.length) return null;
+
+  const exact = openF1Drivers.find((d) => normalizeName(d.full_name) === target);
+  if (exact) return exact;
+
+  const targetLastName = lastToken(target);
+  const lastNameMatches = openF1Drivers.filter(
+    (d) => lastToken(normalizeName(d.full_name)) === targetLastName
+  );
+  // Only trust a last-name-only match when it's unambiguous
+  return lastNameMatches.length === 1 ? lastNameMatches[0] : null;
+}
+
+/**
+ * Builds a customPrices object (in the app's raw-dollar storage convention)
+ * from an /api/fantasy-prices snapshot, resolving driver names to driver_number
+ * via the OpenF1 driver grid. Constructors match directly on team name.
+ * Returns { customPrices, unmatched } so callers can surface any gaps.
+ */
+export function buildCustomPricesFromFeed(snapshot, openF1Drivers) {
+  const customPrices = { drivers: {}, constructors: {} };
+  const unmatched = [];
+
+  // A driver can appear more than once in the feed after a mid-season team
+  // swap (the old team's record lingers alongside the new one under the same
+  // name) — group by resolved driver_number and, when there's more than one
+  // candidate, prefer whichever record's team matches the driver's current
+  // OpenF1 team_name rather than just taking whichever came last.
+  const candidatesByDriverNumber = new Map();
+  for (const driver of snapshot?.drivers || []) {
+    const match = matchDriverByName(driver.name, openF1Drivers);
+    if (!match) {
+      unmatched.push({ type: 'driver', name: driver.name });
+      continue;
+    }
+    const list = candidatesByDriverNumber.get(match.driver_number) || [];
+    list.push({ driver, match });
+    candidatesByDriverNumber.set(match.driver_number, list);
+  }
+
+  for (const [driverNumber, candidates] of candidatesByDriverNumber) {
+    const best =
+      candidates.find(
+        (c) => normalizeName(c.driver.team) === normalizeName(c.match.team_name)
+      ) || candidates[candidates.length - 1];
+    customPrices.drivers[driverNumber] = Math.round(best.driver.priceM * 1_000_000);
+  }
+
+  for (const constructor of snapshot?.constructors || []) {
+    if (!constructor.team) {
+      unmatched.push({ type: 'constructor', name: constructor.team || '(unknown)' });
+      continue;
+    }
+    customPrices.constructors[constructor.team] = Math.round(constructor.priceM * 1_000_000);
+  }
+
+  return { customPrices, unmatched };
+}
+
 export const priceStorage = {
   // Get custom prices
   getCustomPrices() {
