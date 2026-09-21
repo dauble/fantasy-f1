@@ -122,6 +122,10 @@ To prevent rate limiting (429 errors) from the OpenF1 API, the app uses a 4-laye
 
 Most page loads require **zero** OpenF1 API calls. Use **Refresh Predictions** to bypass all layers and force a fresh fetch.
 
+### Driver Data via Cloudflare Worker (optional)
+
+The current driver grid can be served from the [countdown-to-f1](https://github.com/dauble/countdown-to-f1) project's Cloudflare Worker, which already refreshes OpenF1 data daily into Cloudflare KV storage under its own rate-limit-respecting schedule (see its [Cloudflare Worker docs](https://github.com/dauble/countdown-to-f1/blob/main/documentation/CLOUDFLARE_WORKER.md)). Set `CLOUDFLARE_WORKER_URL` to that Worker's base URL and the server's `/api/openf1/drivers` route will read from it instead of hitting OpenF1 directly. Leave it unset and the server falls back to a direct OpenF1 call (still centralized server-side, cached for 5 minutes — not one request per visitor).
+
 ### Cloud Sync (Supabase)
 
 When logged in, the following data is stored in Supabase and synced across devices:

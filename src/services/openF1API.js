@@ -55,9 +55,31 @@ async function cachedAPICall(endpoint, params, retryCount = 0) {
 }
 
 export const openF1API = {
-  // Get all drivers for a specific session or year
+  // Get the current driver grid. Served by our own backend (/api/openf1/drivers),
+  // which reads from the shared Cloudflare Worker KV cache when configured,
+  // falling back to a direct OpenF1 call server-side. Either way, this keeps
+  // driver-grid requests to one per backend cache window instead of one per browser.
   async getDrivers(year = CURRENT_YEAR) {
-    return cachedAPICall('drivers', { session_key: 'latest' });
+    const endpoint = 'local_drivers';
+    const params = {};
+
+    const cached = apiCache.get(endpoint, params);
+    if (cached) return cached;
+
+    try {
+      const response = await axios.get('/api/openf1/drivers');
+      const data = response.data;
+      apiCache.set(endpoint, params, data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching drivers via backend proxy:', error);
+      const expiredCache = apiCache.get(endpoint, params, true);
+      if (expiredCache) {
+        console.log('Using expired cache for drivers (backend proxy unavailable)');
+        return expiredCache;
+      }
+      return [];
+    }
   },
 
   // Get meetings (races) for a specific year

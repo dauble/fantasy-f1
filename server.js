@@ -101,6 +101,79 @@ app.get("/api/config", (_req, res) => {
   });
 });
 
+// ─── OpenF1 driver data (via Cloudflare Worker KV cache, with direct fallback) ─
+//
+// Rather than have every browser call OpenF1 directly for the current driver
+// grid, the server pulls it once from here and serves all clients from a
+// short in-memory cache. When CLOUDFLARE_WORKER_URL is set, that's the
+// countdown-to-f1 project's Cloudflare Worker (documentation/CLOUDFLARE_WORKER.md
+// there), which refreshes the same data daily into KV and already respects
+// OpenF1's rate limits. Falls back to calling OpenF1 directly (still just one
+// server-side call, not one per browser) if the Worker is unset or unreachable.
+
+const DRIVERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+let driversCache = { data: null, fetchedAt: 0 };
+
+async function fetchDriversFromWorker() {
+  const workerUrl = process.env.CLOUDFLARE_WORKER_URL;
+  if (!workerUrl) return null;
+
+  const res = await fetch(`${workerUrl.replace(/\/$/, "")}/drivers`, {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error(`Worker /drivers returned ${res.status}`);
+  const body = await res.json();
+  if (!body.drivers) return null;
+
+  // The Worker returns camelCase fields; normalize back to OpenF1's native
+  // snake_case shape so callers don't care which path served the data.
+  return body.drivers.map((d) => ({
+    driver_number: d.driverNumber,
+    full_name: d.fullName,
+    name_acronym: d.abbreviation,
+    team_name: d.teamName,
+    team_colour: d.teamColour,
+    headshot_url: d.headshotUrl,
+    country_code: d.countryCode,
+  }));
+}
+
+async function fetchDriversFromOpenF1() {
+  const res = await fetch("https://api.openf1.org/v1/drivers?session_key=latest", {
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!res.ok) throw new Error(`OpenF1 /drivers returned ${res.status}`);
+  return res.json();
+}
+
+app.get("/api/openf1/drivers", rateLimiter, async (_req, res) => {
+  if (driversCache.data && Date.now() - driversCache.fetchedAt < DRIVERS_CACHE_TTL_MS) {
+    return res.json(driversCache.data);
+  }
+
+  try {
+    const drivers = await fetchDriversFromWorker();
+    if (drivers) {
+      driversCache = { data: drivers, fetchedAt: Date.now() };
+      return res.json(drivers);
+    }
+    throw new Error("Cloudflare Worker not configured");
+  } catch (workerErr) {
+    console.warn(`[/api/openf1/drivers] Worker unavailable (${workerErr.message}), falling back to OpenF1 directly`);
+    try {
+      const drivers = await fetchDriversFromOpenF1();
+      driversCache = { data: drivers, fetchedAt: Date.now() };
+      return res.json(drivers);
+    } catch (openf1Err) {
+      console.error(`[/api/openf1/drivers] OpenF1 fallback failed: ${openf1Err.message}`);
+      if (driversCache.data) {
+        return res.json(driversCache.data); // serve stale rather than nothing
+      }
+      return res.status(502).json({ error: "Failed to fetch driver data", details: openf1Err.message });
+    }
+  }
+});
+
 // ─── F1 News aggregation endpoint ────────────────────────────────────────────
 
 app.get("/api/news", rateLimiter, async (_req, res) => {
