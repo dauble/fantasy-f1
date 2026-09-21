@@ -438,6 +438,7 @@ function APIErrorsSummary({ rawData }) {
     serverError: [],
     networkError: [],
     fallback: [],
+    partialSource: [],
   };
 
   const sessionKeyPattern = /session_key=(\d+)/;
@@ -479,8 +480,10 @@ function APIErrorsSummary({ rawData }) {
     } else if (context?.networkError || statusCode === 0) {
       errorsByType.networkError.push(errorInfo);
     } else if (statusCode === 206 || context?.isPartialFailure) {
-      // 206 = partial content (e.g. some news sources failed)
-      errorsByType.serverError.push(errorInfo);
+      // 206 = partial content from a supplementary source (e.g. some news
+      // sources failed) — not an OpenF1 error, kept separate so the copy
+      // below doesn't misattribute it.
+      errorsByType.partialSource.push(errorInfo);
     }
   });
 
@@ -597,6 +600,25 @@ function APIErrorsSummary({ rawData }) {
               </li>
             )}
           </ul>
+        </div>
+      )}
+
+      {/* Supplementary source partial failures (e.g. news) — not OpenF1 */}
+      {errorsByType.partialSource.length > 0 && (
+        <div className="mt-2 pl-7">
+          <p className="font-medium text-blue-800 dark:text-blue-300 mb-1">
+            📰 Supplementary data partially unavailable:
+          </p>
+          <ul className="list-disc list-inside text-blue-700 dark:text-blue-400 space-y-0.5">
+            {errorsByType.partialSource.map((err, i) => (
+              <li key={i}>
+                {err.errorMessage || `${err.endpoint} request was incomplete`}
+              </li>
+            ))}
+          </ul>
+          <p className="text-blue-600 dark:text-blue-500 mt-1 text-xs">
+            Race data from OpenF1 is unaffected — this only reduces the news context available to the AI.
+          </p>
         </div>
       )}
 
