@@ -9,6 +9,7 @@
 
 import openF1API from './openF1API';
 import ergastAPI from './ergastAPI';
+import { rateLimitedFetch } from '../utils/openf1RateLimiter';
 
 const BASE_URL = "https://api.openf1.org/v1";
 
@@ -216,7 +217,7 @@ async function fetchWithCache(url, retryCount = 0) {
   }
 
   try {
-    const res = await fetch(url);
+    const res = await rateLimitedFetch(url);
 
     if (res.status === 429) {
       // Record rate limit error
