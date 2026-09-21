@@ -18,7 +18,6 @@ import { generatePredictions } from "../services/aiPredictionService";
 import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/Card";
 import { useAuth } from "../context/AuthContext";
 import teamStorage from "../utils/teamStorage";
-import { Link } from "react-router-dom";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -205,11 +204,16 @@ function ErrorState({ error, onRetry }) {
 }
 
 function ApplyRecommendationsCard({ prediction, rawData, onApply, applied }) {
+  // Once the user has applied this recommendation, this card (and its
+  // confirmation) has no reason to keep showing — including on a later
+  // visit to this same cached prediction.
+  if (applied) return null;
+
   if (!prediction?.recommended_drivers?.length) return null;
 
   // Calculate total changes to determine if we should show this card
   const rawCurrentTeam = rawData?.user_context?.current_team;
-  if (rawCurrentTeam && !applied) {
+  if (rawCurrentTeam) {
     const currentDrivers = rawCurrentTeam.drivers || rawCurrentTeam.selectedDrivers || [];
     const currentConstructors = rawCurrentTeam.constructors || rawCurrentTeam.selectedConstructors || [];
 
@@ -245,26 +249,6 @@ function ApplyRecommendationsCard({ prediction, rawData, onApply, applied }) {
   const driverList = prediction.recommended_drivers.map(d => d.abbreviation).join(' · ');
   const constructorList = (prediction.recommended_constructors ?? []).map(c => c.team_name).join(' · ');
 
-  if (applied) {
-    return (
-      <Card className="border-emerald-400 dark:border-emerald-600">
-        <CardContent className="py-4">
-          <div className="flex items-center gap-3">
-            <span className="text-2xl shrink-0">✅</span>
-            <div>
-              <p className="font-semibold text-emerald-700 dark:text-emerald-300">Team updated and saved!</p>
-              <p className="text-sm text-emerald-600 dark:text-emerald-400 mt-0.5">
-                AI recommendation is now your active team. Your previous team was backed up to{' '}
-                <Link to="/history" className="underline font-medium">Team History</Link>{' '}
-                and can be restored at any time.
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <Card>
       <CardContent className="py-4">
@@ -298,7 +282,12 @@ function ApplyRecommendationsCard({ prediction, rawData, onApply, applied }) {
   );
 }
 
-function TeamAssessmentCard({ prediction }) {
+function TeamAssessmentCard({ prediction, applied }) {
+  // Once the recommendation has been applied, the assessment (which
+  // compares the OLD team against the recommendation) is no longer
+  // meaningful — the two are now the same team.
+  if (applied) return null;
+
   const assessment = prediction?.current_team_assessment;
   const verdict = prediction?.team_verdict;
   if (!assessment?.length || !verdict) return null;
@@ -352,7 +341,12 @@ function TeamAssessmentCard({ prediction }) {
   );
 }
 
-function TransferWarning({ prediction, rawData }) {
+function TransferWarning({ prediction, rawData, applied }) {
+  // Same reason as ApplyRecommendationsCard/TeamAssessmentCard: once applied,
+  // the current team IS the recommendation, so a transfer-count/penalty
+  // comparison against the stale cached current_team is no longer accurate.
+  if (applied) return null;
+
   const rawCurrentTeam = rawData?.user_context?.current_team;
   if (!rawCurrentTeam) return null;
 
@@ -706,10 +700,11 @@ export default function Predictions() {
     try {
       const cached = localStorage.getItem(PREDICTION_CACHE_KEY);
       if (cached) {
-        const { prediction: cachedPrediction, rawData: cachedRawData } = JSON.parse(cached);
+        const { prediction: cachedPrediction, rawData: cachedRawData, applied: cachedApplied } = JSON.parse(cached);
         setPrediction(cachedPrediction);
         setRawData(cachedRawData);
         setStatus("success");
+        setApplied(cachedApplied ?? false);
         console.log("Loaded cached prediction from", new Date(cachedPrediction.generated_at).toLocaleString());
       }
     } catch (error) {
@@ -761,6 +756,7 @@ export default function Predictions() {
         localStorage.setItem(PREDICTION_CACHE_KEY, JSON.stringify({
           prediction: result,
           rawData: payload,
+          applied: false,
         }));
         console.log("Prediction saved to cache");
         syncToCloud?.();
@@ -830,6 +826,20 @@ export default function Predictions() {
       teamStorage.saveCurrentTeam({ selectedDrivers, selectedConstructors, turboDriver, totalSpent });
       syncToCloud?.();
       setApplied(true);
+
+      // Persist the applied flag alongside the cached prediction so it
+      // survives a reload/revisit — the current_team snapshot inside the
+      // cached rawData is otherwise frozen from generation time and would
+      // make the Apply card reappear as if changes were still pending.
+      try {
+        const cached = localStorage.getItem(PREDICTION_CACHE_KEY);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          localStorage.setItem(PREDICTION_CACHE_KEY, JSON.stringify({ ...parsed, applied: true }));
+        }
+      } catch (cacheError) {
+        console.warn('Failed to persist applied flag:', cacheError);
+      }
     } catch (err) {
       console.error('[predictions] Failed to apply recommendations:', err);
     }
@@ -961,8 +971,8 @@ export default function Predictions() {
         <div className="space-y-6">
           <ApplyRecommendationsCard prediction={prediction} rawData={rawData} onApply={applyRecommendations} applied={applied} />
           <APIErrorsSummary rawData={rawData} />
-          <TransferWarning prediction={prediction} rawData={rawData} />
-          <TeamAssessmentCard prediction={prediction} />
+          <TransferWarning prediction={prediction} rawData={rawData} applied={applied} />
+          <TeamAssessmentCard prediction={prediction} applied={applied} />
 
           {/* Analysis summary */}
           <Card>
