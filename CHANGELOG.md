@@ -4,6 +4,45 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.13.0 - 2026-09-21 - Redeployment, Shared Data Sources, and Bug Fixes
+
+The app had gone offline (its Fly.io app/account no longer existed). This release covers bringing it back online plus several features and fixes that came out of that work.
+
+### Deployment
+
+- **Migrated to a new Fly.io app** (`fantasy-f1-hn8mhg` → `fantasy-f1-kb7njg`) across `fly.toml`, `.env.example`, `vite.config.js`, and `public/og-image.svg`.
+- **Fixed a port-mismatch regression**: re-running `fly launch` for the new app reset `fly.toml`'s `internal_port` to `3000`, but the Dockerfile/`server.js` bind to `8080` — this caused every request to fail (connection refused) even though the machine reported "started". Reverted to `8080`; see `documentation/DEPLOYMENT.md` for the troubleshooting note.
+- **Allocated missing IP addresses**: the new app had zero IPv4/IPv6 addresses assigned, so its hostname didn't resolve at all. Allocated a shared IPv4 and dedicated IPv6.
+- **Rotated a stale `FLY_API_TOKEN`**: the GitHub Actions deploy secret predated the account change and was rejected with `unauthorized`. Replaced it with a fresh app-scoped deploy token.
+- Restored the Fly secrets (`ANTHROPIC_API_KEY`, `SUPABASE_URL`, `SUPABASE_ANON_KEY`, news config) that don't carry over when a new Fly app is created.
+
+### New: Shared Cloudflare Worker Driver Data
+
+- The server now has `GET /api/openf1/drivers`, which reads the current driver grid from the [countdown-to-f1](https://github.com/dauble/countdown-to-f1) project's Cloudflare Worker (`CLOUDFLARE_WORKER_URL`) — a KV cache that project already refreshes daily from OpenF1 — falling back to a direct OpenF1 call if the Worker is unset or unreachable. Centralizes driver-grid fetches server-side (one call, 5-minute cache) instead of every browser calling OpenF1 directly.
+- Companion change in the countdown-to-f1 repo: its Worker now also caches the driver grid and serves it via a new `GET /drivers` route.
+
+### New: Official F1 Fantasy Price Sync
+
+- `GET /api/fantasy-prices` serves driver/constructor prices, fantasy points, season price-change trend, and selection % from `fantasy.formula1.com`'s public statistics feed (no login required).
+- A daily scheduled GitHub Action (`refresh-fantasy-prices.yml`) snapshots that feed into `data/price_snapshots.json`, building real price-trend history over the season since the feed itself only reflects current state.
+- **Price Manager**: new "Sync Official Prices" button populates prices from this feed instead of manual weekly entry, resolving F1 Fantasy's own player IDs to OpenF1 `driver_number`s by name (correctly handling a driver who appears twice after a mid-season team swap) and surfacing any unmatched names rather than silently dropping them.
+- AI predictions now get each driver/constructor's season price-change trend and selection % as extra context, so the model can flag likely price-movement risk.
+
+### Fixed: OpenF1 Free-Tier Rate-Limit Compliance
+
+- Added a shared rate-limited request queue (`src/utils/openf1RateLimiter.js`, 400ms min interval / 28 req per 60s window) that every OpenF1-bound fetch now routes through. Previously, concurrent code paths (`buildPredictionPayload`'s `Promise.all` of three discovery chains, the practice-data fetcher, and `strategyAnalyzer`'s unthrottled loop) had no pacing *between* each other and only avoided exceeding OpenF1's 3 req/s / 30 req/min Community-tier limit by chance (network latency happening to be slow enough).
+
+### Fixed: Retired Claude Model
+
+- `/api/predict` was failing on every request (`not_found_error` for `claude-sonnet-4-20250514`, a retired dated snapshot). Migrated to `claude-sonnet-5`, including switching `thinking` from the removed `{type: "enabled", budget_tokens}` shape to `{type: "adaptive"}`.
+
+### Fixed: News Source Failures
+
+- **PlanetF1**'s RSS feed is discontinued (confirmed via its own `"No feed available"` WordPress error) and **Reddit**'s public JSON API blocks hosting/datacenter IPs (confirmed 403 even with a full browser User-Agent) — both disabled by default (`NEWS_PLANETF1_ENABLED` / `NEWS_REDDIT_ENABLED`, re-enablable if a fix is found later).
+- Fixed a wording bug where a news-source partial failure (HTTP 206) was shown as "temporary OpenF1 API problems" — it's unrelated to OpenF1 and never affected race data or predictions themselves.
+
+---
+
 ## Version 0.12.1 - 2026-05-16 - UI Enhancement for "Keep Team" Recommendations
 
 ### User Experience Improvement

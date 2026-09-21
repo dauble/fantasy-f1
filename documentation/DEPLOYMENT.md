@@ -187,10 +187,15 @@ Check deployment progress:
 
 ### Troubleshooting CI/CD
 
-**Deployment fails with authentication error**:
+**Deployment fails with authentication error** (`Error: unauthorized`):
 
 - Verify `FLY_API_TOKEN` secret is correctly set
-- Token may have expired - generate a new one with `flyctl auth token`
+- Token may have expired, or predate a Fly.io account/app recreation - generate a fresh one scoped to this app and update the GitHub secret:
+  ```bash
+  flyctl tokens create deploy --app your-app-name -x 8760h --json \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['token'])" \
+    | gh secret set FLY_API_TOKEN
+  ```
 
 **Deployment fails with "app not found"**:
 
@@ -333,6 +338,11 @@ flyctl ssh console
 flyctl ssh console -C "ps aux | grep node"
 ```
 
+**Machine shows "started" but every request fails (connection refused / 502)**:
+
+- Check `fly.toml`'s `[http_service].internal_port` matches what the Dockerfile actually exposes (`8080` here - `ENV PORT=8080` / `EXPOSE 8080`, matching `server.js`'s `process.env.PORT || 3000`).
+- Re-running `fly launch` against an existing app can silently reset `internal_port` to a different default (we've seen it reset to `3000`). `flyctl logs` will show `Fantasy F1 server running on port 8080` even while this is broken - the mismatch is between Fly's proxy and the app, not a startup failure, so logs alone won't reveal it. Fix: set `internal_port = 8080` and redeploy.
+
 ### DNS/SSL Issues
 
 ```bash
@@ -352,6 +362,15 @@ curl -v https://your-app-name.fly.dev
 # Check internal connectivity
 flyctl ssh console -C "curl http://localhost:8080/health"
 ```
+
+**Hostname doesn't resolve at all (`curl: (6) Could not resolve host`)**:
+
+- A newly created Fly app isn't guaranteed a public IP - check `flyctl ips list --app your-app-name`. If it's empty, allocate both:
+  ```bash
+  flyctl ips allocate-v4 --app your-app-name --shared
+  flyctl ips allocate-v6 --app your-app-name
+  ```
+- DNS for a fresh allocation can take a minute to reach every resolver. Check it against a public resolver directly rather than trusting a local negative cache: `dig +short @8.8.8.8 your-app-name.fly.dev`.
 
 ## Custom Domain (Optional)
 

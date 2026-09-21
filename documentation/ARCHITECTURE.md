@@ -7,7 +7,7 @@ Complete technical documentation for the Fantasy F1 application architecture, da
 ```
 fantasy-f1/
 ├── server.js            # Express proxy server (AI predictions, news, config, auth)
-├── newsService.js       # Server-side news aggregator (Autosport, The Race, PlanetF1, Reddit)
+├── newsService.js       # Server-side news aggregator (Autosport, The Race; PlanetF1/Reddit disabled by default)
 ├── CHANGELOG.md         # Version history
 ├── documentation/       # Project documentation
 │   ├── ARCHITECTURE.md           # This file
@@ -478,7 +478,7 @@ Most visits require zero OpenF1 API calls. "Refresh Predictions" bypasses all la
 
 2. **News Fetch** (`aiPredictionService.js`):
    - Calls `GET /api/news` before building the Claude prompt
-   - `newsService.js` aggregates headlines from Autosport, The Race, PlanetF1, and Reddit
+   - `newsService.js` aggregates headlines from Autosport and The Race (PlanetF1/Reddit disabled by default)
    - Headlines are appended to the Claude prompt for contextual awareness
 
 3. **AI Analysis** (`aiPredictionService.js`):

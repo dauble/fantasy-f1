@@ -127,7 +127,7 @@ This starts the Vite dev server on port 5173, which:
 
 2.5. **News Fetch** (`aiPredictionService.js` → `/api/news`):
 
-- Fetches recent F1 articles from Autosport, The Race, PlanetF1, and Reddit
+- Fetches recent F1 articles from Autosport and The Race (PlanetF1/Reddit disabled by default; see NEWS_INTEGRATION.md)
 - Cached server-side for 30 minutes; cached client-side in localStorage
 - Headlines and summaries are appended to the Claude prompt for contextual awareness
 

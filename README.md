@@ -43,7 +43,7 @@ A modern React application for building and managing your Fantasy Formula 1 team
 
 - **Claude AI Integration**: Intelligent team recommendations powered by Anthropic's Claude
 - **Full Grid Analysis**: Every driver and constructor ranked — not just a shortlist
-- **Real-time News Context**: Articles from Autosport, The Race, PlanetF1, and Reddit feed into the AI prompt
+- **Real-time News Context**: Articles from Autosport and The Race feed into the AI prompt (PlanetF1/Reddit disabled by default — see documentation/NEWS_INTEGRATION.md)
 - **4-Layer Caching**: Most visits need zero OpenF1 API calls
 - **Cross-Device Sync**: Cached predictions sync to your Supabase profile so Device B reuses Device A's result
 - **Smart Recommendations**: 5 drivers + 2 constructors optimised for predicted points within $100M
@@ -292,7 +292,7 @@ Comprehensive technical documentation is available in the [`documentation/`](doc
   - Data flow and localStorage schema
   - Component architecture and styling
 
-- **[News Integration Guide](documentation/NEWS_INTEGRATION.md)** — Coverage of the server-side news aggregation system (Autosport, The Race, PlanetF1, Reddit)
+- **[News Integration Guide](documentation/NEWS_INTEGRATION.md)** — Coverage of the server-side news aggregation system (Autosport, The Race enabled by default; PlanetF1, Reddit disabled — see why inside)
 
 - **[Deployment Guide](documentation/DEPLOYMENT.md)** — Step-by-step instructions for deploying to Fly.io:
   - Prerequisites and initial setup
