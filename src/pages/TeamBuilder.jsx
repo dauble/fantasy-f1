@@ -20,39 +20,21 @@ const TeamBuilder = () => {
   const [saveStatus, setSaveStatus] = useState('');
   const [showCompleteBanner, setShowCompleteBanner] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-    loadSavedTeam();
-  }, []);
-
-  useEffect(() => {
-    if (selectedDrivers.length === MAX_DRIVERS && selectedConstructors.length === MAX_CONSTRUCTORS) {
-      setShowCompleteBanner(true);
-      const timer = setTimeout(() => setShowCompleteBanner(false), 5000);
-      return () => clearTimeout(timer);
-    } else {
-      setShowCompleteBanner(false);
-    }
-  }, [selectedDrivers.length, selectedConstructors.length]);
-
   const fetchData = async () => {
     try {
       setLoading(true);
-      const latestSession = await openF1API.getLatestSession();
-      if (latestSession) {
-        const driversData = await openF1API.getDrivers();
-        const uniqueDrivers = Array.from(
-          new Map(driversData.map(d => [d.driver_number, d])).values()
-        );
-        setDrivers(uniqueDrivers);
-        const uniqueConstructors = Array.from(
-          new Set(uniqueDrivers.map(d => d.team_name))
-        ).map(teamName => ({
-          team_name: teamName,
-          team_colour: uniqueDrivers.find(d => d.team_name === teamName)?.team_colour
-        }));
-        setConstructors(uniqueConstructors);
-      }
+      const driversData = await openF1API.getDrivers();
+      const uniqueDrivers = Array.from(
+        new Map(driversData.map(d => [d.driver_number, d])).values()
+      );
+      setDrivers(uniqueDrivers);
+      const uniqueConstructors = Array.from(
+        new Set(uniqueDrivers.map(d => d.team_name))
+      ).map(teamName => ({
+        team_name: teamName,
+        team_colour: uniqueDrivers.find(d => d.team_name === teamName)?.team_colour
+      }));
+      setConstructors(uniqueConstructors);
       setLoading(false);
     } catch (err) {
       console.error('Error fetching data:', err);
@@ -70,6 +52,21 @@ const TeamBuilder = () => {
       setLastSaved(savedTeam.lastSaved);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+    loadSavedTeam();
+  }, []);
+
+  useEffect(() => {
+    if (selectedDrivers.length === MAX_DRIVERS && selectedConstructors.length === MAX_CONSTRUCTORS) {
+      setShowCompleteBanner(true);
+      const timer = setTimeout(() => setShowCompleteBanner(false), 5000);
+      return () => clearTimeout(timer);
+    } else {
+      setShowCompleteBanner(false);
+    }
+  }, [selectedDrivers.length, selectedConstructors.length]);
 
   useEffect(() => {
     if (selectedDrivers.length > 0 || selectedConstructors.length > 0) {

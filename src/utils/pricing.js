@@ -1,71 +1,79 @@
-// Fantasy F1 pricing for 2024 season (in USD, can be adjusted)
-// Prices are based on driver performance, team performance, and market value
+// Fantasy F1 fallback pricing for 2026 season
+// These are used only when the live Fantasy F1 feed (price_snapshots.json) has
+// not yet been synced or a driver cannot be matched. The authoritative prices
+// come from the scheduled feed sync via /api/fantasy-prices.
 
 import priceStorage from './priceStorage';
 
 export const DRIVER_PRICES = {
   // Red Bull Racing
-  1: 32000000,  // Max Verstappen
-  11: 18000000, // Sergio Perez
-  
+  1: 32000000,   // Max Verstappen
+  6: 10000000,   // Isack Hadjar
+
   // Mercedes
-  44: 28000000, // Lewis Hamilton
-  63: 22000000, // George Russell
-  
+  63: 22000000,  // George Russell
+  12: 18000000,  // Kimi Antonelli
+
   // Ferrari
-  16: 26000000, // Charles Leclerc
-  55: 20000000, // Carlos Sainz
-  
+  44: 28000000,  // Lewis Hamilton
+  16: 26000000,  // Charles Leclerc
+
   // McLaren
-  4: 24000000,  // Lando Norris
-  81: 16000000, // Oscar Piastri
-  
+  4: 30000000,   // Lando Norris
+  81: 22000000,  // Oscar Piastri
+
   // Aston Martin
-  14: 19000000, // Fernando Alonso
-  18: 15000000, // Lance Stroll
-  
+  14: 12000000,  // Fernando Alonso
+  18: 9000000,   // Lance Stroll
+
   // Alpine
-  10: 12000000, // Pierre Gasly
-  31: 10000000, // Esteban Ocon
-  
+  10: 18000000,  // Pierre Gasly
+  43: 10000000,  // Franco Colapinto
+
   // Williams
-  23: 11000000, // Alexander Albon
-  2: 8000000,   // Logan Sargeant / Franco Colapinto
-  
-  // RB (AlphaTauri/Racing Bulls)
-  3: 10000000,  // Daniel Ricciardo
-  22: 9000000,  // Yuki Tsunoda
-  
-  // Kick Sauber
-  77: 9000000,  // Valtteri Bottas
-  24: 7000000,  // Zhou Guanyu
-  
+  55: 14000000,  // Carlos Sainz
+  23: 9000000,   // Alexander Albon
+
+  // Racing Bulls
+  22: 12000000,  // Yuki Tsunoda
+  30: 14000000,  // Liam Lawson
+
+  // Audi (formerly Kick Sauber)
+  27: 12000000,  // Nico Hulkenberg
+  5: 10000000,   // Gabriel Bortoleto
+
+  // Cadillac (formerly Andretti)
+  77: 5000000,   // Valtteri Bottas
+  11: 8000000,   // Sergio Perez
+
   // Haas
-  20: 8000000,  // Kevin Magnussen
-  27: 7500000,  // Nico Hulkenberg
+  31: 12000000,  // Esteban Ocon
+  87: 10000000,  // Oliver Bearman
 };
 
 export const CONSTRUCTOR_PRICES = {
-  'Red Bull Racing': 35000000,
-  'Mercedes': 30000000,
-  'Ferrari': 32000000,
-  'McLaren': 28000000,
-  'Aston Martin': 20000000,
-  'Alpine': 15000000,
-  'Williams': 12000000,
-  'RB': 14000000,
-  'Kick Sauber': 10000000,
-  'Haas F1 Team': 11000000,
+  'Red Bull Racing': 30000000,
+  'Mercedes': 24000000,
+  'Ferrari': 30000000,
+  'McLaren': 34000000,
+  'Aston Martin': 14000000,
+  'Alpine': 20000000,
+  'Williams': 14000000,
+  'Racing Bulls': 16000000,
+  'Audi': 14000000,
+  'Cadillac': 8000000,
+  'Haas F1 Team': 14000000,
   // Aliases
-  'Red Bull': 35000000,
-  'Aston Martin F1 Team': 20000000,
-  'Alpine F1 Team': 15000000,
-  'Williams Racing': 12000000,
-  'Haas': 11000000,
-  'Sauber': 10000000,
-  'AlphaTauri': 14000000,
-  'Racing Bulls': 14000000,
-  'Visa Cash App RB': 14000000,
+  'Red Bull': 30000000,
+  'Aston Martin F1 Team': 14000000,
+  'Alpine F1 Team': 20000000,
+  'Williams Racing': 14000000,
+  'Haas': 14000000,
+  'Kick Sauber': 14000000,
+  'Sauber': 14000000,
+  'RB': 16000000,
+  'AlphaTauri': 16000000,
+  'Visa Cash App RB': 16000000,
 };
 
 export const getDriverPrice = (driverNumber) => {
