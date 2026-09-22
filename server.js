@@ -143,7 +143,9 @@ app.get("/api/fantasy-prices", rateLimiter, async (_req, res) => {
 //   /api/fantasy/config   — web_config.json: game IDs, active rounds, etc.
 //   /api/fantasy/schedule — raceday_en.json: full season race calendar
 //   /api/fantasy/drivers  — drivers/{gameId}_en.json: full player roster
-//                           with racing numbers, headshots, team colours.
+//                           (names, teams, prices). Racing numbers, headshots,
+//                           and team colours are NOT in this feed — those
+//                           come from the static maps in /api/openf1/drivers.
 //
 // All three return { ok: false } gracefully when the file hasn't been
 // written yet (e.g. first deploy before the workflow has run).
@@ -247,8 +249,10 @@ function teamColour(teamName) {
 // ─── Build driver grid from Fantasy F1 feeds ─────────────────────────────────
 //
 // Primary: data/fantasy_drivers.json (drivers/{gameId}_en.json snapshot).
-//   This is the richest source: racing numbers, abbreviations, team colours,
-//   headshot URLs, and prices come directly from the Fantasy platform.
+//   Names, team names, abbreviations, and prices come directly from the
+//   Fantasy platform. This feed does NOT include racing numbers, team
+//   colours, or headshot URLs (verified 2026-09-21) — those still come from
+//   the static FANTASY_NAME_TO_DRIVER_NUMBER map / teamColour() below.
 //   Written by scripts/fetch-fantasy-feeds.mjs.
 //
 // Secondary: data/price_snapshots.json (driverconstructors_4.json snapshot).
@@ -287,8 +291,6 @@ function buildGridFromSnapshot(snapshot) {
       byNumber.set(driverNumber, entry);
     } else {
       // Prefer the record whose team matches the mapping, otherwise keep latest
-      const existing = byNumber.get(driverNumber);
-      const existingTeam = existing.team_name?.toLowerCase() ?? "";
       const newTeam = entry.team_name?.toLowerCase() ?? "";
       // Heuristic: Red Bull Racing / Racing Bulls are the "senior" vs "junior"
       // teams — if both are present prefer the one already stored (first seen
@@ -319,7 +321,9 @@ const DRIVERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let driversCache = { data: null, fetchedAt: 0 };
 
 async function fetchDriversFromSnapshot() {
-  // ── Path 1: fantasy_drivers.json (richest — real numbers, headshots, colours)
+  // ── Path 1: fantasy_drivers.json (authoritative names/teams/prices; numbers,
+  //    colours, and headshots still come from the static maps below since
+  //    this feed doesn't provide them)
   try {
     const raw = await readFile(FANTASY_DRIVERS_PATH, "utf-8");
     const data = JSON.parse(raw);

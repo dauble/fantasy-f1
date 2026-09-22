@@ -76,6 +76,13 @@ const fantasyFeedService = {
    * Shape: { driver_number, full_name, name_acronym, team_name, team_colour,
    *          headshot_url, country_code, fantasy_player_id, price_m }
    *
+   * NOTE: the Fantasy drivers feed does not include a racing number, team
+   * colour, or headshot URL — `driver_number` here falls back to the Fantasy
+   * `playerId` (stable but NOT the real car number) when the feed doesn't
+   * supply one, so callers get every driver instead of silently none.
+   * Callers that need the true race number should prefer /api/openf1/drivers
+   * (server-side, resolves numbers via a static name map).
+   *
    * Falls back gracefully to an empty array when the snapshot isn't available.
    * @returns {Promise<Array>}
    */
@@ -85,14 +92,14 @@ const fantasyFeedService = {
       if (!data?.ok || !data.drivers?.length) return [];
 
       // Convert Fantasy player records to the OpenF1-compatible shape
-      const byNumber = new Map();
+      const byKey = new Map();
       for (const d of data.drivers) {
         if (d.isActive === false) continue;
-        const num = d.number;
-        if (!num) continue;
+        const key = d.number || d.playerId;
+        if (!key) continue;
 
         const entry = {
-          driver_number:     num,
+          driver_number:     d.number || null,
           full_name:         d.name,
           name_acronym:      d.shortName,
           team_name:         d.teamName,
@@ -103,18 +110,18 @@ const fantasyFeedService = {
           price_m:           d.priceM,
         };
 
-        if (!byNumber.has(num)) {
-          byNumber.set(num, entry);
+        if (!byKey.has(key)) {
+          byKey.set(key, entry);
         } else {
-          // For mid-season replacements with the same number: prefer senior team
+          // For mid-season replacements sharing a real number: prefer senior team
           const juniorTeams = ['racing bulls', 'rb', 'alphatauri', 'visa cash app rb'];
           const newTeam = (d.teamName || '').toLowerCase();
           if (!juniorTeams.some(t => newTeam.includes(t))) {
-            byNumber.set(num, entry);
+            byKey.set(key, entry);
           }
         }
       }
-      return Array.from(byNumber.values());
+      return Array.from(byKey.values());
     } catch (err) {
       console.warn('[fantasyFeedService] getDriverGrid failed:', err.message);
       return [];

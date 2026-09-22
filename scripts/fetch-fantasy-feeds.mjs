@@ -102,11 +102,13 @@ async function fetchSchedule() {
   const url = `${F1_FANTASY_BASE}/feeds/v2/schedule/raceday_en.json`;
   const raw = await fetchJSON(url, "raceday_en");
 
-  // Normalise into a flat race list regardless of raw shape.
-  // Known shapes:
-  //   { Data: { Value: { Races: [...] } } }
-  //   { Data: { Races: [...] } }
-  //   { races: [...] }
+  // Normalise into a flat, one-row-per-meeting race list.
+  //
+  // Verified live shape (2026-09-21): { Data: { fixtures: [...], circuit: {...} } }
+  // `fixtures` is a flat array of *sessions* (Qualifying / Race / Sprint
+  // Qualifying), several per race weekend, keyed by `MeetingId`. There is no
+  // `Races`/`Events` wrapper — that was an unverified guess in an earlier
+  // version of this script and silently produced an empty list.
   const races = extractRaces(raw);
 
   await writeSnapshot("fantasy_schedule.json", {
@@ -120,19 +122,48 @@ async function fetchSchedule() {
 }
 
 function extractRaces(raw) {
-  const inner = raw?.Data?.Value ?? raw?.Data ?? raw;
-  const list  = inner?.Races ?? inner?.races ?? inner?.Events ?? inner?.events ?? [];
-  return list.map(r => ({
-    round:       r.Round       ?? r.round       ?? r.RoundNumber ?? r.roundNumber ?? null,
-    name:        r.Name        ?? r.name        ?? r.EventName   ?? r.eventName   ?? null,
-    circuit:     r.Circuit     ?? r.circuit     ?? r.CircuitName ?? r.circuitName ?? null,
-    country:     r.Country     ?? r.country     ?? null,
-    dateStart:   r.DateStart   ?? r.dateStart   ?? r.Date        ?? r.date        ?? null,
-    dateEnd:     r.DateEnd     ?? r.dateEnd     ?? null,
-    isComplete:  r.IsComplete  ?? r.isComplete  ?? r.Completed   ?? r.completed   ?? false,
-    isActive:    r.IsActive    ?? r.isActive    ?? r.Active      ?? r.active      ?? false,
-    gameweek:    r.GameweekId  ?? r.gameweekId  ?? r.Gameweek    ?? r.gameweek    ?? null,
-  }));
+  const fixtures = raw?.Data?.fixtures ?? raw?.Data?.Value?.fixtures ?? raw?.fixtures ?? [];
+  const byMeeting = new Map();
+
+  for (const f of fixtures) {
+    const meetingId = f.MeetingId ?? f.meetingId;
+    if (meetingId == null) continue;
+
+    let race = byMeeting.get(meetingId);
+    if (!race) {
+      race = {
+        round:       f.MeetingNumber ?? f.meetingNumber ?? null,
+        name:        f.MeetingName   ?? f.meetingName   ?? null,
+        circuit:     f.CircuitOfficialName ?? f.circuitOfficialName ?? f.CircuitLocation ?? f.circuitLocation ?? null,
+        country:     f.CountryName   ?? f.countryName   ?? null,
+        dateStart:   null,
+        dateEnd:     null,
+        isComplete:  false,
+        isActive:    false,
+        gameweek:    f.GamedayId ?? f.gamedayId ?? null,
+        // OpenF1 `session_key` for this meeting's Race session — lets callers
+        // join precisely against OpenF1 instead of fuzzy name matching.
+        openf1SessionKey: null,
+      };
+      byMeeting.set(meetingId, race);
+    }
+
+    const start = f.SessionStartDateISO8601 ?? f.sessionStartDateISO8601 ?? null;
+    if (start && (!race.dateStart || start < race.dateStart)) race.dateStart = start;
+    const end = f.SessionEndDateISO8601 ?? f.sessionEndDateISO8601 ?? null;
+    if (end && (!race.dateEnd || end > race.dateEnd)) race.dateEnd = end;
+
+    // The "Race" session's MatchStatus is the definitive completion signal
+    // for the whole weekend (verified: "4" == finished, "0" == not yet run).
+    const sessionType = f.SessionType ?? f.sessionType ?? "";
+    if (sessionType === "Race") {
+      race.isComplete = String(f.MatchStatus ?? f.GDStatus ?? "") === "4";
+      race.isActive = !race.isComplete;
+      race.openf1SessionKey = f.FOMMEETINGSESSIONKEY ?? f.fommeetingsessionkey ?? null;
+    }
+  }
+
+  return Array.from(byMeeting.values()).sort((a, b) => (a.round ?? 0) - (b.round ?? 0));
 }
 
 // ─── 3. drivers/{gameId}_en.json ─────────────────────────────────────────────
@@ -158,9 +189,22 @@ async function fetchDrivers(gameId) {
 /**
  * Normalise the driver feed into a stable internal shape.
  *
- * The Fantasy platform uses several different raw shapes across seasons.
- * We try several known paths and field name variants so this works even
- * after a schema change.
+ * Verified live shape (2026-09-21): { Data: { Value: [ {...}, {...} ] } } —
+ * `Value` is a *flat array* of player rows, not wrapped in a Players/
+ * Drivers/Elements key. Each row is either a DRIVER or a CONSTRUCTOR, told
+ * apart by `PositionName` (there is no `PositionId`/`IsConstructor` field).
+ *
+ * Confirmed fields present on a real row (Gasly, #18):
+ *   PlayerId, F1PlayerId, PositionName, TeamId, TeamName, FUllName (sic),
+ *   DisplayName, DriverTLA, DriverReference, FirstName, LastName, Value
+ *   (price in millions, e.g. 12.0), IsActive ("1"/"0" string), Status.
+ *
+ * Important: this feed does NOT include a racing car number, a team colour,
+ * or a headshot URL — those fields are set to null/"" below rather than
+ * guessed at, so downstream consumers (server.js, fantasyF1FeedService.js)
+ * know to fall back to their static maps instead of silently matching zero
+ * rows. We still try a handful of alternate key spellings in case the feed
+ * schema changes again, but no longer pretend fields exist that don't.
  *
  * Normalised driver shape:
  * {
@@ -169,42 +213,61 @@ async function fetchDrivers(gameId) {
  *   firstName:   string,
  *   lastName:    string,
  *   shortName:   string,   // "HAM"
- *   number:      number,   // Racing number (44)
+ *   number:      number|null,  // NOT provided by this feed today
  *   teamId:      string,
  *   teamName:    string,   // "Ferrari"
- *   teamColour:  string,   // "#E8002D"
- *   headshotUrl: string,
- *   priceM:      number,   // price in millions
+ *   teamColour:  string,   // NOT provided by this feed today
+ *   headshotUrl: string,   // NOT provided by this feed today
+ *   priceM:      number,   // price in millions, used as-is (feed value IS in millions)
  *   isActive:    boolean,
  * }
  */
+// Like `a ?? b ?? c`, but also skips empty strings — several fields in the
+// real feed (e.g. CONSTRUCTOR rows' TeamName) are present but blank ("")
+// rather than absent, which `??` alone would treat as a valid value.
+function firstNonEmpty(...values) {
+  for (const v of values) {
+    if (v !== null && v !== undefined && v !== "") return v;
+  }
+  return "";
+}
+
 function extractPlayersFromDriverFeed(raw) {
-  // Try to find the players list in various known locations
-  const inner   = raw?.Data?.Value ?? raw?.Data ?? raw;
-  const allList = inner?.Players ?? inner?.players ?? inner?.Drivers ?? inner?.drivers
-                   ?? inner?.Elements ?? inner?.elements ?? [];
+  const inner = raw?.Data?.Value ?? raw?.Data ?? raw;
+  const allList = Array.isArray(inner)
+    ? inner
+    : (inner?.Players ?? inner?.players ?? inner?.Drivers ?? inner?.drivers
+        ?? inner?.Elements ?? inner?.elements ?? []);
 
   const drivers      = [];
   const constructors = [];
 
   for (const p of allList) {
-    const positionId = String(p.PositionId ?? p.positionId ?? p.position_id ?? "1");
-    const isConstructor = positionId === "2" || (p.IsConstructor ?? p.isConstructor ?? false);
+    const positionName = String(p.PositionName ?? p.positionName ?? "").toUpperCase();
+    const isConstructor = positionName === "CONSTRUCTOR"
+      || (p.IsConstructor ?? p.isConstructor ?? false);
+
+    const fullName = firstNonEmpty(
+      p.DisplayName, p.displayName, p.FUllName, p.FullName, p.fullName, p.Name, p.name,
+      `${firstNonEmpty(p.FirstName, p.PlayerForename, p.firstName)} ${firstNonEmpty(p.LastName, p.PlayerSurname, p.lastName)}`.trim(),
+      p.TeamName, p.teamName,
+    );
 
     const normalised = {
       playerId:    String(p.PlayerId    ?? p.playerId    ?? p.Id        ?? p.id        ?? ""),
-      name:        p.DisplayName ?? p.displayName ?? p.Name ?? p.name
-                     ?? `${p.PlayerForename ?? p.firstName ?? ""} ${p.PlayerSurname ?? p.lastName ?? ""}`.trim(),
-      firstName:   p.PlayerForename ?? p.firstName  ?? p.FirstName  ?? "",
-      lastName:    p.PlayerSurname  ?? p.lastName   ?? p.LastName   ?? "",
-      shortName:   p.ShortName ?? p.shortName ?? p.Abbreviation ?? p.abbreviation ?? p.Code ?? "",
+      name:        fullName,
+      firstName:   firstNonEmpty(p.FirstName, p.PlayerForename, p.firstName),
+      lastName:    firstNonEmpty(p.LastName, p.PlayerSurname, p.lastName),
+      shortName:   firstNonEmpty(p.DriverTLA, p.ShortName, p.shortName, p.Abbreviation, p.abbreviation, p.Code),
       number:      Number(p.Number ?? p.number ?? p.DriverNumber ?? p.driverNumber ?? 0) || null,
       teamId:      String(p.TeamId    ?? p.teamId    ?? p.ConstructorId ?? ""),
-      teamName:    p.TeamName  ?? p.teamName  ?? p.Team ?? p.team ?? p.ConstructorName ?? "",
+      // CONSTRUCTOR rows carry the team's own name in DisplayName/FUllName,
+      // not TeamName (which is blank there) — fullName already resolves this.
+      teamName:    isConstructor ? fullName : firstNonEmpty(p.TeamName, p.teamName, p.Team, p.team, p.ConstructorName),
       teamColour:  normaliseColour(p.TeamColour ?? p.teamColour ?? p.Color ?? p.colour ?? ""),
       headshotUrl: p.ImageUrl  ?? p.imageUrl  ?? p.HeadshotUrl ?? p.headshotUrl ?? p.Photo ?? "",
-      priceM:      Number(p.Value ?? p.value ?? p.Price ?? p.price ?? 0) / 1_000_000 || null,
-      isActive:    p.IsActive  ?? p.isActive  ?? p.Active ?? p.active ?? true,
+      priceM:      Number(p.Value ?? p.value ?? p.Price ?? p.price ?? 0) || null,
+      isActive:    String(p.IsActive ?? p.isActive ?? p.Active ?? p.active ?? "1") !== "0",
     };
 
     if (isConstructor) {
@@ -226,11 +289,23 @@ function normaliseColour(raw) {
 
 // ─── 4. Cross-verify with OpenF1 ─────────────────────────────────────────────
 
-async function crossVerifyWithOpenF1(fantasyDrivers) {
+async function crossVerifyWithOpenF1(fantasyDrivers, openf1SessionKey) {
   console.log("\n── Cross-verifying with OpenF1 ──────────────────────────────────");
+  // Prefer the exact OpenF1 session_key for the most recently completed race,
+  // read from the Fantasy schedule's FOMMEETINGSESSIONKEY field (verified to
+  // match OpenF1's session_key one-to-one). `session_key=latest` is only a
+  // fallback: right after a season rolls over (or before OpenF1 has ingested
+  // the new season's sessions) it can silently point at last season's grid —
+  // the exact bug this whole data pipeline was built to avoid.
+  const sessionKey = openf1SessionKey || "latest";
+  if (openf1SessionKey) {
+    console.log(`  Using exact OpenF1 session_key=${sessionKey} (from Fantasy schedule)`);
+  } else {
+    console.warn("  No session key found in Fantasy schedule — falling back to session_key=latest (less reliable)");
+  }
   try {
     const openF1 = await fetchJSON(
-      `${OPENF1_BASE}/drivers?session_key=latest`,
+      `${OPENF1_BASE}/drivers?session_key=${sessionKey}`,
       "OpenF1 drivers"
     );
 
@@ -277,7 +352,7 @@ async function crossVerifyWithOpenF1(fantasyDrivers) {
 
     console.log(`  Result: ${matched} matched, ${mismatched} mismatched, ${missing} missing from OpenF1`);
     if (missing > 0) {
-      console.log("  (Missing drivers are likely 2026 newcomers not yet in OpenF1's session_key=latest)");
+      console.log(`  (Missing drivers didn't appear in OpenF1 session_key=${sessionKey} — could be a session ${openf1SessionKey ? "absence (e.g. reserve/substitute who sat out)" : "mismatch since no exact session_key was available"})`);
     }
   } catch (err) {
     console.warn(`  OpenF1 cross-verify failed: ${err.message}`);
@@ -311,8 +386,9 @@ async function main() {
 
   // 2. Race schedule
   console.log("2/3 raceday_en.json …");
+  let races = [];
   try {
-    await fetchSchedule();
+    races = await fetchSchedule();
   } catch (err) {
     console.error(`  ✗ ${err.message}`);
   }
@@ -327,9 +403,14 @@ async function main() {
     console.error(`  ✗ ${err.message}`);
   }
 
-  // 4. Cross-verify
+  // 4. Cross-verify against the OpenF1 session for the most recently
+  // completed race, so we compare against the correct season's grid instead
+  // of guessing via session_key=latest.
   if (fantasyDrivers.length > 0) {
-    await crossVerifyWithOpenF1(fantasyDrivers);
+    const lastCompleted = races
+      .filter(r => r.isComplete && r.openf1SessionKey)
+      .sort((a, b) => new Date(b.dateStart) - new Date(a.dateStart))[0];
+    await crossVerifyWithOpenF1(fantasyDrivers, lastCompleted?.openf1SessionKey);
   }
 
   console.log("\n=== Done ===");
