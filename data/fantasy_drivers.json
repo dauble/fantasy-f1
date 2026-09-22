@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-22T01:57:46.031Z",
+  "fetchedAt": "2026-09-22T05:01:35.535Z",
   "gameId": "15",
   "drivers": [
     {
@@ -2810,9 +2810,9 @@
         }
       ],
       "FeedTime": {
-        "UTCTime": "9/22/2026 1:42:59 AM",
-        "ISTTime": "9/22/2026 7:12:59 AM",
-        "CESTTime": "9/22/2026 3:42:59 AM"
+        "UTCTime": "9/22/2026 4:45:21 AM",
+        "ISTTime": "9/22/2026 10:15:21 AM",
+        "CESTTime": "9/22/2026 6:45:21 AM"
       }
     },
     "Meta": {
@@ -2820,9 +2820,9 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "9/22/2026 1:42:59 AM",
-        "ISTTime": "9/22/2026 7:12:59 AM",
-        "CESTTime": "9/22/2026 3:42:59 AM"
+        "UTCTime": "9/22/2026 4:45:21 AM",
+        "ISTTime": "9/22/2026 10:15:21 AM",
+        "CESTTime": "9/22/2026 6:45:21 AM"
       },
       "StatusCode": 200,
       "Maintenance": ""
