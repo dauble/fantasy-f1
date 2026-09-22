@@ -220,6 +220,73 @@ const FANTASY_NAME_TO_DRIVER_NUMBER = {
   "Oliver Bearman":    { number: 87, abbr: "BEA" },
 };
 
+// ─── Driver identity resolution ──────────────────────────────────────────────
+//
+// The two Fantasy feeds spell a driver's name differently: fantasy_drivers.json
+// abbreviates the first name ("G. Russell"), while price_snapshots.json spells
+// it out in full ("George Russell"). Looking either one up directly against
+// FANTASY_NAME_TO_DRIVER_NUMBER (keyed by full name) only ever matches the
+// second shape — a driver from the first feed silently falls back to their
+// Fantasy playerId as `driver_number`, which collides with nothing on OpenF1
+// and breaks every downstream driver_number comparison (team selections,
+// AI prediction matching, price lookups).
+//
+// Resolve by whichever identifier each feed actually provides, most reliable
+// first: TLA/short code (matches OpenF1's name_acronym 1:1), full name,
+// first+last name (covers the abbreviated-name feed), then last name alone
+// when it's unambiguous across the grid.
+
+function normalizeDriverName(name) {
+  return String(name || "")
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const MAPPING_BY_ABBR = new Map();
+const MAPPING_BY_NAME = new Map();
+const MAPPING_BY_LAST_NAME = new Map();
+
+{
+  const lastNameCounts = new Map();
+  for (const fullName of Object.keys(FANTASY_NAME_TO_DRIVER_NUMBER)) {
+    const last = normalizeDriverName(fullName).split(" ").pop();
+    lastNameCounts.set(last, (lastNameCounts.get(last) || 0) + 1);
+  }
+  for (const [fullName, mapping] of Object.entries(FANTASY_NAME_TO_DRIVER_NUMBER)) {
+    MAPPING_BY_ABBR.set(mapping.abbr.toUpperCase(), mapping);
+    MAPPING_BY_NAME.set(normalizeDriverName(fullName), mapping);
+    const last = normalizeDriverName(fullName).split(" ").pop();
+    if (lastNameCounts.get(last) === 1) MAPPING_BY_LAST_NAME.set(last, mapping);
+  }
+}
+
+/**
+ * Resolves a Fantasy driver record to its real racing number + abbreviation.
+ * Returns null when nothing matches (e.g. a rookie not yet added to
+ * FANTASY_NAME_TO_DRIVER_NUMBER) so callers can fall back explicitly.
+ */
+function resolveDriverMapping({ name, firstName, lastName, shortName }) {
+  if (shortName) {
+    const byAbbr = MAPPING_BY_ABBR.get(String(shortName).toUpperCase());
+    if (byAbbr) return byAbbr;
+  }
+
+  const byFullName = MAPPING_BY_NAME.get(normalizeDriverName(name));
+  if (byFullName) return byFullName;
+
+  if (firstName && lastName) {
+    const byFirstLast = MAPPING_BY_NAME.get(normalizeDriverName(`${firstName} ${lastName}`));
+    if (byFirstLast) return byFirstLast;
+  }
+
+  const lastToken = normalizeDriverName(lastName || name).split(" ").pop();
+  return MAPPING_BY_LAST_NAME.get(lastToken) || null;
+}
+
 // 2026 team hex colours (kept server-side so they can be included in the grid
 // response without requiring the client to have its own copy).
 const TEAM_COLOURS_2026 = {
@@ -270,9 +337,12 @@ function buildGridFromSnapshot(snapshot) {
   const byNumber = new Map();
 
   for (const d of snapshot.drivers) {
-    const mapping = FANTASY_NAME_TO_DRIVER_NUMBER[d.name];
+    const mapping = resolveDriverMapping({ name: d.name });
     const driverNumber = mapping ? mapping.number : Number(d.playerId);
     const abbr = mapping ? mapping.abbr : d.name.split(" ").map(p => p[0]).join("").toUpperCase().slice(0, 3);
+    if (!mapping) {
+      console.warn(`[/api/openf1/drivers] No number mapping for "${d.name}" — using Fantasy playerId ${d.playerId} as driver_number`);
+    }
 
     const entry = {
       driver_number: driverNumber,
@@ -333,9 +403,14 @@ async function fetchDriversFromSnapshot() {
       for (const d of drivers) {
         if (!d.isActive && d.isActive !== undefined) continue; // skip inactive
         // Prefer number from feed; fall back to static map; finally use playerId
-        const mapping = FANTASY_NAME_TO_DRIVER_NUMBER[d.name];
+        const mapping = resolveDriverMapping({
+          name: d.name, firstName: d.firstName, lastName: d.lastName, shortName: d.shortName,
+        });
         const driverNumber = d.number || (mapping ? mapping.number : Number(d.playerId));
         if (!driverNumber) continue;
+        if (!d.number && !mapping) {
+          console.warn(`[/api/openf1/drivers] No number mapping for "${d.name}" (playerId ${d.playerId}) — using Fantasy playerId as driver_number`);
+        }
 
         const abbr = d.shortName || (mapping ? mapping.abbr : (d.name || "").split(" ").map(p => p[0]).join("").slice(0, 3).toUpperCase());
 

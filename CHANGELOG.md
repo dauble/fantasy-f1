@@ -4,6 +4,17 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.13.1 - 2026-09-22 - Fixed Driver Number Resolution
+
+### Fixed: Driver Identity Mismatch Between Fantasy F1 and OpenF1
+
+- `/api/openf1/drivers` was matching each Fantasy F1 driver against the static `FANTASY_NAME_TO_DRIVER_NUMBER` name→number map using an exact string match on the feed's `name` field. `data/fantasy_drivers.json` (the primary source since v0.13.0) spells that field with an abbreviated first name (e.g. `"G. Russell"`), which never matches the map's full-name keys (`"George Russell"`) — so the lookup missed for every driver, silently falling back to the driver's Fantasy-internal `playerId` as `driver_number`.
+- This meant the driver grid, team selections (Team Builder, Team History), and price lookups were all keyed by Fantasy `playerId` instead of the real racing number — visible as mismatched badges in the UI (e.g. Russell showing `#124` instead of `#63`). Because AI predictions resolve driver identity separately, from real OpenF1 session data, a saved team's `driver_number`s no longer matched `driver_trends`, so selections weren't recognized by the prediction/recommendation flow at all.
+- Replaced the single name-string lookup with `resolveDriverMapping()`, which tries the most reliable identifier each feed actually provides: TLA/short code (`shortName`, matches OpenF1's `name_acronym`), full name, first+last name (covers the abbreviated-name feed), then last name alone when it's unambiguous across the grid. Applied consistently in both `fetchDriversFromSnapshot()` (`fantasy_drivers.json`) and `buildGridFromSnapshot()` (`price_snapshots.json`) so either feed resolves correctly regardless of which name format it uses.
+- As a side effect, this also fixes a mid-season team swap (Liam Lawson: Racing Bulls → Red Bull Racing) that previously showed as two separate driver cards under different fake numbers — it now correctly dedupes into a single entry under his real number (30).
+
+---
+
 ## Version 0.13.0 - 2026-09-21 - Redeployment, Shared Data Sources, and Bug Fixes
 
 The app had gone offline (its Fly.io app/account no longer existed). This release covers bringing it back online plus several features and fixes that came out of that work.
