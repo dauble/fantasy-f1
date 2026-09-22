@@ -1,4 +1,4 @@
-// Team color mappings based on 2024 F1 season
+// Team color mappings — updated for 2026 F1 season
 export const TEAM_COLORS = {
   'Red Bull Racing': '#3671C6',
   'Mercedes': '#27F4D2',
@@ -10,6 +10,10 @@ export const TEAM_COLORS = {
   'RB': '#6692FF',
   'Kick Sauber': '#52E252',
   'Haas F1 Team': '#B6BABD',
+  // 2026 new / rebranded teams
+  'Audi': '#D0D0D0',
+  'Cadillac': '#CC1E4A',
+  'Racing Bulls': '#6692FF',
   // Aliases
   'Red Bull': '#3671C6',
   'Aston Martin F1 Team': '#229971',
@@ -18,7 +22,6 @@ export const TEAM_COLORS = {
   'Haas': '#B6BABD',
   'Sauber': '#52E252',
   'AlphaTauri': '#6692FF',
-  'Racing Bulls': '#6692FF',
   'Visa Cash App RB': '#6692FF',
 };
 

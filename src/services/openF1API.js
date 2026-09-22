@@ -66,9 +66,10 @@ async function cachedAPICall(endpoint, params, retryCount = 0) {
 
 export const openF1API = {
   // Get the current driver grid. Served by our own backend (/api/openf1/drivers),
-  // which reads from the shared Cloudflare Worker KV cache when configured,
-  // falling back to a direct OpenF1 call server-side. Either way, this keeps
-  // driver-grid requests to one per backend cache window instead of one per browser.
+  // which now uses the Fantasy F1 price snapshot as the primary source (so it
+  // always reflects the current season's grid) and falls back to the Cloudflare
+  // Worker KV cache / OpenF1 directly. Either way, this keeps driver-grid
+  // requests to one per backend cache window instead of one per browser.
   async getDrivers(year = CURRENT_YEAR) {
     const endpoint = 'local_drivers';
     const params = {};
@@ -77,8 +78,9 @@ export const openF1API = {
     if (cached) return cached;
 
     try {
-      const response = await axios.get('/api/openf1/drivers');
-      const data = response.data;
+      const response = await fetch('/api/openf1/drivers');
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const data = await response.json();
       apiCache.set(endpoint, params, data);
       return data;
     } catch (error) {
