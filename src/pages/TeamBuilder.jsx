@@ -67,6 +67,9 @@ const TeamBuilder = () => {
       setShowCompleteBanner(false);
     }
   }, [selectedDrivers.length, selectedConstructors.length]);
+
+  useEffect(() => {
+    if (selectedDrivers.length > 0 || selectedConstructors.length > 0) {
       const teamData = {
         selectedDrivers,
         selectedConstructors,

@@ -3,14 +3,22 @@ name: Refresh F1 Fantasy Prices
 permissions:
   contents: write
 
-# Snapshots the official (public, no auth) F1 Fantasy statistics feed daily so
-# Price Manager's "Sync Official Prices" has real driver/constructor prices,
-# and so a price-change trend builds up over the season for predictions.
+# Snapshots several official (public, no auth) F1 Fantasy feeds daily so
+# the app always has up-to-date driver/constructor rosters and prices:
 #
-# Only commits data/price_snapshots.json when the data actually changed, same
-# spirit as the Cloudflare Worker's hash-based dedupe in the countdown-to-f1
-# project. A commit to main here triggers the existing "Deploy to Fly.io"
-# workflow (it deploys on every push to main).
+#   scripts/fetch-fantasy-prices.mjs  → data/price_snapshots.json
+#     driverconstructors_4.json: prices, points, selection%
+#
+#   scripts/fetch-fantasy-feeds.mjs   → data/fantasy_config.json
+#                                       data/fantasy_schedule.json
+#                                       data/fantasy_drivers.json
+#     web_config.json: game IDs, active rounds, etc.
+#     raceday_en.json: full season race calendar
+#     drivers/{gameId}_en.json: full player roster with numbers, headshots, colours
+#     (also cross-verifies the driver list against OpenF1 and logs any mismatches)
+#
+# Only commits when any data file actually changed. A commit to main triggers
+# the "Deploy to Fly.io" workflow.
 
 on:
   schedule:
@@ -31,18 +39,19 @@ jobs:
         with:
           node-version: 20
 
-      - name: Fetch latest F1 Fantasy prices
+      - name: Fetch latest F1 Fantasy prices (statistics feed)
         run: node scripts/fetch-fantasy-prices.mjs
 
-      - name: Commit snapshot if changed
+      - name: Fetch F1 Fantasy config, schedule, and driver roster
+        run: node scripts/fetch-fantasy-feeds.mjs
+
+      - name: Commit snapshots if changed
         run: |
-          if git diff --quiet -- data/price_snapshots.json; then
-            echo "No price changes since last snapshot — nothing to commit."
-            exit 0
-          fi
+          git diff --quiet -- data/price_snapshots.json data/fantasy_config.json data/fantasy_schedule.json data/fantasy_drivers.json \
+            && echo "No changes since last snapshot — nothing to commit." && exit 0
 
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add data/price_snapshots.json
-          git commit -m "chore: refresh F1 Fantasy price snapshot"
+          git add data/price_snapshots.json data/fantasy_config.json data/fantasy_schedule.json data/fantasy_drivers.json
+          git commit -m "chore: refresh F1 Fantasy feed snapshots"
           git push

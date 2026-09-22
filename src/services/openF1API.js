@@ -70,7 +70,7 @@ export const openF1API = {
   // always reflects the current season's grid) and falls back to the Cloudflare
   // Worker KV cache / OpenF1 directly. Either way, this keeps driver-grid
   // requests to one per backend cache window instead of one per browser.
-  async getDrivers(year = CURRENT_YEAR) {
+  async getDrivers() {
     const endpoint = 'local_drivers';
     const params = {};
 

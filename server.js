@@ -111,7 +111,10 @@ app.get("/api/config", (_req, res) => {
 // empty history gracefully if the file doesn't exist yet (e.g. before the
 // workflow has ever run).
 
-const PRICE_SNAPSHOTS_PATH = join(__dirname, "data", "price_snapshots.json");
+const PRICE_SNAPSHOTS_PATH   = join(__dirname, "data", "price_snapshots.json");
+const FANTASY_CONFIG_PATH    = join(__dirname, "data", "fantasy_config.json");
+const FANTASY_SCHEDULE_PATH  = join(__dirname, "data", "fantasy_schedule.json");
+const FANTASY_DRIVERS_PATH   = join(__dirname, "data", "fantasy_drivers.json");
 const PRICE_HISTORY_LIMIT = 14;
 
 app.get("/api/fantasy-prices", rateLimiter, async (_req, res) => {
@@ -128,6 +131,56 @@ app.get("/api/fantasy-prices", rateLimiter, async (_req, res) => {
     console.error("[/api/fantasy-prices] Error reading price snapshots:", err.message);
     return res.status(500).json({ error: "Failed to read price snapshots", details: err.message });
   }
+});
+
+// ─── Fantasy F1 feed snapshots ────────────────────────────────────────────────
+//
+// data/fantasy_config.json, data/fantasy_schedule.json, and
+// data/fantasy_drivers.json are written daily by the
+// scripts/fetch-fantasy-feeds.mjs script (run by the
+// refresh-fantasy-prices workflow). They contain:
+//
+//   /api/fantasy/config   — web_config.json: game IDs, active rounds, etc.
+//   /api/fantasy/schedule — raceday_en.json: full season race calendar
+//   /api/fantasy/drivers  — drivers/{gameId}_en.json: full player roster
+//                           with racing numbers, headshots, team colours.
+//
+// All three return { ok: false } gracefully when the file hasn't been
+// written yet (e.g. first deploy before the workflow has run).
+
+async function readSnapshot(filePath, label) {
+  try {
+    const raw = await readFile(filePath, "utf-8");
+    return JSON.parse(raw);
+  } catch (err) {
+    if (err.code === "ENOENT") return null;
+    console.error(`[${label}] Error reading ${filePath}:`, err.message);
+    return null;
+  }
+}
+
+app.get("/api/fantasy/config", rateLimiter, async (_req, res) => {
+  const data = await readSnapshot(FANTASY_CONFIG_PATH, "/api/fantasy/config");
+  if (!data) return res.json({ ok: false, reason: "snapshot not yet available" });
+  return res.json({ ok: true, fetchedAt: data.fetchedAt, config: data.raw });
+});
+
+app.get("/api/fantasy/schedule", rateLimiter, async (_req, res) => {
+  const data = await readSnapshot(FANTASY_SCHEDULE_PATH, "/api/fantasy/schedule");
+  if (!data) return res.json({ ok: false, reason: "snapshot not yet available", races: [] });
+  return res.json({ ok: true, fetchedAt: data.fetchedAt, races: data.races });
+});
+
+app.get("/api/fantasy/drivers", rateLimiter, async (_req, res) => {
+  const data = await readSnapshot(FANTASY_DRIVERS_PATH, "/api/fantasy/drivers");
+  if (!data) return res.json({ ok: false, reason: "snapshot not yet available", drivers: [], constructors: [] });
+  return res.json({
+    ok: true,
+    fetchedAt: data.fetchedAt,
+    gameId: data.gameId,
+    drivers: data.drivers,
+    constructors: data.constructors,
+  });
 });
 
 // ─── 2026 F1 driver roster: Fantasy player name → racing number + abbreviation ─
@@ -191,20 +244,20 @@ function teamColour(teamName) {
   return "#6B7280";
 }
 
-// ─── Build driver grid from Fantasy F1 price snapshot ────────────────────────
+// ─── Build driver grid from Fantasy F1 feeds ─────────────────────────────────
 //
-// Reads the latest entry from data/price_snapshots.json (fetched daily by the
-// refresh-fantasy-prices workflow from fantasy.formula1.com) and converts each
-// entry into the OpenF1-compatible shape expected by the frontend.
+// Primary: data/fantasy_drivers.json (drivers/{gameId}_en.json snapshot).
+//   This is the richest source: racing numbers, abbreviations, team colours,
+//   headshot URLs, and prices come directly from the Fantasy platform.
+//   Written by scripts/fetch-fantasy-feeds.mjs.
 //
-// The Fantasy feed is the authoritative source for WHICH drivers are racing in
-// the current season; FANTASY_NAME_TO_DRIVER_NUMBER maps each name to the
-// official FIA racing number.
+// Secondary: data/price_snapshots.json (driverconstructors_4.json snapshot).
+//   Contains names, teams, and prices but not racing numbers; enriched with a
+//   static name→number map so the frontend can key everything off race numbers.
+//   Written by scripts/fetch-fantasy-prices.mjs.
 //
-// When a driver name has multiple entries (e.g. a mid-season team swap leaves
-// both the old and new team record in the feed), we deduplicate by racing
-// number and prefer whichever record's team matches the resolved number's
-// expected team, or simply the last record if no clear preference.
+// Both files are committed to the repo by GitHub Actions and ship inside the
+// deployed Docker image, so they're always available even after a cache clear.
 
 function buildGridFromSnapshot(snapshot) {
   if (!snapshot?.drivers?.length) return null;
@@ -266,17 +319,72 @@ const DRIVERS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 let driversCache = { data: null, fetchedAt: 0 };
 
 async function fetchDriversFromSnapshot() {
+  // ── Path 1: fantasy_drivers.json (richest — real numbers, headshots, colours)
+  try {
+    const raw = await readFile(FANTASY_DRIVERS_PATH, "utf-8");
+    const data = JSON.parse(raw);
+    const drivers = data?.drivers;
+    if (Array.isArray(drivers) && drivers.length > 0) {
+      const byNumber = new Map();
+      for (const d of drivers) {
+        if (!d.isActive && d.isActive !== undefined) continue; // skip inactive
+        // Prefer number from feed; fall back to static map; finally use playerId
+        const mapping = FANTASY_NAME_TO_DRIVER_NUMBER[d.name];
+        const driverNumber = d.number || (mapping ? mapping.number : Number(d.playerId));
+        if (!driverNumber) continue;
+
+        const abbr = d.shortName || (mapping ? mapping.abbr : (d.name || "").split(" ").map(p => p[0]).join("").slice(0, 3).toUpperCase());
+
+        const entry = {
+          driver_number: driverNumber,
+          full_name:     d.name,
+          name_acronym:  abbr,
+          team_name:     d.teamName,
+          team_colour:   d.teamColour || teamColour(d.teamName),
+          headshot_url:  d.headshotUrl || null,
+          country_code:  null,
+          fantasy_player_id: d.playerId,
+          price_m:       d.priceM,
+        };
+
+        if (!byNumber.has(driverNumber)) {
+          byNumber.set(driverNumber, entry);
+        } else {
+          // Keep the entry whose team is NOT a junior team (same logic as below)
+          const newTeam = (d.teamName || "").toLowerCase();
+          const juniorTeams = ["racing bulls", "rb", "alphatauri", "visa cash app rb"];
+          if (!juniorTeams.some(t => newTeam.includes(t))) {
+            byNumber.set(driverNumber, entry);
+          }
+        }
+      }
+      const grid = Array.from(byNumber.values());
+      if (grid.length > 0) {
+        console.log(`[/api/openf1/drivers] Serving ${grid.length} drivers from fantasy_drivers.json`);
+        return grid;
+      }
+    }
+  } catch (err) {
+    if (err.code !== "ENOENT") {
+      console.warn("[/api/openf1/drivers] fantasy_drivers.json read error:", err.message);
+    }
+  }
+
+  // ── Path 2: price_snapshots.json + static name→number map
   try {
     const raw = await readFile(PRICE_SNAPSHOTS_PATH, "utf-8");
     const snapshots = JSON.parse(raw);
     if (!Array.isArray(snapshots) || snapshots.length === 0) return null;
     const latest = snapshots[snapshots.length - 1];
     const drivers = buildGridFromSnapshot(latest);
-    if (drivers && drivers.length > 0) return drivers;
+    if (drivers && drivers.length > 0) {
+      console.log(`[/api/openf1/drivers] Serving ${drivers.length} drivers from price_snapshots.json`);
+      return drivers;
+    }
     return null;
   } catch (err) {
     if (err.code !== "ENOENT") {
-      console.warn("[/api/openf1/drivers] Snapshot read error:", err.message);
+      console.warn("[/api/openf1/drivers] price_snapshots.json read error:", err.message);
     }
     return null;
   }
