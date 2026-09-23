@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-22T05:01:35.126Z",
+  "fetchedAt": "2026-09-23T05:01:34.691Z",
   "races": [
     {
       "round": 1,
@@ -5283,12 +5283,12 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "9/17/2026 2:00:34 PM",
-        "ISTTime": "9/17/2026 7:30:34 PM",
-        "CESTTime": "9/17/2026 4:00:34 PM"
+        "UTCTime": "9/22/2026 3:29:57 PM",
+        "ISTTime": "9/22/2026 8:59:57 PM",
+        "CESTTime": "9/22/2026 5:29:57 PM"
       },
       "StatusCode": 200,
-      "Maintenance": ""
+      "Maintenance": "0"
     }
   }
 }

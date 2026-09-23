@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-22T05:01:35.535Z",
+  "fetchedAt": "2026-09-23T05:01:35.008Z",
   "gameId": "15",
   "drivers": [
     {
@@ -87,11 +87,11 @@
       "isActive": true
     },
     {
-      "playerId": "121",
-      "name": "S. Perez",
-      "firstName": "Sergio",
-      "lastName": "Perez",
-      "shortName": "PER",
+      "playerId": "13",
+      "name": "V. Bottas",
+      "firstName": "Valtteri",
+      "lastName": "Bottas",
+      "shortName": "BOT",
       "number": null,
       "teamId": "2641",
       "teamName": "Cadillac",
@@ -101,11 +101,11 @@
       "isActive": true
     },
     {
-      "playerId": "13",
-      "name": "V. Bottas",
-      "firstName": "Valtteri",
-      "lastName": "Bottas",
-      "shortName": "BOT",
+      "playerId": "121",
+      "name": "S. Perez",
+      "firstName": "Sergio",
+      "lastName": "Perez",
+      "shortName": "PER",
       "number": null,
       "teamId": "2641",
       "teamName": "Cadillac",
@@ -227,25 +227,25 @@
       "isActive": true
     },
     {
-      "playerId": "114",
-      "name": "L. Lawson",
-      "firstName": "Liam",
-      "lastName": "Lawson",
-      "shortName": "LAW",
-      "number": null,
-      "teamId": "2636",
-      "teamName": "Racing Bulls",
-      "teamColour": "",
-      "headshotUrl": "",
-      "priceM": 10.3,
-      "isActive": false
-    },
-    {
       "playerId": "130",
       "name": "Y. Tsunoda",
       "firstName": "Yuki",
       "lastName": "Tsunoda",
       "shortName": "TSU",
+      "number": null,
+      "teamId": "2636",
+      "teamName": "Racing Bulls",
+      "teamColour": "",
+      "headshotUrl": "",
+      "priceM": 9.7,
+      "isActive": false
+    },
+    {
+      "playerId": "114",
+      "name": "L. Lawson",
+      "firstName": "Liam",
+      "lastName": "Lawson",
+      "shortName": "LAW",
       "number": null,
       "teamId": "2636",
       "teamName": "Racing Bulls",
@@ -294,7 +294,7 @@
       "teamColour": "",
       "headshotUrl": "",
       "priceM": 15.1,
-      "isActive": true
+      "isActive": false
     },
     {
       "playerId": "11032",
@@ -308,7 +308,7 @@
       "teamColour": "",
       "headshotUrl": "",
       "priceM": 14.5,
-      "isActive": false
+      "isActive": true
     },
     {
       "playerId": "125",
@@ -895,72 +895,6 @@
           "ProjectedOverallPpints": "-11.00"
         },
         {
-          "PlayerId": "121",
-          "Skill": 1,
-          "PositionName": "DRIVER",
-          "Value": 3,
-          "TeamId": "2641",
-          "FUllName": "Sergio Perez",
-          "DisplayName": "S. Perez",
-          "TeamName": "Cadillac",
-          "Status": "0",
-          "IsActive": "1",
-          "DriverTLA": "PER",
-          "DriverReference": "SERPER01",
-          "CountryName": "Guadalajara, Mexico",
-          "OverallPpints": "8.00",
-          "GamedayPoints": "0",
-          "SelectedPercentage": "20",
-          "CaptainSelectedPercentage": "0",
-          "OldPlayerValue": 3,
-          "BestRaceFinished": "14",
-          "HigestGridStart": "14",
-          "HigestChampFinish": "",
-          "FastestPitstopAward": "",
-          "BestRaceFinishCount": 2,
-          "HighestGridStartCount": 1,
-          "HighestChampFinishCount": 0,
-          "FastestPitstopAwardCount": 0,
-          "QualifyingPoints": "",
-          "RacePoints": "",
-          "SprintPoints": "",
-          "NoNegativePoints": "",
-          "F1PlayerId": "21",
-          "FirstName": "Sergio",
-          "LastName": "Perez",
-          "SessionWisePoints": [
-            {
-              "sessionnumber": 1,
-              "sessiontype": "Qualifying",
-              "points": null,
-              "nonegative_points": null
-            },
-            {
-              "sessionnumber": 2,
-              "sessiontype": "Race",
-              "points": null,
-              "nonegative_points": null
-            }
-          ],
-          "AdditionalStats": {
-            "fastest_lap_pts": 0,
-            "dotd_pts": 0,
-            "overtaking_pts": 74,
-            "q3_finishes_pts": 0,
-            "top10_race_position_pts": 0,
-            "top8_sprint_position_pts": 0,
-            "total_position_pts": 0,
-            "total_position_gained_lost": 34,
-            "total_dnf_dq_pts": -100,
-            "value_for_money": 0.19
-          },
-          "old_Value": 0,
-          "new_value": 0,
-          "ProjectedGamedayPoints": "0",
-          "ProjectedNoNegativePoints": "0",
-          "ProjectedOverallPpints": "8.00"
-        },
-        {
           "PlayerId": "13",
           "Skill": 1,
           "PositionName": "DRIVER",
@@ -1025,6 +959,72 @@
           "ProjectedGamedayPoints": "0",
           "ProjectedNoNegativePoints": "0",
           "ProjectedOverallPpints": "-73.00"
+        },
+        {
+          "PlayerId": "121",
+          "Skill": 1,
+          "PositionName": "DRIVER",
+          "Value": 3,
+          "TeamId": "2641",
+          "FUllName": "Sergio Perez",
+          "DisplayName": "S. Perez",
+          "TeamName": "Cadillac",
+          "Status": "0",
+          "IsActive": "1",
+          "DriverTLA": "PER",
+          "DriverReference": "SERPER01",
+          "CountryName": "Guadalajara, Mexico",
+          "OverallPpints": "8.00",
+          "GamedayPoints": "0",
+          "SelectedPercentage": "20",
+          "CaptainSelectedPercentage": "0",
+          "OldPlayerValue": 3,
+          "BestRaceFinished": "14",
+          "HigestGridStart": "14",
+          "HigestChampFinish": "",
+          "FastestPitstopAward": "",
+          "BestRaceFinishCount": 2,
+          "HighestGridStartCount": 1,
+          "HighestChampFinishCount": 0,
+          "FastestPitstopAwardCount": 0,
+          "QualifyingPoints": "",
+          "RacePoints": "",
+          "SprintPoints": "",
+          "NoNegativePoints": "",
+          "F1PlayerId": "21",
+          "FirstName": "Sergio",
+          "LastName": "Perez",
+          "SessionWisePoints": [
+            {
+              "sessionnumber": 1,
+              "sessiontype": "Qualifying",
+              "points": null,
+              "nonegative_points": null
+            },
+            {
+              "sessionnumber": 2,
+              "sessiontype": "Race",
+              "points": null,
+              "nonegative_points": null
+            }
+          ],
+          "AdditionalStats": {
+            "fastest_lap_pts": 0,
+            "dotd_pts": 0,
+            "overtaking_pts": 74,
+            "q3_finishes_pts": 0,
+            "top10_race_position_pts": 0,
+            "top8_sprint_position_pts": 0,
+            "total_position_pts": 0,
+            "total_position_gained_lost": 34,
+            "total_dnf_dq_pts": -100,
+            "value_for_money": 0.19
+          },
+          "old_Value": 0,
+          "new_value": 0,
+          "ProjectedGamedayPoints": "0",
+          "ProjectedNoNegativePoints": "0",
+          "ProjectedOverallPpints": "8.00"
         },
         {
           "PlayerId": "110",
@@ -1555,72 +1555,6 @@
           "ProjectedOverallPpints": "594.00"
         },
         {
-          "PlayerId": "114",
-          "Skill": 1,
-          "PositionName": "DRIVER",
-          "Value": 10.3,
-          "TeamId": "2636",
-          "FUllName": "Liam Lawson",
-          "DisplayName": "L. Lawson",
-          "TeamName": "Racing Bulls",
-          "Status": "0",
-          "IsActive": "0",
-          "DriverTLA": "LAW",
-          "DriverReference": "LIALAW01",
-          "CountryName": "Hastings, New Zealand",
-          "OverallPpints": "131.00",
-          "GamedayPoints": "0",
-          "SelectedPercentage": "24",
-          "CaptainSelectedPercentage": "0",
-          "OldPlayerValue": 10.3,
-          "BestRaceFinished": "5",
-          "HigestGridStart": "7",
-          "HigestChampFinish": "",
-          "FastestPitstopAward": "",
-          "BestRaceFinishCount": 1,
-          "HighestGridStartCount": 1,
-          "HighestChampFinishCount": 0,
-          "FastestPitstopAwardCount": 0,
-          "QualifyingPoints": "",
-          "RacePoints": "",
-          "SprintPoints": "",
-          "NoNegativePoints": "",
-          "F1PlayerId": "-8",
-          "FirstName": "Liam",
-          "LastName": "Lawson",
-          "SessionWisePoints": [
-            {
-              "sessionnumber": 1,
-              "sessiontype": "Qualifying",
-              "points": null,
-              "nonegative_points": null
-            },
-            {
-              "sessionnumber": 2,
-              "sessiontype": "Race",
-              "points": null,
-              "nonegative_points": null
-            }
-          ],
-          "AdditionalStats": {
-            "fastest_lap_pts": 0,
-            "dotd_pts": 0,
-            "overtaking_pts": 60,
-            "q3_finishes_pts": 10,
-            "top10_race_position_pts": 42,
-            "top8_sprint_position_pts": 3,
-            "total_position_pts": 55,
-            "total_position_gained_lost": 36,
-            "total_dnf_dq_pts": -20,
-            "value_for_money": 1.16
-          },
-          "old_Value": 0,
-          "new_value": 0,
-          "ProjectedGamedayPoints": "0",
-          "ProjectedNoNegativePoints": "0",
-          "ProjectedOverallPpints": "131.00"
-        },
-        {
           "PlayerId": "130",
           "Skill": 1,
           "PositionName": "DRIVER",
@@ -1630,13 +1564,13 @@
           "DisplayName": "Y. Tsunoda",
           "TeamName": "Racing Bulls",
           "Status": "0",
-          "IsActive": "1",
+          "IsActive": "0",
           "DriverTLA": "TSU",
           "DriverReference": "YUKTSU01",
           "CountryName": "Sagamihara, Japan",
           "OverallPpints": "23.00",
           "GamedayPoints": "0",
-          "SelectedPercentage": "2",
+          "SelectedPercentage": "1",
           "CaptainSelectedPercentage": "0",
           "OldPlayerValue": 9.9,
           "BestRaceFinished": "",
@@ -1685,6 +1619,72 @@
           "ProjectedGamedayPoints": "0",
           "ProjectedNoNegativePoints": "0",
           "ProjectedOverallPpints": "23.00"
+        },
+        {
+          "PlayerId": "114",
+          "Skill": 1,
+          "PositionName": "DRIVER",
+          "Value": 9.7,
+          "TeamId": "2636",
+          "FUllName": "Liam Lawson",
+          "DisplayName": "L. Lawson",
+          "TeamName": "Racing Bulls",
+          "Status": "0",
+          "IsActive": "1",
+          "DriverTLA": "LAW",
+          "DriverReference": "LIALAW01",
+          "CountryName": "Hastings, New Zealand",
+          "OverallPpints": "131.00",
+          "GamedayPoints": "0",
+          "SelectedPercentage": "24",
+          "CaptainSelectedPercentage": "0",
+          "OldPlayerValue": 10.3,
+          "BestRaceFinished": "5",
+          "HigestGridStart": "7",
+          "HigestChampFinish": "",
+          "FastestPitstopAward": "",
+          "BestRaceFinishCount": 1,
+          "HighestGridStartCount": 1,
+          "HighestChampFinishCount": 0,
+          "FastestPitstopAwardCount": 0,
+          "QualifyingPoints": "",
+          "RacePoints": "",
+          "SprintPoints": "",
+          "NoNegativePoints": "",
+          "F1PlayerId": "-8",
+          "FirstName": "Liam",
+          "LastName": "Lawson",
+          "SessionWisePoints": [
+            {
+              "sessionnumber": 1,
+              "sessiontype": "Qualifying",
+              "points": null,
+              "nonegative_points": null
+            },
+            {
+              "sessionnumber": 2,
+              "sessiontype": "Race",
+              "points": null,
+              "nonegative_points": null
+            }
+          ],
+          "AdditionalStats": {
+            "fastest_lap_pts": 0,
+            "dotd_pts": 0,
+            "overtaking_pts": 60,
+            "q3_finishes_pts": 10,
+            "top10_race_position_pts": 42,
+            "top8_sprint_position_pts": 3,
+            "total_position_pts": 55,
+            "total_position_gained_lost": 36,
+            "total_dnf_dq_pts": -20,
+            "value_for_money": 1.23
+          },
+          "old_Value": 0,
+          "new_value": 0,
+          "ProjectedGamedayPoints": "0",
+          "ProjectedNoNegativePoints": "0",
+          "ProjectedOverallPpints": "131.00"
         },
         {
           "PlayerId": "11149",
@@ -1828,7 +1828,7 @@
           "DisplayName": "L. Lawson",
           "TeamName": "Red Bull Racing",
           "Status": "0",
-          "IsActive": "1",
+          "IsActive": "0",
           "DriverTLA": "LAW",
           "DriverReference": "LIALAW01",
           "CountryName": "Hastings, New Zealand",
@@ -1894,7 +1894,7 @@
           "DisplayName": "I. Hadjar",
           "TeamName": "Red Bull Racing",
           "Status": "0",
-          "IsActive": "0",
+          "IsActive": "1",
           "DriverTLA": "HAD",
           "DriverReference": "ISAHAD01",
           "CountryName": "Paris, France",
@@ -2810,9 +2810,9 @@
         }
       ],
       "FeedTime": {
-        "UTCTime": "9/22/2026 4:45:21 AM",
-        "ISTTime": "9/22/2026 10:15:21 AM",
-        "CESTTime": "9/22/2026 6:45:21 AM"
+        "UTCTime": "9/23/2026 4:46:05 AM",
+        "ISTTime": "9/23/2026 10:16:05 AM",
+        "CESTTime": "9/23/2026 6:46:05 AM"
       }
     },
     "Meta": {
@@ -2820,9 +2820,9 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "9/22/2026 4:45:21 AM",
-        "ISTTime": "9/22/2026 10:15:21 AM",
-        "CESTTime": "9/22/2026 6:45:21 AM"
+        "UTCTime": "9/23/2026 4:46:05 AM",
+        "ISTTime": "9/23/2026 10:16:05 AM",
+        "CESTTime": "9/23/2026 6:46:05 AM"
       },
       "StatusCode": 200,
       "Maintenance": ""
