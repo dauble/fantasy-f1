@@ -967,5 +967,328 @@
         "selectionPct": 8
       }
     ]
+  },
+  {
+    "fetchedAt": "2026-09-24T05:01:24.152Z",
+    "season": "2026",
+    "drivers": [
+      {
+        "playerId": "11",
+        "name": "Alexander Albon",
+        "team": "Williams",
+        "priceM": 6.4,
+        "points": 29,
+        "seasonPriceChangeM": -5.2,
+        "selectionPct": 10
+      },
+      {
+        "playerId": "12",
+        "name": "Fernando Alonso",
+        "team": "Aston Martin",
+        "priceM": 6.8,
+        "points": 23,
+        "seasonPriceChangeM": -3.2,
+        "selectionPct": 9
+      },
+      {
+        "playerId": "13",
+        "name": "Valtteri Bottas",
+        "team": "Cadillac",
+        "priceM": 3,
+        "points": -73,
+        "seasonPriceChangeM": -2.9,
+        "selectionPct": 20
+      },
+      {
+        "playerId": "18",
+        "name": "Pierre Gasly",
+        "team": "Alpine",
+        "priceM": 12,
+        "points": 148,
+        "seasonPriceChangeM": 0,
+        "selectionPct": 20
+      },
+      {
+        "playerId": "110",
+        "name": "Lewis Hamilton",
+        "team": "Ferrari",
+        "priceM": 24.9,
+        "points": 380,
+        "seasonPriceChangeM": 2.4,
+        "selectionPct": 19
+      },
+      {
+        "playerId": "111",
+        "name": "Nico Hulkenberg",
+        "team": "Audi",
+        "priceM": 4.8,
+        "points": -11,
+        "seasonPriceChangeM": -2,
+        "selectionPct": 37
+      },
+      {
+        "playerId": "114",
+        "name": "Liam Lawson",
+        "team": "Racing Bulls",
+        "priceM": 10.3,
+        "points": 131,
+        "seasonPriceChangeM": 3.8,
+        "selectionPct": 24
+      },
+      {
+        "playerId": "115",
+        "name": "Charles Leclerc",
+        "team": "Ferrari",
+        "priceM": 24,
+        "points": 331,
+        "seasonPriceChangeM": 1.2,
+        "selectionPct": 27
+      },
+      {
+        "playerId": "116",
+        "name": "Liam Lawson",
+        "team": "Red Bull Racing",
+        "priceM": 15.1,
+        "points": 53,
+        "seasonPriceChangeM": 0.6,
+        "selectionPct": null
+      },
+      {
+        "playerId": "117",
+        "name": "Lando Norris",
+        "team": "McLaren",
+        "priceM": 27,
+        "points": 339,
+        "seasonPriceChangeM": -0.2,
+        "selectionPct": 9
+      },
+      {
+        "playerId": "118",
+        "name": "Esteban Ocon",
+        "team": "Haas F1 Team",
+        "priceM": 8.9,
+        "points": 125,
+        "seasonPriceChangeM": 1.6,
+        "selectionPct": 13
+      },
+      {
+        "playerId": "121",
+        "name": "Sergio Perez",
+        "team": "Cadillac",
+        "priceM": 3,
+        "points": 8,
+        "seasonPriceChangeM": -3,
+        "selectionPct": 20
+      },
+      {
+        "playerId": "124",
+        "name": "George Russell",
+        "team": "Mercedes",
+        "priceM": 27.8,
+        "points": 368,
+        "seasonPriceChangeM": 0.4,
+        "selectionPct": 22
+      },
+      {
+        "playerId": "125",
+        "name": "Carlos Sainz",
+        "team": "Williams",
+        "priceM": 9,
+        "points": 85,
+        "seasonPriceChangeM": -2.8,
+        "selectionPct": 22
+      },
+      {
+        "playerId": "129",
+        "name": "Lance Stroll",
+        "team": "Aston Martin",
+        "priceM": 3,
+        "points": -122,
+        "seasonPriceChangeM": -5,
+        "selectionPct": 4
+      },
+      {
+        "playerId": "130",
+        "name": "Yuki Tsunoda",
+        "team": "Racing Bulls",
+        "priceM": 9.7,
+        "points": 23,
+        "seasonPriceChangeM": -0.6,
+        "selectionPct": null
+      },
+      {
+        "playerId": "131",
+        "name": "Max Verstappen",
+        "team": "Red Bull Racing",
+        "priceM": 27.3,
+        "points": 333,
+        "seasonPriceChangeM": -0.4,
+        "selectionPct": 17
+      },
+      {
+        "playerId": "1982",
+        "name": "Oscar Piastri",
+        "team": "McLaren",
+        "priceM": 24.1,
+        "points": 228,
+        "seasonPriceChangeM": -1.4,
+        "selectionPct": 9
+      },
+      {
+        "playerId": "11031",
+        "name": "Oliver Bearman",
+        "team": "Haas F1 Team",
+        "priceM": 5.8,
+        "points": 63,
+        "seasonPriceChangeM": -1.6,
+        "selectionPct": 50
+      },
+      {
+        "playerId": "11032",
+        "name": "Isack Hadjar",
+        "team": "Red Bull Racing",
+        "priceM": 14.5,
+        "points": 142,
+        "seasonPriceChangeM": -0.6,
+        "selectionPct": 26
+      },
+      {
+        "playerId": "11051",
+        "name": "Gabriel Bortoleto",
+        "team": "Audi",
+        "priceM": 8.4,
+        "points": 84,
+        "seasonPriceChangeM": 2,
+        "selectionPct": 33
+      },
+      {
+        "playerId": "11059",
+        "name": "Franco Colapinto",
+        "team": "Alpine",
+        "priceM": 10.6,
+        "points": 156,
+        "seasonPriceChangeM": 4.4,
+        "selectionPct": 20
+      },
+      {
+        "playerId": "11149",
+        "name": "Arvid Lindblad",
+        "team": "Racing Bulls",
+        "priceM": 8.2,
+        "points": 90,
+        "seasonPriceChangeM": 2,
+        "selectionPct": 46
+      },
+      {
+        "playerId": "11161",
+        "name": "Kimi Antonelli",
+        "team": "Mercedes",
+        "priceM": 26.6,
+        "points": 594,
+        "seasonPriceChangeM": 3.4,
+        "selectionPct": 38
+      }
+    ],
+    "constructors": [
+      {
+        "playerId": "23",
+        "name": null,
+        "team": "Alpine",
+        "priceM": 19.5,
+        "points": 394,
+        "seasonPriceChangeM": 7,
+        "selectionPct": 7
+      },
+      {
+        "playerId": "24",
+        "name": null,
+        "team": "Aston Martin",
+        "priceM": 6.3,
+        "points": -78,
+        "seasonPriceChangeM": -4,
+        "selectionPct": 3
+      },
+      {
+        "playerId": "25",
+        "name": null,
+        "team": "Ferrari",
+        "priceM": 27.5,
+        "points": 882,
+        "seasonPriceChangeM": 4.2,
+        "selectionPct": 42
+      },
+      {
+        "playerId": "26",
+        "name": null,
+        "team": "Haas F1 Team",
+        "priceM": 10.2,
+        "points": 224,
+        "seasonPriceChangeM": 2.8,
+        "selectionPct": 24
+      },
+      {
+        "playerId": "27",
+        "name": null,
+        "team": "McLaren",
+        "priceM": 31.9,
+        "points": 742,
+        "seasonPriceChangeM": 3,
+        "selectionPct": 10
+      },
+      {
+        "playerId": "28",
+        "name": null,
+        "team": "Mercedes",
+        "priceM": 33.5,
+        "points": 1181,
+        "seasonPriceChangeM": 4.2,
+        "selectionPct": 36
+      },
+      {
+        "playerId": "29",
+        "name": null,
+        "team": "Red Bull Racing",
+        "priceM": 31.8,
+        "points": 645,
+        "seasonPriceChangeM": 3.6,
+        "selectionPct": 7
+      },
+      {
+        "playerId": "210",
+        "name": null,
+        "team": "Williams",
+        "priceM": 14,
+        "points": 170,
+        "seasonPriceChangeM": 2,
+        "selectionPct": 9
+      },
+      {
+        "playerId": "2636",
+        "name": null,
+        "team": "Racing Bulls",
+        "priceM": 14.7,
+        "points": 418,
+        "seasonPriceChangeM": 8.4,
+        "selectionPct": 33
+      },
+      {
+        "playerId": "2640",
+        "name": null,
+        "team": "Audi",
+        "priceM": 8.6,
+        "points": 182,
+        "seasonPriceChangeM": 2,
+        "selectionPct": 21
+      },
+      {
+        "playerId": "2641",
+        "name": null,
+        "team": "Cadillac",
+        "priceM": 3,
+        "points": -67,
+        "seasonPriceChangeM": -3,
+        "selectionPct": 8
+      }
+    ]
   }
 ]

@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-23T05:01:35.008Z",
+  "fetchedAt": "2026-09-24T05:01:25.181Z",
   "gameId": "15",
   "drivers": [
     {
@@ -1834,7 +1834,7 @@
           "CountryName": "Hastings, New Zealand",
           "OverallPpints": "53.00",
           "GamedayPoints": "0",
-          "SelectedPercentage": "3",
+          "SelectedPercentage": "2",
           "CaptainSelectedPercentage": "0",
           "OldPlayerValue": 14.9,
           "BestRaceFinished": "",
@@ -2810,9 +2810,9 @@
         }
       ],
       "FeedTime": {
-        "UTCTime": "9/23/2026 4:46:05 AM",
-        "ISTTime": "9/23/2026 10:16:05 AM",
-        "CESTTime": "9/23/2026 6:46:05 AM"
+        "UTCTime": "9/24/2026 4:48:40 AM",
+        "ISTTime": "9/24/2026 10:18:40 AM",
+        "CESTTime": "9/24/2026 6:48:40 AM"
       }
     },
     "Meta": {
@@ -2820,9 +2820,9 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "9/23/2026 4:46:05 AM",
-        "ISTTime": "9/23/2026 10:16:05 AM",
-        "CESTTime": "9/23/2026 6:46:05 AM"
+        "UTCTime": "9/24/2026 4:48:40 AM",
+        "ISTTime": "9/24/2026 10:18:40 AM",
+        "CESTTime": "9/24/2026 6:48:40 AM"
       },
       "StatusCode": 200,
       "Maintenance": ""
