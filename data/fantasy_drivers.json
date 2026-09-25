@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-24T05:01:25.181Z",
+  "fetchedAt": "2026-09-25T05:01:13.157Z",
   "gameId": "15",
   "drivers": [
     {
@@ -580,7 +580,7 @@
           "CountryName": "Buenos Aires, Argentina",
           "OverallPpints": "156.00",
           "GamedayPoints": "0",
-          "SelectedPercentage": "20",
+          "SelectedPercentage": "21",
           "CaptainSelectedPercentage": "1",
           "OldPlayerValue": 10.4,
           "BestRaceFinished": "6",
@@ -1042,7 +1042,7 @@
           "CountryName": "Stevenage, England",
           "OverallPpints": "380.00",
           "GamedayPoints": "0",
-          "SelectedPercentage": "19",
+          "SelectedPercentage": "18",
           "CaptainSelectedPercentage": "9",
           "OldPlayerValue": 25.2,
           "BestRaceFinished": "1",
@@ -1636,7 +1636,7 @@
           "CountryName": "Hastings, New Zealand",
           "OverallPpints": "131.00",
           "GamedayPoints": "0",
-          "SelectedPercentage": "24",
+          "SelectedPercentage": "25",
           "CaptainSelectedPercentage": "0",
           "OldPlayerValue": 10.3,
           "BestRaceFinished": "5",
@@ -2296,7 +2296,7 @@
           "CountryName": "",
           "OverallPpints": "882.00",
           "GamedayPoints": "0",
-          "SelectedPercentage": "42",
+          "SelectedPercentage": "41",
           "CaptainSelectedPercentage": "0",
           "OldPlayerValue": 27.2,
           "BestRaceFinished": "1",
@@ -2810,9 +2810,9 @@
         }
       ],
       "FeedTime": {
-        "UTCTime": "9/24/2026 4:48:40 AM",
-        "ISTTime": "9/24/2026 10:18:40 AM",
-        "CESTTime": "9/24/2026 6:48:40 AM"
+        "UTCTime": "9/25/2026 4:53:24 AM",
+        "ISTTime": "9/25/2026 10:23:24 AM",
+        "CESTTime": "9/25/2026 6:53:24 AM"
       }
     },
     "Meta": {
@@ -2820,9 +2820,9 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "9/24/2026 4:48:40 AM",
-        "ISTTime": "9/24/2026 10:18:40 AM",
-        "CESTTime": "9/24/2026 6:48:40 AM"
+        "UTCTime": "9/25/2026 4:53:24 AM",
+        "ISTTime": "9/25/2026 10:23:24 AM",
+        "CESTTime": "9/25/2026 6:53:24 AM"
       },
       "StatusCode": 200,
       "Maintenance": ""
