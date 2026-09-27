@@ -4,6 +4,25 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.0 - 2026-09-27 - Fantasy Stats Visualization + Richer Prediction Signal
+
+The official F1 Fantasy statistics feed carries far more than price: season points average, points-per-price-million (value), podiums, top-10 finishes, overtake points, DNFs, fastest laps, driver-of-the-day count, and (for constructors) fastest pitstops. Only three of those eleven categories were ever captured. This release captures all of them and puts them to use in two places.
+
+### New: Full Stat Capture
+
+- `scripts/lib/fantasyPriceFeed.mjs` now extracts every statistics category the feed provides (previously only `fPoints`, `priceChange`, and `mostPicked`), stored per driver/constructor as `avgPoints`, `pointsPerMillion`, `overtakePoints`, `podiums`, `topTenFinishes`, `dnfs`, `fastestLaps`, `driverOfDayCount` (drivers only), and `fastestPitstops` (constructors only). Both `GET /api/fantasy-prices` and the "Sync Official Prices" flow pick these up automatically since they already share this module.
+
+### New: Fantasy Stats Page
+
+- Added `/stats` (new "Stats" nav item): a Drivers/Constructors view over the synced snapshot with a sortable bar chart (pick any stat from a dropdown) and a full data table with every captured field. Reads the same cache the "Sync Official Prices" button refreshes, so it's a way to actually see what a sync pulled in.
+- New `src/components/ui/StatBarChart.jsx`: a small reusable horizontal bar chart (thin capped bars, rounded data-end, direct value + name labels, hover tooltip) — no new charting dependency, consistent with the rest of the stack.
+
+### Improved: AI Predictions Now See Reliability, Race-Craft, and Value
+
+- `aiPredictionService.js`'s per-driver/constructor context line (previously just price-change + selection %) now also includes points-per-$M (value), podiums and overtake points (race-craft, independent of price), and DNF count when nonzero (reliability risk) — e.g. `[▲$3.4M season, 38% picked, 1.60 pts/$M, 12 podiums, 78 overtake pts]`. Previously the AI only saw recent OpenF1 finishing positions; this gives it season-long signal OpenF1 doesn't have, particularly for spotting risk (a driver's DNF history) and value (points relative to price) it couldn't see before. `avgPoints`, `topTenFinishes`, `fastestLaps`, and `driverOfDayCount` are captured but intentionally left out of the prompt — redundant with existing fields or too rare to be worth the tokens across the full grid; they remain available on the Stats page.
+
+---
+
 ## Version 0.14.0 - 2026-09-27 - Live "Sync Official Prices"
 
 ### Fixed: "Sync Official Prices" Didn't Actually Sync
