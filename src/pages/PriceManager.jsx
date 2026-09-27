@@ -6,6 +6,7 @@ import { DRIVER_PRICES, CONSTRUCTOR_PRICES, getDriverPrice, getConstructorPrice 
 import openF1API from '../services/openF1API';
 import { useAuth } from '../context/AuthContext';
 import { getDriverColor, getTeamColor } from '../utils/teamColors';
+import { formatLocalDateTime } from '../utils/formatDate';
 
 const PriceManager = () => {
   const navigate = useNavigate();
@@ -278,7 +279,7 @@ const PriceManager = () => {
           ) : (
             <>
               Synced {syncResult.matchedDrivers} drivers and {syncResult.matchedConstructors} constructors from the
-              official F1 Fantasy site (snapshot from {new Date(syncResult.fetchedAt).toLocaleString()}).
+              official F1 Fantasy site (snapshot from {formatLocalDateTime(syncResult.fetchedAt)}).
               {syncResult.unmatched.length > 0 && (
                 <span className="block mt-1 font-normal">
                   Couldn't match: {syncResult.unmatched.map((u) => u.name).join(', ')} — set these manually below.

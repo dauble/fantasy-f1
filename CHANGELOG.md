@@ -4,6 +4,15 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.2 - 2026-09-27 - Explicit Local-Timezone Sync Timestamps
+
+### Fixed: Ambiguous Sync Timestamp Display
+
+- The Fantasy Stats page and the Price Manager's "Synced…" banner both displayed `fetchedAt` (stored in UTC — `new Date().toISOString()`) via a bare `toLocaleString()`. That call does already resolve to the viewer's browser-local timezone with no arguments, but the rendered value carried no timezone label, so it was indistinguishable from raw UTC and impossible to verify as correct at a glance.
+- Added `src/utils/formatDate.js` (`formatLocalDateTime`), used by both display sites, which explicitly appends the local zone abbreviation — e.g. `Sep 26, 2026, 10:01 PM PDT` instead of `9/27/2026, 5:01:15 AM`. Also fixes a would-be trap for future changes: `Intl.DateTimeFormat`'s `dateStyle`/`timeStyle` shorthand options cannot be combined with `timeZoneName` (throws `TypeError: Invalid option`), so the formatter uses explicit component options instead.
+
+---
+
 ## Version 0.15.1 - 2026-09-27 - Hotfix: App Failed to Start After 0.15.0
 
 ### Fixed: Production Crash on Boot (`ERR_MODULE_NOT_FOUND`)
