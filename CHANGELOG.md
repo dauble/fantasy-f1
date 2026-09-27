@@ -4,6 +4,16 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.1 - 2026-09-27 - Hotfix: App Failed to Start After 0.15.0
+
+### Fixed: Production Crash on Boot (`ERR_MODULE_NOT_FOUND`)
+
+- 0.14.0 (`POST /api/fantasy-prices/sync`) added `import { fetchFantasyPriceSnapshot, ... } from "./scripts/lib/fantasyPriceFeed.mjs"` to `server.js`, but the Dockerfile's production stage only ever copied a hand-picked file list (`dist/`, `server.js`, `newsService.js`, `data/`) — it never copied `scripts/`. The deployed image was missing the module `server.js` imports at the top level, so Node threw `ERR_MODULE_NOT_FOUND` and the process crashed immediately on boot, before binding to a port. The GitHub Actions deploy step itself reported success (it only checks that `flyctl deploy` exits 0, not that the app comes up healthy), which is why this wasn't caught at merge time.
+- Fixed by adding `COPY scripts/lib ./scripts/lib` to the Dockerfile's runner stage — scoped to just the `lib/` subfolder the server actually imports, not the GitHub-Actions-only CLI scripts alongside it.
+- Verified by replicating the runner stage's exact file set in a scratch directory and confirming the import resolves there (and fails the same way without the fix) — this sandbox has no Docker daemon to run a real `docker build`.
+
+---
+
 ## Version 0.15.0 - 2026-09-27 - Fantasy Stats Visualization + Richer Prediction Signal
 
 The official F1 Fantasy statistics feed carries far more than price: season points average, points-per-price-million (value), podiums, top-10 finishes, overtake points, DNFs, fastest laps, driver-of-the-day count, and (for constructors) fastest pitstops. Only three of those eleven categories were ever captured. This release captures all of them and puts them to use in two places.
