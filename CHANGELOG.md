@@ -4,6 +4,15 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.3 - 2026-09-27 - Supabase Security Lint Remediation (Documented)
+
+### Documented: Fixes for 5 Supabase Database Linter Warnings
+
+- Supabase's linter flagged `public.user_data` (visible to `anon` via GraphQL — never intentional, the app only reads/writes it post-sign-in for the current user's own row) and `public.rls_auto_enable()` (a `SECURITY DEFINER` function callable by `anon`/`authenticated` via `/rest/v1/rpc/rls_auto_enable`, but never called anywhere in the codebase — almost certainly a leftover one-off admin helper). Also flagged: leaked-password protection disabled in Auth.
+- This environment has no Supabase connection (no service-role key, no DB credentials) and this project doesn't track schema as SQL migrations, so the fix can't be applied directly from here. Added `documentation/SUPABASE_SECURITY_FIXES.md` with the exact SQL to run in the Supabase SQL Editor, explaining why each fix is safe (and specifically why `authenticated`'s access to `user_data` should be *kept*, not revoked — the app's cloud sync depends on it, and it's RLS that actually protects other users' rows) plus a verification query for RLS policies and an optional `DROP EXTENSION pg_graphql` for the residual warning if GraphQL is unused. Leaked-password protection is an Auth dashboard toggle, not a schema change.
+
+---
+
 ## Version 0.15.2 - 2026-09-27 - Explicit Local-Timezone Sync Timestamps
 
 ### Fixed: Ambiguous Sync Timestamp Display
