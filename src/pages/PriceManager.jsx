@@ -102,12 +102,13 @@ const PriceManager = () => {
     setSyncing(true);
     setSyncResult(null);
     try {
-      const res = await fetch('/api/fantasy-prices');
-      if (!res.ok) throw new Error(`Server returned ${res.status}`);
-      const { latest } = await res.json();
+      const res = await fetch('/api/fantasy-prices/sync', { method: 'POST' });
+      const body = await res.json();
+      if (!res.ok) throw new Error(body?.error || `Server returned ${res.status}`);
+      const { latest } = body;
 
       if (!latest) {
-        setSyncResult({ error: 'No price snapshot available yet — the daily sync workflow may not have run yet.' });
+        setSyncResult({ error: 'F1 Fantasy returned no price data. Please try again shortly.' });
         return;
       }
 

@@ -4,6 +4,18 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.14.0 - 2026-09-27 - Live "Sync Official Prices"
+
+### Fixed: "Sync Official Prices" Didn't Actually Sync
+
+- `GET /api/fantasy-prices` only ever read `data/price_snapshots.json`, a file written once a day by the `refresh-fantasy-prices` GitHub Action and baked into the Docker image at deploy time. The "Sync Official Prices" button called this same read-only endpoint, so clicking it just re-served whatever snapshot happened to be in the last deployed image — never a live fetch. If the daily workflow hadn't run since the last deploy (or had failed silently), the button appeared to do nothing.
+- Added `POST /api/fantasy-prices/sync`, which fetches `fantasy.formula1.com`'s statistics feed live, appends the result to `data/price_snapshots.json` on the running machine, and invalidates the in-memory `/api/openf1/drivers` cache so the new prices are reflected immediately. The button now calls this endpoint instead of the read-only `GET` one.
+- Extracted the feed-fetching/parsing logic shared by the daily script and the new endpoint into `scripts/lib/fantasyPriceFeed.mjs`, so both stay in sync with a single implementation.
+- Rate-limited the new endpoint separately (5 requests / 15 min) since, unlike the rest of the API, it makes a live outbound request to a third party.
+- Note: the on-demand write only persists for the life of the current Fly machine — it is lost on the next restart or redeploy, same as any other write to Fly's non-persistent disk. The daily GitHub Action commit to git remains the durable source of truth; the manual sync just closes the gap between scheduled runs.
+
+---
+
 ## Version 0.13.1 - 2026-09-22 - Fixed Driver Number Resolution
 
 ### Fixed: Driver Identity Mismatch Between Fantasy F1 and OpenF1
