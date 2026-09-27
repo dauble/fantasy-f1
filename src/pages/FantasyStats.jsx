@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import StatBarChart from '../components/ui/StatBarChart';
 import { getTeamColor } from '../utils/teamColors';
+import { formatLocalDateTime } from '../utils/formatDate';
 
 // Which stat fields to offer per tab, and how to format each one. Sourced
 // from data/price_snapshots.json (see scripts/lib/fantasyPriceFeed.mjs) —
@@ -110,7 +111,7 @@ const FantasyStats = () => {
           <h1 className="text-2xl font-black uppercase tracking-tight text-gray-900 dark:text-white">Fantasy Stats</h1>
         </div>
         <p className="text-sm text-gray-500 dark:text-f1-muted">
-          Official F1 Fantasy season stats, synced {new Date(latest.fetchedAt).toLocaleString()} —{' '}
+          Official F1 Fantasy season stats, synced {formatLocalDateTime(latest.fetchedAt)} —{' '}
           <Link to="/prices" className="underline">sync again</Link> for the latest numbers.
         </p>
       </div>
