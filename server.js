@@ -14,8 +14,9 @@ import rateLimit from "express-rate-limit";
 import { createServer } from "node:http";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { fetchF1News, clearNewsCache } from "./newsService.js";
+import { fetchFantasyPriceSnapshot, MAX_PRICE_SNAPSHOTS } from "./scripts/lib/fantasyPriceFeed.mjs";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -106,10 +107,16 @@ app.get("/api/config", (_req, res) => {
 //
 // data/price_snapshots.json is committed to the repo by the scheduled
 // .github/workflows/refresh-fantasy-prices.yml workflow (fetches the public
-// F1 Fantasy statistics feed daily). Ships with the deployed image, so it's
-// available even though Fly's container disk isn't persistent. Returns an
-// empty history gracefully if the file doesn't exist yet (e.g. before the
-// workflow has ever run).
+// F1 Fantasy statistics feed daily) and ships with the deployed image, so
+// GET /api/fantasy-prices always has *something* to serve even though Fly's
+// container disk isn't persistent across redeploys.
+//
+// POST /api/fantasy-prices/sync (the "Sync Official Prices" button) fetches
+// the feed live and appends a snapshot to that same file on the running
+// machine's disk, so a manual sync is reflected immediately without waiting
+// for the next scheduled workflow run. That write only lasts until this Fly
+// machine restarts or redeploys — the workflow's daily commit to git remains
+// the durable source of truth.
 
 const PRICE_SNAPSHOTS_PATH   = join(__dirname, "data", "price_snapshots.json");
 const FANTASY_CONFIG_PATH    = join(__dirname, "data", "fantasy_config.json");
@@ -117,19 +124,56 @@ const FANTASY_SCHEDULE_PATH  = join(__dirname, "data", "fantasy_schedule.json");
 const FANTASY_DRIVERS_PATH   = join(__dirname, "data", "fantasy_drivers.json");
 const PRICE_HISTORY_LIMIT = 14;
 
-app.get("/api/fantasy-prices", rateLimiter, async (_req, res) => {
+async function readPriceSnapshots() {
   try {
     const raw = await readFile(PRICE_SNAPSHOTS_PATH, "utf-8");
-    const snapshots = JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    if (err.code === "ENOENT") return [];
+    throw err;
+  }
+}
+
+app.get("/api/fantasy-prices", rateLimiter, async (_req, res) => {
+  try {
+    const snapshots = await readPriceSnapshots();
     const history = snapshots.slice(-PRICE_HISTORY_LIMIT);
     const latest = history[history.length - 1] || null;
     return res.json({ latest, history });
   } catch (err) {
-    if (err.code === "ENOENT") {
-      return res.json({ latest: null, history: [] });
-    }
     console.error("[/api/fantasy-prices] Error reading price snapshots:", err.message);
     return res.status(500).json({ error: "Failed to read price snapshots", details: err.message });
+  }
+});
+
+// A live fetch against fantasy.formula1.com, so this is capped well below the
+// general API limiter to avoid hammering their feed if someone mashes the button.
+const syncRateLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many sync requests. Please wait a few minutes before trying again." },
+});
+
+app.post("/api/fantasy-prices/sync", syncRateLimiter, async (_req, res) => {
+  try {
+    const snapshot = await fetchFantasyPriceSnapshot();
+
+    const existing = await readPriceSnapshots();
+    const updated = [...existing, snapshot].slice(-MAX_PRICE_SNAPSHOTS);
+    await writeFile(PRICE_SNAPSHOTS_PATH, JSON.stringify(updated, null, 2) + "\n");
+
+    // Invalidate the in-memory driver cache so /api/openf1/drivers reflects
+    // the new prices immediately instead of waiting out its own TTL.
+    driversCache = { data: null, fetchedAt: 0 };
+
+    const history = updated.slice(-PRICE_HISTORY_LIMIT);
+    return res.json({ latest: snapshot, history });
+  } catch (err) {
+    console.error("[/api/fantasy-prices/sync] Live fetch failed:", err.message);
+    return res.status(502).json({ error: "Failed to fetch official F1 Fantasy prices", details: err.message });
   }
 });
 
