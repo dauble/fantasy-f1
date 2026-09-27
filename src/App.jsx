@@ -6,6 +6,7 @@ import Predictions from './pages/Predictions';
 import Rules from './pages/Rules';
 import TeamHistory from './pages/TeamHistory';
 import PriceManager from './pages/PriceManager';
+import FantasyStats from './pages/FantasyStats';
 import LivePricingGuide from './pages/LivePricingGuide';
 import WelcomeModal from './components/ui/WelcomeModal';
 import AuthCallback from './pages/AuthCallback';
@@ -38,6 +39,7 @@ function App() {
           <Route path="/predictions" element={<Layout><Predictions /></Layout>} />
           <Route path="/history" element={<Layout><TeamHistory /></Layout>} />
           <Route path="/prices" element={<Layout><PriceManager /></Layout>} />
+          <Route path="/stats" element={<Layout><FantasyStats /></Layout>} />
           <Route path="/live-pricing" element={<Layout><LivePricingGuide /></Layout>} />
           <Route path="/rules" element={<Layout><Rules /></Layout>} />
           <Route path="/login" element={<Auth />} />

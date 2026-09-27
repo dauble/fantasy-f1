@@ -42,7 +42,7 @@ Turbo Driver: weekly selection — one driver scores 2x points for the full week
 Transfers: ${FREE_TRANSFERS} free per race weekend; each additional swap costs -${TRANSFER_PENALTY_PTS} fantasy points
 `.trim();
 
-const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices (some annotated with the official season-to-date price change and selection % — e.g. "▲$3.4M season, 38% picked" — use this to flag drivers/constructors at risk of an imminent price rise or drop, since a rise after you've picked them raises the effective cost of keeping them), and real-time news articles from Formula1.com, PlanetF1, and Reddit.
+const SYSTEM_PROMPT = `You are an expert Fantasy F1 analyst. You will receive the COMPLETE grid — every active driver and every constructor — along with recent race performance data, fantasy prices (some annotated with official season-to-date fantasy stats in brackets — e.g. "[▲$3.4M season, 38% picked, 1.60 pts/$M, 12 podiums, 78 overtake pts]" — fields, when present: price change and selection % (flag drivers/constructors at risk of an imminent price rise or drop, since a rise after you've picked them raises the effective cost of keeping them), pts/$M (season points-per-price-million — a value/efficiency signal independent of raw price), podiums and overtake points (season race-craft, useful even when recent OpenF1 finishing positions are thin), and DNFs when nonzero (a reliability risk — weigh this against the potential upside)), and real-time news articles from Formula1.com, PlanetF1, and Reddit.
 
 Your task is to predict the race outcome for EVERY driver and EVERY constructor in the list for the upcoming Grand Prix. Do NOT pre-select a team; rank the entire field.
 
@@ -125,7 +125,16 @@ function buildPriceTrendMaps(snapshot, driverTrends) {
   return { driverTrendByNumber, constructorTrendByTeam };
 }
 
-function formatPriceTrend(entry) {
+// entry is a full record from data/price_snapshots.json (see
+// scripts/lib/fantasyPriceFeed.mjs) — beyond price/selection momentum, it also
+// carries season-to-date reliability, race-craft, and value stats that the AI
+// otherwise has no access to (OpenF1 only gives recent finishing positions).
+// Picked for prediction signal, not completeness: DNFs (reliability risk),
+// podiums + overtake points (race-craft, independent of price), and
+// pts/$M (value). avgPoints/topTenFinishes/fastestLaps/driverOfDayCount are
+// stored but omitted here — redundant with points/avg_finish_position or too
+// rare to be worth the tokens across the full grid.
+function formatFantasyStats(entry) {
   if (!entry) return "";
   const parts = [];
   if (typeof entry.seasonPriceChangeM === "number") {
@@ -134,6 +143,18 @@ function formatPriceTrend(entry) {
   }
   if (typeof entry.selectionPct === "number") {
     parts.push(`${entry.selectionPct}% picked`);
+  }
+  if (typeof entry.pointsPerMillion === "number") {
+    parts.push(`${entry.pointsPerMillion.toFixed(2)} pts/$M`);
+  }
+  if (typeof entry.podiums === "number") {
+    parts.push(`${entry.podiums} podiums`);
+  }
+  if (typeof entry.overtakePoints === "number") {
+    parts.push(`${entry.overtakePoints} overtake pts`);
+  }
+  if (typeof entry.dnfs === "number" && entry.dnfs > 0) {
+    parts.push(`${entry.dnfs} DNFs`);
   }
   return parts.length ? ` [${parts.join(", ")}]` : "";
 }
@@ -518,16 +539,16 @@ function buildUserMessage(payload, constructorPriceMap, allConstructors, newsCon
       const trend = d.position_trend === true  ? "↑"
                   : d.position_trend === false ? "↓" : "→";
       const price = typeof d.price === 'number' ? `$${d.price}M` : "$?M";
-      const priceTrend = formatPriceTrend(priceTrends?.driverTrendByNumber?.[d.driver_number]);
-      return `  ${d.abbreviation.padEnd(4)} ${d.full_name.padEnd(26)} ${d.team_name.padEnd(22)} ${price.padEnd(7)} avg P${String(d.avg_finish_position).padEnd(5)} recent [${d.recent_positions.join(",")}] ${trend}${priceTrend}`;
+      const statLine = formatFantasyStats(priceTrends?.driverTrendByNumber?.[d.driver_number]);
+      return `  ${d.abbreviation.padEnd(4)} ${d.full_name.padEnd(26)} ${d.team_name.padEnd(22)} ${price.padEnd(7)} avg P${String(d.avg_finish_position).padEnd(5)} recent [${d.recent_positions.join(",")}] ${trend}${statLine}`;
     })
     .join("\n");
 
   const constructorStats = allConstructors
     .map(c => {
       const drivers = c.drivers.length ? c.drivers.join(", ") : "no driver data";
-      const priceTrend = formatPriceTrend(priceTrends?.constructorTrendByTeam?.[c.team_name]);
-      return `  ${c.team_name.padEnd(28)} $${c.price}M   drivers: ${drivers}${priceTrend}`;
+      const statLine = formatFantasyStats(priceTrends?.constructorTrendByTeam?.[c.team_name]);
+      return `  ${c.team_name.padEnd(28)} $${c.price}M   drivers: ${drivers}${statLine}`;
     })
     .join("\n");
 

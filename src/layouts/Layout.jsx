@@ -5,6 +5,7 @@ import {
   SparklesIcon,
   ClockIcon,
   CurrencyDollarIcon,
+  ChartBarIcon,
   DocumentTextIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
@@ -17,6 +18,7 @@ const navItems = [
   { path: '/predictions', label: 'AI Picks', Icon: SparklesIcon },
   { path: '/history', label: 'History', Icon: ClockIcon },
   { path: '/prices', label: 'Prices', Icon: CurrencyDollarIcon },
+  { path: '/stats', label: 'Stats', Icon: ChartBarIcon },
   { path: '/rules', label: 'Rules', Icon: DocumentTextIcon },
 ];
 
