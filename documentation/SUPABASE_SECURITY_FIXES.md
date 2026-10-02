@@ -13,8 +13,8 @@ changes as SQL migrations. Run the SQL below yourself in the Supabase
 |---|---|---|
 | `pg_graphql_anon_table_exposed` | `public.user_data` | Revoke all `anon` privileges |
 | `pg_graphql_authenticated_table_exposed` | `public.user_data` | Accepted trade-off — see below |
-| `anon_security_definer_function_executable` | `public.rls_auto_enable()` | Revoke `EXECUTE` from `PUBLIC` |
-| `authenticated_security_definer_function_executable` | `public.rls_auto_enable()` | Same revoke (fixes both) |
+| `anon_security_definer_function_executable` | `public.rls_auto_enable()` | Revoke `EXECUTE` from `anon`, `authenticated`, and `PUBLIC` |
+| `authenticated_security_definer_function_executable` | `public.rls_auto_enable()` | Same revokes (fixes both) |
 | `auth_leaked_password_protection` | Auth config | Dashboard toggle, not SQL |
 
 ### `public.user_data` — private per-user data, `anon` should never touch it
@@ -72,14 +72,39 @@ anywhere in the codebase), so it's almost certainly a one-off setup helper
 that was left publicly reachable at `/rest/v1/rpc/rls_auto_enable`.
 
 ```sql
+revoke all on function public.rls_auto_enable() from anon;
+revoke all on function public.rls_auto_enable() from authenticated;
 revoke all on function public.rls_auto_enable() from public;
 ```
 
-This one statement fixes both the `anon` and `authenticated` findings,
-since both inherited access the same way. Nothing needs to be re-granted —
-the app doesn't call this function, so only the database owner can run it
-from the SQL Editor going forward, which is exactly what an admin-only
-helper should be.
+Revoking from `PUBLIC` alone isn't always enough: if `anon`/`authenticated`
+also hold an *explicit* `GRANT EXECUTE` (on top of the inherited `PUBLIC`
+one — common when a table or function was set up through the Studio UI,
+which sometimes grants both), that direct grant survives a `PUBLIC`-only
+revoke. Revoking from each role explicitly closes that gap regardless of
+how the original grant was made. Nothing needs to be re-granted — the app
+doesn't call this function, so only the database owner can run it from the
+SQL Editor going forward, which is exactly what an admin-only helper
+should be.
+
+To confirm the revokes actually took effect (don't rely on the linter's
+cache, which can lag):
+
+```sql
+select grantee, privilege_type
+from information_schema.routine_privileges
+where routine_schema = 'public' and routine_name = 'rls_auto_enable';
+```
+
+This should return no `anon`/`authenticated`/`PUBLIC` rows. If it still
+does, the more robust fix is switching the function to run with the
+*caller's* privileges instead of the owner's, which sidesteps the grant
+question entirely (only do this if the function doesn't rely on elevated
+privileges to do its job):
+
+```sql
+alter function public.rls_auto_enable() security invoker;
+```
 
 ### Leaked password protection
 
@@ -98,8 +123,11 @@ required.
 -- public.user_data: anon has no legitimate access to this table at all.
 revoke all privileges on table public.user_data from anon;
 
--- public.rls_auto_enable(): SECURITY DEFINER, never called by the app —
--- revoking from PUBLIC removes the inherited anon/authenticated access.
+-- public.rls_auto_enable(): SECURITY DEFINER, never called by the app.
+-- Revoke from each role explicitly — an explicit GRANT to anon/authenticated
+-- survives a PUBLIC-only revoke, so all three statements are needed.
+revoke all on function public.rls_auto_enable() from anon;
+revoke all on function public.rls_auto_enable() from authenticated;
 revoke all on function public.rls_auto_enable() from public;
 
 -- Sanity check: every policy here should reduce to `auth.uid() = id`.
