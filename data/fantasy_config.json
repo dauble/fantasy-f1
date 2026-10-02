@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-09-27T05:01:28.818Z",
+  "fetchedAt": "2026-10-01T05:01:35.220Z",
   "raw": {
     "Data": {
       "config": {
@@ -328,6 +328,161 @@
           }
         },
         "clientHeaderFooter": {
+          "footerNew": {
+            "appStores": [
+              {
+                "name": "iOS App Store",
+                "link": "https://apps.apple.com/gb/app/official-f1-app/id835022598",
+                "logo": "https://media.formula1.com/image/upload/f_auto,c_limit,w_202,q_auto/f_auto/q_auto/etc/designs/fom-website/images/svg/download-on-the-app-store-apple",
+                "alt": "App Store"
+              },
+              {
+                "name": "Google Play Store",
+                "link": "https://play.google.com/store/apps/details?id=com.softpauer.f1timingapp2014.basic&hl=en_GB&pli=1",
+                "logo": "https://media.formula1.com/image/upload/f_auto,c_limit,w_202,q_auto/f_auto/q_auto/etc/designs/fom-website/images/svg/google-play-badge",
+                "alt": "Google Play"
+              }
+            ],
+            "socials": [
+              {
+                "name": "Facebook",
+                "link": "https://www.facebook.com/Formula1",
+                "icon": "f1i-facebook"
+              },
+              {
+                "name": "Twitter",
+                "link": "https://twitter.com/f1",
+                "icon": "f1i-twitter"
+              },
+              {
+                "name": "Instagram",
+                "link": "https://www.instagram.com/f1/",
+                "icon": "f1i-instagram"
+              },
+              {
+                "name": "YouTube",
+                "link": "https://www.youtube.com/F1",
+                "icon": "f1i-youtube"
+              }
+            ],
+            "feedbackUrl": "https://edigitalsurvey.com/survey/do/session/b93166289f6a619a8fd339ffeb18edc193799f83bd5c9a439193c2661790f036/restart_data_key/9709638c25c585ccefc4b20515cbf002ac9b5568e56ab016f90bede1966c929d/is_entering/1",
+            "quickLinks": [
+              {
+                "title": "Schedule",
+                "link": "https://www.formula1.com/en/racing/2026",
+                "target": "_blank"
+              },
+              {
+                "title": "Results",
+                "link": "https://www.formula1.com/en/results/2026/races",
+                "target": "_blank"
+              },
+              {
+                "title": "Standings",
+                "link": "https://www.formula1.com/en/results/2026/drivers",
+                "target": "_blank"
+              },
+              {
+                "title": "Drivers",
+                "link": "https://www.formula1.com/en/drivers",
+                "target": "_blank"
+              },
+              {
+                "title": "Teams",
+                "link": "https://www.formula1.com/en/teams",
+                "target": "_blank"
+              },
+              {
+                "title": "F1 Unlocked",
+                "link": "https://www.formula1.com/en/page/unlocked",
+                "target": "_blank"
+              }
+            ],
+            "legalCompliance": [
+              {
+                "label": "Terms of Use",
+                "link": "https://account.formula1.com/#/en/terms-of-use"
+              },
+              {
+                "label": "Privacy Policy",
+                "link": "https://account.formula1.com/#/en/privacy-policy"
+              },
+              {
+                "label": "Cookies Policy",
+                "link": "https://account.formula1.com/#/en/cookie-policy/"
+              },
+              {
+                "label": "Legal Notices",
+                "link": "https://www.formula1.com/en/information/legal-notices.7egvZU48hzrypubGBNcQKt"
+              },
+              {
+                "label": "Code of Conduct",
+                "link": "https://media.formula1.com/image/upload/v1789115778/fom-website/manual/Misc/f1_code_of_conduct/code-of-conduct-100926-external.pdf"
+              },
+              {
+                "label": "Anti-Bribery",
+                "link": "https://www.formula1.com/en/information/formula-1-anti-bribery-principles.6c4e0k31Ao87urACz8RwfU"
+              },
+              {
+                "label": "Modern Slavery Statement",
+                "link": "https://www.formula1.com/en/information/modern-slavery-statement-2023-2024.4mcgtZeZKAJ7GAyMppY0VU"
+              },
+              {
+                "label": "Gender Pay Report",
+                "link": "https://media.formula1.com/image/upload/v1710501054/content/dam/fom-website/manual/Misc/GenderPay/F1GenderPayGapReport2024.pdf"
+              },
+              {
+                "label": "F1 Betting Disclaimer",
+                "link": "http://account.formula1.com/#/en/disclaimer"
+              },
+              {
+                "label": "Accessibility Statement",
+                "link": "https://account.formula1.com/#/en/f1fantasy-web-accessibility-statement"
+              },
+              {
+                "label": "Human Rights",
+                "link": "https://www.formula1.com/en/information/statement-of-commitment-to-respect-for-human-rights.1OC6AmJr53THNGI9TNFxjf"
+              }
+            ],
+            "guidelinesPreferences": [
+              {
+                "label": "Guidelines",
+                "link": "https://www.formula1.com/en/information/guidelines.4EOKE9RRqevL4niTK9kWyt"
+              },
+              {
+                "label": "<button onclick='{{COOKIE_PREFERENCES_CLICK}}'>Cookie Preferences</button>",
+                "printInnerHTML": true
+              }
+            ],
+            "supportCorporate": [
+              {
+                "label": "F1 Help Centre",
+                "link": "https://support.formula1.com/s/?language=en_US"
+              },
+              {
+                "label": "Partners",
+                "link": "https://www.formula1.com/en/information/formula-1-partners.2shz7bIVhGgS3ovP69N3Rs"
+              },
+              {
+                "label": "Become an Affiliate",
+                "link": "https://signup.partnerize.com/signup/en/formula1"
+              },
+              {
+                "label": "F1® Corporate Site",
+                "link": "https://corp.formula1.com/"
+              }
+            ],
+            "communityContent": [
+              {
+                "label": "F1® Fan Voice",
+                "link": "https://www.f1fanvoice.com/auth/sign_in"
+              },
+              {
+                "label": "Beyond The Grid - the F1® podcast",
+                "link": "https://www.formula1.com/en/latest/tags/beyond-the-grid.63HGi6Q0grEg1ToZBtPNQ9"
+              }
+            ]
+          },
           "footer": {
             "legalList": [
               {
@@ -1100,12 +1255,12 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "9/26/2026 5:34:03 PM",
-        "ISTTime": "9/26/2026 11:04:03 PM",
-        "CESTTime": "9/26/2026 7:34:03 PM"
+        "UTCTime": "9/28/2026 10:08:15 AM",
+        "ISTTime": "9/28/2026 3:38:15 PM",
+        "CESTTime": "9/28/2026 12:08:15 PM"
       },
       "StatusCode": 200,
-      "Maintenance": ""
+      "Maintenance": "0"
     }
   }
 }

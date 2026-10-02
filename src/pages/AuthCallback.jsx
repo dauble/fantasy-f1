@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { checkPwnedPassword } from '../utils/checkPwnedPassword';
 
 /**
  * Handles post-auth redirects from Supabase:
@@ -39,6 +40,14 @@ export default function AuthCallback() {
     }
 
     setLoading(true);
+
+    const { pwned } = await checkPwnedPassword(password);
+    if (pwned) {
+      setError('That password has appeared in known data breaches. Please choose a different one.');
+      setLoading(false);
+      return;
+    }
+
     const { error: err } = await updatePassword(password);
     setLoading(false);
 
