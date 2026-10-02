@@ -4,6 +4,15 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.7 - 2026-10-01 - Dependency Security Updates
+
+### Fixed: 3 Known CVEs in Dependencies
+
+- Merged Dependabot's `npm_and_yarn` group update (#69): `axios` 1.18.1 → 1.20.0 (hardens runtime option handling against prototype pollution; raises the `form-data` floor past the CRLF injection advisory [GHSA-hmw2-7cc7-3qxx](https://github.com/advisories/GHSA-hmw2-7cc7-3qxx)), `brace-expansion` 1.1.16 → 1.1.21 (dev-only transitive dependency), and `moment` 2.30.1 → 2.31.0 (fixes [CVE-2026-17495](https://www.cve.org/CVERecord?id=CVE-2026-17495) / [GHSA-4p3w-j4w9-5jqw](https://github.com/moment/moment/security/advisories/GHSA-4p3w-j4w9-5jqw)).
+- All three are patch/minor bumps within already-declared semver ranges. Checked the app's one direct `axios` call site (`src/services/ergastAPI.js`, a plain `axios.get(url, { timeout })`) against the release notes — unaffected by any of the documented behavior changes.
+
+---
+
 ## Version 0.15.6 - 2026-10-01 - Fix Incomplete SECURITY DEFINER Revoke
 
 ### Fixed: `documentation/SUPABASE_SECURITY_FIXES.md` Function Grant Revoke
