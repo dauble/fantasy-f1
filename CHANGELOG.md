@@ -4,6 +4,14 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.6 - 2026-10-01 - Fix Incomplete SECURITY DEFINER Revoke
+
+### Fixed: `documentation/SUPABASE_SECURITY_FIXES.md` Function Grant Revoke
+
+- The `rls_auto_enable()` fix only revoked `EXECUTE` from `PUBLIC`, which doesn't remove an *explicit* `GRANT EXECUTE` held directly by `anon`/`authenticated` on top of the inherited `PUBLIC` grant — confirmed in practice, where Supabase kept flagging `anon_security_definer_function_executable` after the `PUBLIC`-only revoke. Updated the doc to revoke from `anon`, `authenticated`, and `PUBLIC` explicitly, added an `information_schema.routine_privileges` query to verify the grant is actually gone (rather than relying on the linter's cache), and added `security invoker` as a fallback if a direct grant still isn't cleared by the explicit revokes.
+
+---
+
 ## Version 0.15.5 - 2026-10-01 - Fix Column Name in Supabase RLS Verification Query
 
 ### Fixed: `documentation/SUPABASE_SECURITY_FIXES.md` Verification Query
