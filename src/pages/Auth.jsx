@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { checkPwnedPassword } from '../utils/checkPwnedPassword';
 
 const MODES = { SIGNIN: 'signin', SIGNUP: 'signup', FORGOT: 'forgot' };
 
@@ -39,6 +40,15 @@ export default function Auth() {
     }
 
     setLoading(true);
+
+    if (mode === MODES.SIGNUP) {
+      const { pwned } = await checkPwnedPassword(password);
+      if (pwned) {
+        setError('That password has appeared in known data breaches. Please choose a different one.');
+        setLoading(false);
+        return;
+      }
+    }
 
     if (mode === MODES.SIGNIN) {
       const { error: err } = await signIn(email, password);
