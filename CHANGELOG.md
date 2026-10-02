@@ -4,6 +4,15 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.3 - 2026-10-01 - DIY Leaked Password Protection
+
+### Added: Client-Side HaveIBeenPwned Check on Sign-Up and Password Reset
+
+- Supabase's built-in "leaked password protection" is gated to paid plans. Added `src/utils/checkPwnedPassword.js`, which checks a password against HIBP's free [Pwned Passwords API](https://haveibeenpwned.com/API/v3#PwnedPasswords) using its k-anonymity range model: the password is SHA-1 hashed in the browser and only the first 5 hex characters of the hash are sent to HIBP, so the password itself never leaves the client.
+- Wired into the two places a password is actually set: `Auth.jsx` (sign-up) and `AuthCallback.jsx` (password-reset confirmation). A breached password is rejected with an inline error before the Supabase call is made; the check fails open (allows the password through) on any network/API error so an HIBP outage can never block account creation or recovery.
+
+---
+
 ## Version 0.15.2 - 2026-09-27 - Explicit Local-Timezone Sync Timestamps
 
 ### Fixed: Ambiguous Sync Timestamp Display
