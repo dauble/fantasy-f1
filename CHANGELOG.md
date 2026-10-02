@@ -4,6 +4,14 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.4 - 2026-10-01 - Fix Column Name in Supabase RLS Verification Query
+
+### Fixed: `documentation/SUPABASE_SECURITY_FIXES.md` Verification Query
+
+- The RLS sanity-check query selected `polname`, which is the raw `pg_policy` catalog column — the `pg_policies` view (which the query actually selects `from`) exposes it as `policyname`. Running the query as written failed with `42703: column "polname" does not exist`. Corrected in both the inline query and the full script at the bottom of the doc.
+
+---
+
 ## Version 0.15.3 - 2026-09-27 - Supabase Security Lint Remediation (Documented)
 
 ### Documented: Fixes for 5 Supabase Database Linter Warnings

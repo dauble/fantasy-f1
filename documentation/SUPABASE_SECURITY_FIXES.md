@@ -38,7 +38,7 @@ not a sign of a leak, *as long as row-level security actually restricts
 each user to their own row*. Verify that with:
 
 ```sql
-select polname, permissive, roles, cmd, qual
+select policyname, permissive, roles, cmd, qual
 from pg_policies
 where schemaname = 'public' and tablename = 'user_data';
 ```
@@ -103,7 +103,7 @@ revoke all privileges on table public.user_data from anon;
 revoke all on function public.rls_auto_enable() from public;
 
 -- Sanity check: every policy here should reduce to `auth.uid() = id`.
-select polname, permissive, roles, cmd, qual
+select policyname, permissive, roles, cmd, qual
 from pg_policies
 where schemaname = 'public' and tablename = 'user_data';
 
