@@ -4,6 +4,23 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.5 - 2026-10-01 - Fix Column Name in Supabase RLS Verification Query
+
+### Fixed: `documentation/SUPABASE_SECURITY_FIXES.md` Verification Query
+
+- The RLS sanity-check query selected `polname`, which is the raw `pg_policy` catalog column — the `pg_policies` view (which the query actually selects `from`) exposes it as `policyname`. Running the query as written failed with `42703: column "polname" does not exist`. Corrected in both the inline query and the full script at the bottom of the doc.
+
+---
+
+## Version 0.15.4 - 2026-09-27 - Supabase Security Lint Remediation (Documented)
+
+### Documented: Fixes for 5 Supabase Database Linter Warnings
+
+- Supabase's linter flagged `public.user_data` (visible to `anon` via GraphQL — never intentional, the app only reads/writes it post-sign-in for the current user's own row) and `public.rls_auto_enable()` (a `SECURITY DEFINER` function callable by `anon`/`authenticated` via `/rest/v1/rpc/rls_auto_enable`, but never called anywhere in the codebase — almost certainly a leftover one-off admin helper). Also flagged: leaked-password protection disabled in Auth.
+- This environment has no Supabase connection (no service-role key, no DB credentials) and this project doesn't track schema as SQL migrations, so the fix can't be applied directly from here. Added `documentation/SUPABASE_SECURITY_FIXES.md` with the exact SQL to run in the Supabase SQL Editor, explaining why each fix is safe (and specifically why `authenticated`'s access to `user_data` should be *kept*, not revoked — the app's cloud sync depends on it, and it's RLS that actually protects other users' rows) plus a verification query for RLS policies and an optional `DROP EXTENSION pg_graphql` for the residual warning if GraphQL is unused. Leaked-password protection is an Auth dashboard toggle, not a schema change.
+
+---
+
 ## Version 0.15.3 - 2026-10-01 - DIY Leaked Password Protection
 
 ### Added: Client-Side HaveIBeenPwned Check on Sign-Up and Password Reset
