@@ -113,7 +113,16 @@ const PriceManager = () => {
         return;
       }
 
-      const { customPrices: fetchedPrices, unmatched } = buildCustomPricesFromFeed(latest, drivers);
+      let inactiveDrivers = [];
+      try {
+        const rosterRes = await fetch('/api/fantasy/drivers');
+        const roster = await rosterRes.json();
+        inactiveDrivers = roster?.drivers || [];
+      } catch (rosterErr) {
+        console.warn('Error fetching full Fantasy roster for inactive-driver check:', rosterErr);
+      }
+
+      const { customPrices: fetchedPrices, unmatched } = buildCustomPricesFromFeed(latest, drivers, inactiveDrivers);
 
       const merged = {
         drivers: { ...customPrices.drivers, ...fetchedPrices.drivers },

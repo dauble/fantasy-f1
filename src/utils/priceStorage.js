@@ -46,11 +46,26 @@ export function matchDriverByName(fantasyName, openF1Drivers) {
  * Builds a customPrices object (in the app's raw-dollar storage convention)
  * from an /api/fantasy-prices snapshot, resolving driver names to driver_number
  * via the OpenF1 driver grid. Constructors match directly on team name.
+ *
+ * `inactiveDrivers` (optional) is the full Fantasy roster feed (including
+ * drivers flagged isActive: false), e.g. from /api/fantasy/drivers. A driver
+ * who no longer has a race seat is already excluded from `openF1Drivers`
+ * upstream, so they'd otherwise show up here as "unmatched" even though
+ * nothing is actually wrong — passing this lets us recognize "dropped from
+ * the grid" and skip them silently instead of surfacing a confusing warning.
+ *
  * Returns { customPrices, unmatched } so callers can surface any gaps.
  */
-export function buildCustomPricesFromFeed(snapshot, openF1Drivers) {
+export function buildCustomPricesFromFeed(snapshot, openF1Drivers, inactiveDrivers = []) {
   const customPrices = { drivers: {}, constructors: {} };
   const unmatched = [];
+
+  const inactiveLastNames = new Set(
+    inactiveDrivers
+      .filter((d) => d.isActive === false)
+      .map((d) => lastToken(normalizeName(d.lastName || d.name)))
+      .filter(Boolean)
+  );
 
   // A driver can appear more than once in the feed after a mid-season team
   // swap (the old team's record lingers alongside the new one under the same
@@ -61,7 +76,9 @@ export function buildCustomPricesFromFeed(snapshot, openF1Drivers) {
   for (const driver of snapshot?.drivers || []) {
     const match = matchDriverByName(driver.name, openF1Drivers);
     if (!match) {
-      unmatched.push({ type: 'driver', name: driver.name });
+      if (!inactiveLastNames.has(lastToken(normalizeName(driver.name)))) {
+        unmatched.push({ type: 'driver', name: driver.name });
+      }
       continue;
     }
     const list = candidatesByDriverNumber.get(match.driver_number) || [];
