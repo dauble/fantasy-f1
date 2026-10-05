@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-04T06:44:49.736Z",
+  "fetchedAt": "2026-10-05T05:19:00.017Z",
   "races": [
     {
       "round": 1,
@@ -2207,7 +2207,7 @@
           "TeamScenario": "0",
           "TeamScenarioStartDate": "0",
           "TeamScenarioEndDate": "0",
-          "IsActiveForNewUser": 1,
+          "IsActiveForNewUser": 0,
           "IsPostponed": 0,
           "IsLeaderboardShow": 1,
           "CurrentGamedayId": 37,
@@ -2218,11 +2218,11 @@
           "MeetingOfficialName": "FORMULA 1 GULF AIR BAHRAIN GRAND PRIX IN MALAYSIA 2026",
           "MeetingLocation": "Kuala Lumpur",
           "CircuitLocation": "Bahrain",
-          "GDStatus": 3,
+          "GDStatus": 2,
           "CountryId": "37",
           "CountryName": "Bahrain",
           "CircuitOfficialName": "Sepang International Circuit",
-          "IsFinalFixActive": 1,
+          "IsFinalFixActive": 0,
           "NextMatchDeadline": "0"
         },
         {
@@ -2239,14 +2239,14 @@
           "GMTOffset": "",
           "Season": "2026",
           "FOMMEETINGSESSIONKEY": "11731",
-          "GDIsLocked": 0,
+          "GDIsLocked": 1,
           "GDIsCurrent": 1,
-          "MDIsLocked": 0,
+          "MDIsLocked": 1,
           "MDIsCurrent": 1,
           "MHIsCurrent": 1,
-          "MHIsLocked": 0,
-          "IsLiveFd": 0,
-          "IsLive": 0,
+          "MHIsLocked": 1,
+          "IsLiveFd": 1,
+          "IsLive": 1,
           "MDTotalPlayers": 5,
           "MaxTeamPlayers": 0,
           "MaxTeamBalance": 100,
@@ -2257,11 +2257,11 @@
           "SessionStartDateISO8601": "2026-10-04T07:00:00+00:00",
           "SessionEndDateISO8601": "2026-10-04T09:00:00+00:00",
           "MatchdayName": "Match 37",
-          "MatchStatus": "1",
+          "MatchStatus": "5",
           "TeamScenario": "0",
           "TeamScenarioStartDate": "0",
           "TeamScenarioEndDate": "0",
-          "IsActiveForNewUser": 1,
+          "IsActiveForNewUser": 0,
           "IsPostponed": 0,
           "IsLeaderboardShow": 1,
           "CurrentGamedayId": 37,
@@ -2272,11 +2272,11 @@
           "MeetingOfficialName": "FORMULA 1 GULF AIR BAHRAIN GRAND PRIX IN MALAYSIA 2026",
           "MeetingLocation": "Kuala Lumpur",
           "CircuitLocation": "Bahrain",
-          "GDStatus": 3,
+          "GDStatus": 2,
           "CountryId": "37",
           "CountryName": "Bahrain",
           "CircuitOfficialName": "Sepang International Circuit",
-          "IsFinalFixActive": 1,
+          "IsFinalFixActive": 0,
           "NextMatchDeadline": "0"
         },
         {
@@ -5283,9 +5283,9 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "10/3/2026 12:31:02 PM",
-        "ISTTime": "10/3/2026 6:01:02 PM",
-        "CESTTime": "10/3/2026 2:31:02 PM"
+        "UTCTime": "10/4/2026 11:04:09 AM",
+        "ISTTime": "10/4/2026 4:34:09 PM",
+        "CESTTime": "10/4/2026 1:04:09 PM"
       },
       "StatusCode": 200,
       "Maintenance": ""

@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-04T06:44:49.720Z",
+  "fetchedAt": "2026-10-05T05:18:59.996Z",
   "raw": {
     "Data": {
       "config": {
@@ -1243,9 +1243,9 @@
         ],
         "TREndGamedayId": 22,
         "IsLateOnboard": 1,
-        "IsActiveForNewUser": 1,
+        "IsActiveForNewUser": 0,
         "ShowRaceweekTab": 1,
-        "ShowAnnouncementCard": 0,
+        "ShowAnnouncementCard": 1,
         "NextSeasonDeadline": "",
         "isSwapSuggestion": 0
       }
@@ -1255,12 +1255,12 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "10/3/2026 12:30:59 PM",
-        "ISTTime": "10/3/2026 6:00:59 PM",
-        "CESTTime": "10/3/2026 2:30:59 PM"
+        "UTCTime": "10/4/2026 12:21:37 PM",
+        "ISTTime": "10/4/2026 5:51:37 PM",
+        "CESTTime": "10/4/2026 2:21:37 PM"
       },
       "StatusCode": 200,
-      "Maintenance": ""
+      "Maintenance": "0"
     }
   }
 }
