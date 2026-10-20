@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-10-19T05:01:49.089Z",
+  "fetchedAt": "2026-10-20T05:01:41.966Z",
   "raw": {
     "Data": {
       "config": {
@@ -700,7 +700,7 @@
       },
       "cloudinary": {
         "cloudinaryBaseUrl": "https://media.formula1.com/image/upload",
-        "cloudinaryEnvVersion": "v1788787259",
+        "cloudinaryEnvVersion": "v1792398421",
         "players": {
           "player-popup": {
             "11": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:1868db/l_v1772802140:common:f1:2026:williams:alealb01:2026williamsalealb01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:williams:2026williamslogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01right.png",
@@ -1255,12 +1255,12 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "10/11/2026 5:19:55 PM",
-        "ISTTime": "10/11/2026 10:49:55 PM",
-        "CESTTime": "10/11/2026 7:19:55 PM"
+        "UTCTime": "10/19/2026 8:54:28 AM",
+        "ISTTime": "10/19/2026 2:24:28 PM",
+        "CESTTime": "10/19/2026 10:54:28 AM"
       },
       "StatusCode": 200,
-      "Maintenance": ""
+      "Maintenance": "0"
     }
   }
 }
