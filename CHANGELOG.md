@@ -4,6 +4,21 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## [0.15.9] - 2026-10-17
+
+Add a `release` Claude Code skill.
+
+### Added
+
+- **`/release` skill for consistent version bumps, changelog entries, and tags.** Every change merged to `main` is meant to ship with a SemVer bump and a CHANGELOG entry, but this was done by hand. Versions collided across parallel branches (0.15.7 had to be renumbered), `package-lock.json` drifted to 0.15.2 while `package.json` moved on, and tags stopped after `v0.13.0`. `.claude/skills/release/SKILL.md` automates it: it bases the bump on the higher of the branch's and `origin/main`'s version, bumps `package.json` and `package-lock.json` together via `npm version`, writes a [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) entry, commits, creates an annotated `vX.Y.Z` tag, and asks before pushing.
+
+### Changed
+
+- New CHANGELOG entries use Keep a Changelog headings (`## [X.Y.Z] - YYYY-MM-DD` with `Added`/`Changed`/`Fixed`/etc. sections). Older entries are left in their original format.
+- `.claude/settings.local.json` (per-machine Claude Code permissions) is now gitignored so the shared `.claude/skills/` directory can be committed without it.
+
+---
+
 ## Version 0.15.7 - 2026-10-01 - Dependency Security Updates
 
 ### Fixed: 3 Known CVEs in Dependencies
