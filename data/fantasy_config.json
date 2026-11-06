@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-05T05:01:51.727Z",
+  "fetchedAt": "2026-11-06T05:01:35.564Z",
   "raw": {
     "Data": {
       "config": {
@@ -1245,7 +1245,7 @@
         "IsLateOnboard": 0,
         "IsActiveForNewUser": 1,
         "ShowRaceweekTab": 1,
-        "ShowAnnouncementCard": 0,
+        "ShowAnnouncementCard": 1,
         "NextSeasonDeadline": "",
         "isSwapSuggestion": 0
       }
@@ -1255,9 +1255,9 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "11/3/2026 11:38:02 AM",
-        "ISTTime": "11/3/2026 5:08:02 PM",
-        "CESTTime": "11/3/2026 12:38:02 PM"
+        "UTCTime": "11/5/2026 1:00:59 PM",
+        "ISTTime": "11/5/2026 6:30:59 PM",
+        "CESTTime": "11/5/2026 2:00:59 PM"
       },
       "StatusCode": 200,
       "Maintenance": "0"
