@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-11T05:01:37.684Z",
+  "fetchedAt": "2026-11-12T05:01:29.837Z",
   "raw": {
     "Data": {
       "config": {
@@ -737,7 +737,8 @@
             "11051": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:F50537/l_v1772802140:common:f1:2026:audi:gabbor01:2026audigabbor01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:audi:2026audilogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01right.png",
             "11059": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:00a1e8/l_v1772802140:common:f1:2026:alpine:fracol01:2026alpinefracol01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:alpine:2026alpinelogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01right.png",
             "11149": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:6c98ff/l_v1772802140:common:f1:2026:racingbulls:arvlin01:2026racingbullsarvlin01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:racingbulls:2026racingbullslogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01right.png",
-            "11161": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:00d7b6/l_v1772802140:common:f1:2026:mercedes:andant01:2026mercedesandant01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:mercedes:2026mercedeslogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01right.png"
+            "11161": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:00d7b6/l_v1772802140:common:f1:2026:mercedes:andant01:2026mercedesandant01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:mercedes:2026mercedeslogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01right.png",
+            "11205": "https://media.formula1.com/image/upload/ar_16:9,c_pad,g_north,h_2500/ar_16:9,c_crop,g_north,w_2000/b_rgb:9c9fa2/l_v1772802140:common:f1:2026:haasf1team:rafcam01:2026haasf1teamrafcam01numberwhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_east,x_100/l_v1772802140:common:f1:2026:haasf1team:2026haasf1teamlogowhitefr/ar_1:1,c_scale,w_450/fl_layer_apply,g_west,x_100/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01right.png"
           },
           "stat-view": {
             "11": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:1868db/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01front.png",
@@ -774,7 +775,8 @@
             "11051": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:F50537/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01front.png",
             "11059": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:00a1e8/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01front.png",
             "11149": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:6c98ff/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01front.png",
-            "11161": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01front.png"
+            "11161": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01front.png",
+            "11205": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1000/b_rgb:9c9fa2/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01front.png"
           },
           "list-view-web": {
             "11": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:williams:2026williamslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:williams:alealb01:2026williamsalealb01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:1868db/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01left.png",
@@ -811,7 +813,8 @@
             "11051": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:audi:2026audilogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:audi:gabbor01:2026audigabbor01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:F50537/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01left.png",
             "11059": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:alpine:2026alpinelogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:alpine:fracol01:2026alpinefracol01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:00a1e8/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01left.png",
             "11149": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:racingbulls:2026racingbullslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:racingbulls:arvlin01:2026racingbullsarvlin01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:6c98ff/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01left.png",
-            "11161": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:mercedes:2026mercedeslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:mercedes:andant01:2026mercedesandant01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01left.png"
+            "11161": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:mercedes:2026mercedeslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:mercedes:andant01:2026mercedesandant01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01left.png",
+            "11205": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_3:2,c_pad,g_west/l_v1772802140:common:f1:2026:haasf1team:2026haasf1teamlogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:haasf1team:rafcam01:2026haasf1teamrafcam01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:9c9fa2/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01left.png"
           },
           "list-view": {
             "11": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:williams:2026williamslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:williams:alealb01:2026williamsalealb01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:1868db/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01left.png",
@@ -848,7 +851,8 @@
             "11051": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:audi:2026audilogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:audi:gabbor01:2026audigabbor01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:F50537/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01left.png",
             "11059": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:alpine:2026alpinelogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:alpine:fracol01:2026alpinefracol01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:00a1e8/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01left.png",
             "11149": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:racingbulls:2026racingbullslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:racingbulls:arvlin01:2026racingbullsarvlin01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:6c98ff/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01left.png",
-            "11161": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:mercedes:2026mercedeslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:mercedes:andant01:2026mercedesandant01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01left.png"
+            "11161": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:mercedes:2026mercedeslogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:mercedes:andant01:2026mercedesandant01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01left.png",
+            "11205": "https://media.formula1.com/image/upload/ar_1:1,c_crop,g_north,w_1600/ar_80:60,c_pad,g_west/l_v1772802140:common:f1:2026:haasf1team:2026haasf1teamlogowhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_-350/l_v1772802140:common:f1:2026:haasf1team:rafcam01:2026haasf1teamrafcam01numberwhitefr/c_scale,w_500/fl_layer_apply,g_east,x_300,y_350/b_rgb:9c9fa2/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01left.png"
           },
           "pitch-view": {
             "11": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:1868db/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01front.png",
@@ -885,7 +889,8 @@
             "11051": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:F50537/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01front.png",
             "11059": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:00a1e8/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01front.png",
             "11149": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:6c98ff/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01front.png",
-            "11161": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01front.png"
+            "11161": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01front.png",
+            "11205": "https://media.formula1.com/image/upload/ar_16:9,c_crop,g_north/b_rgb:9c9fa2/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01front.png"
           },
           "hex-view": {
             "11": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:1868db,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:1868db,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01right.png",
@@ -922,7 +927,8 @@
             "11051": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:F50537,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:F50537,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01right.png",
             "11059": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:00a1e8,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:00a1e8,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01right.png",
             "11149": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:6c98ff,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:6c98ff,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01right.png",
-            "11161": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:00d7b6,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:00d7b6,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01right.png"
+            "11161": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:00d7b6,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:00d7b6,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01right.png",
+            "11205": "https://media.formula1.com/image/upload/c_crop,g_north,h_1800,w_1800/c_lpad,g_south,h_2000/l_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/fl_cutter,fl_layer_apply,g_north/l_Fantasy:2026:background_image:hexagon_stroke/c_scale,h_1800,w_1550/co_rgb:9c9fa2,e_colorize/fl_layer_apply,g_north/u_Fantasy:2026:background_image:hexagon_shape/c_scale,h_1800,w_1550/co_rgb:9c9fa2,e_colorize/fl_layer_apply,g_north/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01right.png"
           },
           "best-performance": {
             "11": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:1868db/v1772802140/common/f1/2026/williams/alealb01/2026williamsalealb01right.png",
@@ -959,7 +965,8 @@
             "11051": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:F50537/v1772802140/common/f1/2026/audi/gabbor01/2026audigabbor01right.png",
             "11059": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:00a1e8/v1772802140/common/f1/2026/alpine/fracol01/2026alpinefracol01right.png",
             "11149": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:6c98ff/v1772802140/common/f1/2026/racingbulls/arvlin01/2026racingbullsarvlin01right.png",
-            "11161": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01right.png"
+            "11161": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:00d7b6/v1772802140/common/f1/2026/mercedes/andant01/2026mercedesandant01right.png",
+            "11205": "https://media.formula1.com/image/upload/ar_3:2,c_pad,g_south_east,h_2500/ar_3:2,c_crop,g_north_east,h_1200/c_lpad,g_south_east,h_1400/b_rgb:9c9fa2/v1772802140/common/f1/2026/haasf1team/rafcam01/2026haasf1teamrafcam01right.png"
           }
         },
         "imagePaths": {
@@ -1255,12 +1262,12 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "11/8/2026 10:37:04 PM",
-        "ISTTime": "11/9/2026 4:07:04 AM",
-        "CESTTime": "11/8/2026 11:37:04 PM"
+        "UTCTime": "11/11/2026 8:23:20 AM",
+        "ISTTime": "11/11/2026 1:53:20 PM",
+        "CESTTime": "11/11/2026 9:23:20 AM"
       },
       "StatusCode": 200,
-      "Maintenance": ""
+      "Maintenance": "0"
     }
   }
 }
