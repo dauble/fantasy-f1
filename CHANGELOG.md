@@ -4,6 +4,15 @@ All notable changes to Fantasy F1 are documented here.
 
 ---
 
+## Version 0.15.8 - 2026-10-02 - Fix False "Couldn't Match" Warning for Dropped Drivers
+
+### Fixed: Price Sync Flagging Already-Removed Drivers as Unmatched
+
+- "Sync Official Prices" pulls live price data from a different F1 Fantasy endpoint (`driverconstructors_4.json`) than the daily roster snapshot (`drivers/{gameId}_en.json`) that builds the app's active driver grid. When a driver is dropped mid-season (e.g. Yuki Tsunoda, removed from the 2026 grid), the roster snapshot correctly flags them `isActive: false` and the active grid already excludes them — but the live price feed still carries a stale record for them, so name matching failed and they surfaced as "Couldn't match: ... — set these manually below," even though nothing needed fixing and no price was ever stored for them.
+- `buildCustomPricesFromFeed` (`src/utils/priceStorage.js`) now accepts the full Fantasy roster (including inactive entries) and silently skips an unmatched name when it corresponds to a driver already flagged `isActive: false`, instead of surfacing a confusing warning. `PriceManager.jsx` fetches `/api/fantasy/drivers` during sync to supply that list. Applies to any future driver dropped mid-season, not just this one case.
+
+---
+
 ## Version 0.15.7 - 2026-10-01 - Dependency Security Updates
 
 ### Fixed: 3 Known CVEs in Dependencies
