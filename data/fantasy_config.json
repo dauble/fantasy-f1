@@ -1,5 +1,5 @@
 {
-  "fetchedAt": "2026-11-20T05:01:46.732Z",
+  "fetchedAt": "2026-11-21T05:01:32.679Z",
   "raw": {
     "Data": {
       "config": {
@@ -1237,19 +1237,19 @@
       ],
       "constraints": {
         "GamedayId": 21,
-        "MatchdayId": 47,
+        "MatchdayId": 48,
         "PhaseId": 1,
         "MaxTeamValue": 100,
         "DeadlineDate": "11/19/2026 00:00:00",
         "ActiveTour": 0,
         "GMCSubScenario": "TR_PRE",
         "FixtureUpdateFlag": 0,
-        "LPTourGamedayId": 20,
+        "LPTourGamedayId": 21,
         "ARRGamedayId": [
           21
         ],
         "TREndGamedayId": 22,
-        "IsLateOnboard": 0,
+        "IsLateOnboard": 1,
         "IsActiveForNewUser": 1,
         "ShowRaceweekTab": 1,
         "ShowAnnouncementCard": 0,
@@ -1262,12 +1262,12 @@
       "RetVal": 1,
       "Success": true,
       "Timestamp": {
-        "UTCTime": "11/11/2026 8:23:20 AM",
-        "ISTTime": "11/11/2026 1:53:20 PM",
-        "CESTTime": "11/11/2026 9:23:20 AM"
+        "UTCTime": "11/21/2026 4:00:17 AM",
+        "ISTTime": "11/21/2026 9:30:17 AM",
+        "CESTTime": "11/21/2026 5:00:17 AM"
       },
       "StatusCode": 200,
-      "Maintenance": "0"
+      "Maintenance": ""
     }
   }
 }
